@@ -3,13 +3,24 @@ export const metadata = {
 };
 
 function Divider() {
+  return <div style={{ borderTop: "1px solid var(--border)", margin: "48px 0" }} />;
+}
+
+function ComingSoonBadge() {
   return (
-    <div
+    <span
       style={{
-        borderTop: "1px solid var(--border)",
-        margin: "48px 0",
+        fontSize: "10px",
+        fontWeight: 600,
+        letterSpacing: "0.12em",
+        color: "var(--text-muted)",
+        border: "1px solid var(--border)",
+        padding: "2px 7px",
+        borderRadius: "20px",
       }}
-    />
+    >
+      COMING SOON
+    </span>
   );
 }
 
@@ -81,10 +92,10 @@ export default function AboutPage() {
         >
           Concept Athletic builds tools and coaching frameworks that help
           athletes train and compete with intention. We believe precision matters
-          — in training load, in race execution, and in the detail of how you
-          fuel. concept//fuel is the first public product from this platform: a
-          deterministic, evidence-informed fuelling planner that gives you a
-          single decisive plan rather than a list of things to consider.
+          in training load, race execution, and the detail of how you fuel.
+          concept//fuel is the first public product from this platform: an
+          evidence-informed fuelling planner that gives you a single decisive
+          plan rather than a list of things to consider.
         </p>
         <p
           style={{
@@ -139,14 +150,7 @@ export default function AboutPage() {
                 borderBottom: "1px solid var(--border)",
               }}
             >
-              <p
-                style={{
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: "var(--text)",
-                  marginBottom: "4px",
-                }}
-              >
+              <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--text)", marginBottom: "4px" }}>
                 {d.name}
               </p>
               <p style={{ fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>
@@ -170,18 +174,12 @@ export default function AboutPage() {
         >
           Credentials
         </p>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: "12px",
-          }}
-        >
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {[
-            "England Athletics licensed coach",
+            "England Athletics licensed coaches",
             "Working with athletes from beginner to elite level",
             "Evidence-informed methodology across training and nutrition",
-            "Active in competition — not just theory",
+            "Active in competition, not just theory",
           ].map((c) => (
             <div
               key={c}
@@ -204,7 +202,7 @@ export default function AboutPage() {
       <Divider />
 
       {/* Platform vision */}
-      <div style={{ marginBottom: "40px" }}>
+      <div style={{ marginBottom: "32px" }}>
         <p
           style={{
             fontSize: "11px",
@@ -221,63 +219,68 @@ export default function AboutPage() {
             fontSize: "14px",
             color: "var(--text-muted)",
             lineHeight: 1.8,
-            marginBottom: "16px",
+            marginBottom: "24px",
           }}
         >
           concept//fuel is the first release of a wider, holistic and data-informed
           platform for individual athletes. The goal is a single place that
           integrates fuelling, training structure, performance analytics and
-          coaching — all built around you as an individual.
+          coaching, all built around you as an individual.
         </p>
 
-        {/* Coach teaser */}
-        <div
-          style={{
-            border: "1px solid var(--border)",
-            borderRadius: "6px",
-            padding: "24px",
-            background: "var(--surface)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-            <p
-              style={{
-                fontSize: "15px",
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-                color: "var(--text)",
-              }}
-            >
-              concept
-              <span style={{ color: "var(--text-muted)" }}>//</span>
-              coach
-            </p>
-            <span
-              style={{
-                fontSize: "10px",
-                fontWeight: 600,
-                letterSpacing: "0.12em",
-                color: "var(--text-muted)",
-                border: "1px solid var(--border)",
-                padding: "2px 7px",
-                borderRadius: "20px",
-              }}
-            >
-              COMING SOON
-            </span>
-          </div>
-          <p
+        {/* Coming soon cards */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
+          {/* concept//coaches */}
+          <div
             style={{
-              fontSize: "13px",
-              color: "var(--text-muted)",
-              lineHeight: 1.7,
+              border: "1px solid var(--border)",
+              borderRadius: "6px",
+              padding: "24px",
+              background: "var(--surface)",
             }}
           >
-            Structured training plans, load management and performance tracking.
-            Built on the same data-informed principles as concept//fuel, and
-            integrated with it. For athletes who want more than a plan — they
-            want a system.
-          </p>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+              <p style={{ fontSize: "15px", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)" }}>
+                concept<span style={{ color: "var(--text-muted)" }}>//</span>coaches
+              </p>
+              <ComingSoonBadge />
+            </div>
+            <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.7 }}>
+              Structured training plans, load management and performance tracking.
+              Built on the same evidence-informed principles as concept//fuel and
+              integrated with it. For athletes who want more than a plan. They
+              want a system.
+            </p>
+          </div>
+
+          {/* concept//nourish */}
+          <div
+            style={{
+              border: "1px solid var(--border)",
+              borderRadius: "6px",
+              padding: "24px",
+              background: "var(--surface)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+              <p style={{ fontSize: "15px", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)" }}>
+                concept<span style={{ color: "var(--text-muted)" }}>//</span>nourish
+              </p>
+              <ComingSoonBadge />
+            </div>
+            <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.7, marginBottom: "12px" }}>
+              Performance nutrition and recovery guidance built for athletes who
+              train seriously but have had to navigate spaces that were never
+              really built for them. Protein targets, energy availability,
+              recovery nutrition and body composition, all framed around how you
+              perform and feel, not just how you look.
+            </p>
+            <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.7 }}>
+              Data-informed. Aesthetic. Unapologetically precise.
+            </p>
+          </div>
+
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const SAMPLE_SCHEDULE = [
   { minute: 20, label: "20 min", suggestion: "1 gel (~25g carbs)" },
@@ -14,17 +15,20 @@ export default function LandingPage() {
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section style={{ marginBottom: "56px" }}>
-        <p
-          style={{
-            fontSize: "11px",
-            color: "var(--text-muted)",
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            marginBottom: "16px",
-          }}
-        >
-          Concept Athletic
-        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "16px", flexWrap: "wrap" }}>
+          <p
+            style={{
+              fontSize: "11px",
+              color: "var(--text-muted)",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              margin: 0,
+            }}
+          >
+            Concept Athletic
+          </p>
+          <ThemeToggle />
+        </div>
         <h1
           style={{
             fontSize: "clamp(32px, 6vw, 64px)",
@@ -76,8 +80,8 @@ export default function LandingPage() {
         >
           Enter your profile and event details. Get a single decisive plan: carb
           target, timed gel schedule, hydration, sodium, caffeine, bicarb and
-          Nomio protocol. Evidence-informed. Deterministic. Built for athletes
-          who take their performance seriously.
+          Nomio protocol. Evidence-informed. No AI, no guesswork. Built for
+          athletes who take their performance seriously.
         </p>
       </section>
 
@@ -501,7 +505,7 @@ export default function LandingPage() {
           England Athletics licensed coaching across sprinting, endurance, Hyrox,
           trail and mountain running, and performance cycling. Beginner to elite.
         </p>
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", alignItems: "center" }}>
           <Link
             href="/about"
             style={{
@@ -514,15 +518,48 @@ export default function LandingPage() {
           >
             Who we are →
           </Link>
-          <span
-            style={{
-              fontSize: "13px",
-              color: "var(--text-muted)",
-              opacity: 0.6,
-            }}
-          >
-            concept athletic//coach — coming soon
+          <span style={{ fontSize: "13px", color: "var(--text-muted)", opacity: 0.55 }}>
+            concept//coaches — coming soon
           </span>
+          <span style={{ fontSize: "13px", color: "var(--text-muted)", opacity: 0.55 }}>
+            concept//nourish — coming soon
+          </span>
+        </div>
+
+        {/* concept//nourish teaser */}
+        <div
+          style={{
+            marginTop: "20px",
+            padding: "20px 24px",
+            border: "1px solid var(--border)",
+            borderRadius: "6px",
+            background: "var(--surface-2)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+            <p style={{ fontSize: "13px", fontWeight: 700, letterSpacing: "-0.01em", color: "var(--text)", margin: 0 }}>
+              concept<span style={{ color: "var(--text-muted)" }}>//</span>nourish
+            </p>
+            <span
+              style={{
+                fontSize: "10px",
+                fontWeight: 600,
+                letterSpacing: "0.1em",
+                color: "var(--text-muted)",
+                border: "1px solid var(--border)",
+                padding: "1px 6px",
+                borderRadius: "20px",
+              }}
+            >
+              COMING SOON
+            </span>
+          </div>
+          <p style={{ fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.7, margin: 0 }}>
+            Performance nutrition and recovery for athletes who train seriously.
+            Protein targets, energy availability and body composition, framed
+            around how you perform and feel. Data-informed. No gym-bro culture.
+            Built for everyone.
+          </p>
         </div>
       </section>
 
