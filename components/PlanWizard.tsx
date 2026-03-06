@@ -484,7 +484,7 @@ function PlanSetupStep({
                 {
                   value: "session",
                   label: "Training session",
-                  desc: "Practice / long run / intervals",
+                  desc: "Practice / long effort / intervals",
                 },
               ]}
             />
