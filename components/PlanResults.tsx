@@ -248,6 +248,87 @@ export default function PlanResults({ result, planValues, onStartOver }: PlanRes
         </div>
       </div>
 
+      {/* Fun conversions */}
+      {result.total_carbs_g > 0 && (() => {
+        const gramsRice = Math.round(result.total_carbs_g * 100 / 28);
+        const bowlsRice = (result.total_carbs_g / 50).toFixed(1);
+        // Battersea Park outer loop ≈ 4km; at 5:00/km = 20 min = 1/3 hr
+        const carbsPerLap = Math.round(result.carb_target_g_per_hr / 3);
+        const lapsEquiv = carbsPerLap > 0 ? (result.total_carbs_g / carbsPerLap).toFixed(1) : "—";
+        return (
+          <div style={{ marginBottom: "28px" }}>
+            <SectionTitle>in other words</SectionTitle>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: "10px",
+              }}
+            >
+              <div
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "4px",
+                  padding: "16px",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: "11px",
+                    color: "var(--text-muted)",
+                    marginBottom: "6px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  Rice equivalent
+                </p>
+                <p style={{ fontSize: "22px", fontWeight: 700, color: "var(--text)", lineHeight: 1.1 }}>
+                  {gramsRice} g
+                </p>
+                <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+                  {bowlsRice} bowls of cooked white rice
+                </p>
+                <p style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "6px", fontStyle: "italic" }}>
+                  a nod to the marathon monks of Mt. Hiei
+                </p>
+              </div>
+
+              <div
+                style={{
+                  background: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "4px",
+                  padding: "16px",
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: "11px",
+                    color: "var(--text-muted)",
+                    marginBottom: "6px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                  }}
+                >
+                  Battersea Park laps
+                </p>
+                <p style={{ fontSize: "22px", fontWeight: 700, color: "var(--text)", lineHeight: 1.1 }}>
+                  {lapsEquiv}
+                </p>
+                <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+                  laps of Battersea Park (4 km/lap, 5:00/km)
+                </p>
+                <p style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "6px" }}>
+                  ~{carbsPerLap} g carbs per lap at your target rate
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Schedule */}
       <div style={{ marginBottom: "28px" }}>
         <SectionTitle>Intake schedule</SectionTitle>
