@@ -1,6 +1,5 @@
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
-import WaitlistForm from "@/components/WaitlistForm";
 
 const SAMPLE_SCHEDULE = [
   { minute: 20, label: "20 min", suggestion: "1 gel (~25g carbs)" },
@@ -74,7 +73,7 @@ export default function LandingPage() {
           style={{
             fontSize: "14px",
             color: "var(--text-muted)",
-            marginBottom: "36px",
+            marginBottom: "0",
             maxWidth: "540px",
             lineHeight: 1.75,
           }}
@@ -84,25 +83,74 @@ export default function LandingPage() {
           Nomio protocol. Evidence-informed. No AI, no guesswork. Built for
           athletes who take their performance seriously.
         </p>
-        <div
-          style={{
-            borderTop: "1px solid var(--border)",
-            marginTop: "32px",
-            paddingTop: "28px",
-          }}
-        >
+      </section>
+
+      {/* ── CTA ──────────────────────────────────────────────────────────── */}
+      <section
+        style={{
+          marginBottom: "56px",
+          padding: "40px",
+          border: "1px solid var(--border)",
+          borderRadius: "6px",
+          background: "var(--surface)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "24px",
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
           <p
             style={{
-              fontSize: "11px",
-              color: "var(--text-muted)",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              marginBottom: "14px",
+              fontSize: "20px",
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+              marginBottom: "6px",
+              color: "var(--text)",
             }}
           >
-            Stay in the loop
+            Build your plan in 2 minutes.
           </p>
-          <WaitlistForm />
+          <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+            No account required. Free during BETA.
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <Link
+            href="/plan"
+            style={{
+              display: "inline-block",
+              padding: "12px 28px",
+              background: "var(--accent)",
+              color: "var(--bg)",
+              fontWeight: 600,
+              fontSize: "14px",
+              borderRadius: "4px",
+              textDecoration: "none",
+              letterSpacing: "0.01em",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Get started →
+          </Link>
+          <Link
+            href="/pricing"
+            style={{
+              display: "inline-block",
+              padding: "12px 20px",
+              background: "transparent",
+              color: "var(--text-muted)",
+              fontWeight: 500,
+              fontSize: "14px",
+              borderRadius: "4px",
+              textDecoration: "none",
+              border: "1px solid var(--border)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Pricing
+          </Link>
         </div>
       </section>
 
@@ -183,75 +231,6 @@ export default function LandingPage() {
               </p>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* ── CTA ──────────────────────────────────────────────────────────── */}
-      <section
-        style={{
-          marginBottom: "80px",
-          padding: "40px",
-          border: "1px solid var(--border)",
-          borderRadius: "6px",
-          background: "var(--surface)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "24px",
-          flexWrap: "wrap",
-        }}
-      >
-        <div>
-          <p
-            style={{
-              fontSize: "20px",
-              fontWeight: 700,
-              letterSpacing: "-0.02em",
-              marginBottom: "6px",
-              color: "var(--text)",
-            }}
-          >
-            Build your plan in 2 minutes.
-          </p>
-          <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
-            No account required. Free during BETA.
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <Link
-            href="/plan"
-            style={{
-              display: "inline-block",
-              padding: "12px 28px",
-              background: "var(--accent)",
-              color: "var(--bg)",
-              fontWeight: 600,
-              fontSize: "14px",
-              borderRadius: "4px",
-              textDecoration: "none",
-              letterSpacing: "0.01em",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Get started →
-          </Link>
-          <Link
-            href="/pricing"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              background: "transparent",
-              color: "var(--text-muted)",
-              fontWeight: 500,
-              fontSize: "14px",
-              borderRadius: "4px",
-              textDecoration: "none",
-              border: "1px solid var(--border)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Pricing
-          </Link>
         </div>
       </section>
 

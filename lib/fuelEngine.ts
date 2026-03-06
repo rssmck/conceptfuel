@@ -291,25 +291,32 @@ function generateSchedule(
   if (carb_target_g_per_hr < 30) return []
 
   let freq_minutes: number
-  if (carb_target_g_per_hr >= 90) {
-    freq_minutes = 15
-  } else if (carb_target_g_per_hr >= 60) {
-    freq_minutes = 20
+  let carbs_per_dose: number
+
+  if (product && product.carbs_g > 0) {
+    // Work backwards from serving size so the schedule actually hits the target rate.
+    // e.g. OTE Superfuel (40g) at 80g/hr → ideal interval = 40/80*60 = 30 min, not 20 min.
+    const idealInterval = (product.carbs_g / carb_target_g_per_hr) * 60
+    const snapPoints = [12, 15, 20, 25, 30, 45, 60]
+    freq_minutes = snapPoints.reduce((prev, curr) =>
+      Math.abs(curr - idealInterval) < Math.abs(prev - idealInterval) ? curr : prev
+    )
+    carbs_per_dose = product.carbs_g // 1 serving per interval
   } else {
-    freq_minutes = 30
+    // Rate-first scheduling for generic / no product
+    if (carb_target_g_per_hr >= 90) {
+      freq_minutes = 15
+    } else if (carb_target_g_per_hr >= 60) {
+      freq_minutes = 20
+    } else {
+      freq_minutes = 30
+    }
+    const dose_raw = carb_target_g_per_hr * (freq_minutes / 60)
+    carbs_per_dose = roundToNearest5(dose_raw)
   }
 
-  // Dose per interval
-  const dose_raw = carb_target_g_per_hr * (freq_minutes / 60)
-  const carbs_per_dose = roundToNearest5(dose_raw)
-
-  // Start offset
-  let start: number
-  if (duration_minutes >= 60) {
-    start = freq_minutes === 15 ? 15 : 20
-  } else {
-    start = 15
-  }
+  // Start offset: no earlier than 15 min, no later than 20 min
+  const start = duration_minutes >= 60 ? Math.min(freq_minutes, 20) : 15
 
   const items: ScheduleItem[] = []
   let minute = start
