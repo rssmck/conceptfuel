@@ -670,8 +670,8 @@ function PlanSetupStep({
         </div>
       )}
 
-      {/* Pace estimator */}
-      {sport === "running" && distance && distance !== "other" && (
+      {/* Pace estimator — races only. Sessions use total duration directly. */}
+      {planType === "race" && sport === "running" && distance && distance !== "other" && (
         <div
           style={{
             marginBottom: "24px",
