@@ -50,7 +50,7 @@ const profileSchema = z.object({
 const planSchema = z
   .object({
     plan_type: z.enum(["race", "session"]),
-    sport: z.enum(["running", "hyrox"]),
+    sport: z.enum(["running", "trail_running", "cycling", "hyrox"]),
     effort: z.enum(["easy", "steady", "hard", "race"]),
     conditions: z.enum(["normal", "hot"]),
     duration: z
@@ -72,8 +72,9 @@ const planSchema = z
     }),
     distance: z.enum(["5k", "10k", "half", "marathon", "other"]).optional(),
     session_subtype: z
-      .enum(["long_run", "tempo_threshold", "intervals", "hyrox_sim"])
+      .enum(["long_run", "tempo_threshold", "intervals", "hyrox_sim", "long_ride", "tempo_ride", "trail_run", "indoor_ride"])
       .optional(),
+    elevation_gain_m: z.number().min(0, "Min 0m").max(10000, "Max 10,000m").optional(),
   })
   .refine(
     (d) =>
@@ -503,7 +504,17 @@ function PlanSetupStep({
               value={field.value}
               onChange={field.onChange}
               options={[
-                { value: "running", label: "Running" },
+                { value: "running", label: "Running", desc: "Road / track" },
+                {
+                  value: "trail_running",
+                  label: "Trail running",
+                  desc: "Off-road. Add elevation gain for adjusted targets.",
+                },
+                {
+                  value: "cycling",
+                  label: "Cycling",
+                  desc: "Road or MTB. Higher carb bands (reduced GI stress vs running).",
+                },
                 {
                   value: "hyrox",
                   label: "Hyrox",
@@ -535,10 +546,29 @@ function PlanSetupStep({
         <div style={{ marginBottom: "24px" }}>
           <FieldLabel htmlFor="session_subtype">Session type</FieldLabel>
           <select id="session_subtype" {...register("session_subtype")}>
-            <option value="long_run">Long run</option>
-            <option value="tempo_threshold">Tempo / Threshold</option>
-            <option value="intervals">Intervals</option>
-            <option value="hyrox_sim">Hyrox simulation</option>
+            {sport === "cycling" ? (
+              <>
+                <option value="long_ride">Long ride</option>
+                <option value="tempo_ride">Tempo / threshold ride</option>
+                <option value="intervals">Intervals</option>
+                <option value="indoor_ride">Indoor / Zwift (elevated sodium)</option>
+              </>
+            ) : sport === "hyrox" ? (
+              <option value="hyrox_sim">Hyrox simulation</option>
+            ) : sport === "trail_running" ? (
+              <>
+                <option value="trail_run">Trail run</option>
+                <option value="long_run">Long trail run</option>
+                <option value="tempo_threshold">Tempo / threshold</option>
+                <option value="intervals">Intervals</option>
+              </>
+            ) : (
+              <>
+                <option value="long_run">Long run</option>
+                <option value="tempo_threshold">Tempo / Threshold</option>
+                <option value="intervals">Intervals</option>
+              </>
+            )}
           </select>
           <FieldError message={errors.session_subtype?.message} />
         </div>
@@ -619,6 +649,26 @@ function PlanSetupStep({
         </p>
         <FieldError message={errors.duration?.message} />
       </div>
+
+      {/* Elevation gain (trail running / cycling) */}
+      {(sport === "trail_running" || sport === "cycling") && (
+        <div style={{ marginBottom: "24px" }}>
+          <FieldLabel htmlFor="elevation_gain_m">Elevation gain (m) — optional</FieldLabel>
+          <input
+            id="elevation_gain_m"
+            type="number"
+            min="0"
+            max="10000"
+            placeholder="e.g. 800"
+            {...register("elevation_gain_m", { valueAsNumber: true })}
+            style={{ maxWidth: "160px" }}
+          />
+          <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+            Total climbing for the event or session. Boosts carb target based on climbing rate.
+          </p>
+          <FieldError message={errors.elevation_gain_m?.message} />
+        </div>
+      )}
 
       {/* Pace estimator */}
       {sport === "running" && distance && distance !== "other" && (
@@ -988,6 +1038,7 @@ export default function PlanWizard() {
       gel_product: resolveGelProduct(data),
       distance: data.distance,
       session_subtype: data.session_subtype,
+      elevation_gain_m: data.elevation_gain_m && data.elevation_gain_m > 0 ? data.elevation_gain_m : undefined,
     };
 
     const output = generateFuelPlan(profileInput, planInput);

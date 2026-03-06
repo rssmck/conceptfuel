@@ -175,7 +175,12 @@ export default function PlanResults({ result, planValues, onStartOver }: PlanRes
             color: "var(--text-muted)",
           }}
         >
-          <span style={{ textTransform: "capitalize" }}>{planValues.sport}</span>
+          <span>{{
+            running: "Running",
+            trail_running: "Trail Running",
+            cycling: "Cycling",
+            hyrox: "Hyrox",
+          }[planValues.sport] ?? planValues.sport}</span>
           <span>·</span>
           <span style={{ textTransform: "capitalize" }}>{planValues.plan_type}</span>
           <span>·</span>

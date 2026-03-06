@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* ─── DARK THEME (default) ─────────────────────────────────────────────────── */
 :root {
   --bg: #0a0a0a;
   --surface: #111111;
@@ -11,6 +12,23 @@
   --accent-dim: #cccccc;
   --danger: #ff4444;
   --success: #44ff88;
+  --nav-bg: rgba(10,10,10,0.92);
+}
+
+/* ─── LIGHT THEME ───────────────────────────────────────────────────────────── */
+/* Vibey, editorial — warm off-white, bold ink, punchy accent */
+[data-theme="light"] {
+  --bg: #f5f2ed;
+  --surface: #ede9e3;
+  --surface-2: #e5e0d9;
+  --border: #ccc8c0;
+  --text: #1a1714;
+  --text-muted: #7a7570;
+  --accent: #1a1714;
+  --accent-dim: #4a4540;
+  --danger: #cc2200;
+  --success: #1a7a40;
+  --nav-bg: rgba(245,242,237,0.92);
 }
 
 * {
@@ -20,6 +38,7 @@
 html {
   background: var(--bg);
   color: var(--text);
+  transition: background 0.25s, color 0.25s;
 }
 
 body {
@@ -30,6 +49,7 @@ body {
   font-size: 14px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  transition: background 0.25s, color 0.25s;
 }
 
 /* Custom scrollbar */
@@ -63,7 +83,7 @@ select {
   font-family: inherit;
   font-size: 14px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.25s;
 }
 
 input[type="number"]:focus,

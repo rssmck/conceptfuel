@@ -1,9 +1,27 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function Nav() {
   const pathname = usePathname();
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  // Persist theme across sessions
+  useEffect(() => {
+    const saved = localStorage.getItem("cf_theme") as "dark" | "light" | null;
+    if (saved) {
+      setTheme(saved);
+      document.documentElement.setAttribute("data-theme", saved === "light" ? "light" : "");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    localStorage.setItem("cf_theme", next);
+    document.documentElement.setAttribute("data-theme", next === "light" ? "light" : "");
+  };
 
   const links = [
     { href: "/", label: "home" },
@@ -21,7 +39,9 @@ export default function Nav() {
         justifyContent: "space-between",
         position: "sticky",
         top: 0,
-        background: "var(--bg)",
+        background: "var(--nav-bg)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
         zIndex: 100,
       }}
     >
@@ -52,6 +72,22 @@ export default function Nav() {
             {l.label}
           </Link>
         ))}
+        <button
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          style={{
+            background: "var(--surface-2)",
+            border: "1px solid var(--border)",
+            color: "var(--text-muted)",
+            borderRadius: "4px",
+            padding: "4px 10px",
+            fontSize: "12px",
+            cursor: "pointer",
+            lineHeight: 1.5,
+          }}
+        >
+          {theme === "dark" ? "◑ light" : "◐ dark"}
+        </button>
       </div>
     </nav>
   );

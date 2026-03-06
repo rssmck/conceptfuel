@@ -7,11 +7,11 @@ export type GITolerance = 'low' | 'med' | 'high'
 export type CaffeineTolerance = 'none' | 'low' | 'med' | 'high'
 export type Sex = 'male' | 'female' | 'prefer_not'
 export type PlanType = 'race' | 'session'
-export type Sport = 'running' | 'hyrox'
+export type Sport = 'running' | 'trail_running' | 'cycling' | 'hyrox'
 export type Effort = 'easy' | 'steady' | 'hard' | 'race'
 export type Conditions = 'normal' | 'hot'
 export type Distance = '5k' | '10k' | 'half' | 'marathon' | 'other'
-export type SessionSubtype = 'long_run' | 'tempo_threshold' | 'intervals' | 'hyrox_sim'
+export type SessionSubtype = 'long_run' | 'tempo_threshold' | 'intervals' | 'hyrox_sim' | 'long_ride' | 'tempo_ride' | 'trail_run' | 'indoor_ride'
 export type BicarbBrand = 'maurten' | 'flycarb'
 export type BicarbExperience = 'first_time' | 'experienced'
 
@@ -38,6 +38,8 @@ export interface PlanInput {
   distance?: Distance
   // Session-only
   session_subtype?: SessionSubtype
+  // Trail running / cycling
+  elevation_gain_m?: number
 }
 
 export interface GelProduct {
@@ -126,6 +128,11 @@ function getCarbBand(
     band = { min: 75, max: 90 }
   }
 
+  // Cycling: riders can absorb more carbs (lower GI stress vs running impact)
+  if (sport === 'cycling') {
+    band = { min: band.min, max: Math.min(120, band.max + 10) }
+  }
+
   // Hyrox adjustment: reduce upper bound by 10
   // UNLESS effort='race' AND gi_tolerance='high'
   if (sport === 'hyrox' && !(effort === 'race' && gi_tolerance === 'high')) {
@@ -155,10 +162,10 @@ function getEffortScalar(
     p = Math.min(0.9, p + 0.1)
   } else {
     // session mode adjustments
-    if (session_subtype === 'long_run') {
+    if (session_subtype === 'long_run' || session_subtype === 'long_ride' || session_subtype === 'trail_run') {
       if (effort !== 'race') p = 0.5
     } else if (
-      (session_subtype === 'intervals' || session_subtype === 'tempo_threshold') &&
+      (session_subtype === 'intervals' || session_subtype === 'tempo_threshold' || session_subtype === 'tempo_ride') &&
       effort === 'hard'
     ) {
       p = Math.min(0.75, p)
@@ -192,6 +199,21 @@ function applyGICap(
   return capped
 }
 
+// ─── ELEVATION BOOST ──────────────────────────────────────────────────────────
+
+/**
+ * Additional g/hr carbs from climbing. Based on elevation gain rate (m/hr).
+ * Applies to trail running and cycling only.
+ */
+function computeElevationBoost(elevation_gain_m: number, duration_minutes: number): number {
+  if (elevation_gain_m <= 0) return 0
+  const gain_per_hr = elevation_gain_m / (duration_minutes / 60)
+  if (gain_per_hr < 200) return 0
+  if (gain_per_hr < 500) return 5
+  if (gain_per_hr < 800) return 10
+  return 15
+}
+
 // ─── CARB TARGET ──────────────────────────────────────────────────────────────
 
 function computeCarbTarget(
@@ -200,7 +222,8 @@ function computeCarbTarget(
   effort: Effort,
   plan_type: PlanType,
   gi_tolerance: GITolerance,
-  session_subtype?: SessionSubtype
+  session_subtype?: SessionSubtype,
+  elevation_gain_m?: number
 ): number {
   const band = getCarbBand(duration_minutes, sport, effort, gi_tolerance)
   const p = getEffortScalar(effort, plan_type, session_subtype)
@@ -223,8 +246,17 @@ function computeCarbTarget(
   // Apply GI caps
   target = applyGICap(target, band, gi_tolerance, duration_minutes)
 
-  // Global cap: never exceed 105
-  target = Math.min(target, 105)
+  // Elevation boost for trail running and cycling
+  if (elevation_gain_m && elevation_gain_m > 0 && (sport === 'trail_running' || sport === 'cycling')) {
+    const boost = computeElevationBoost(elevation_gain_m, duration_minutes)
+    target = roundToNearest5(target + boost)
+    // Re-apply GI cap after elevation boost
+    target = applyGICap(target, band, gi_tolerance, duration_minutes)
+  }
+
+  // Global cap: never exceed 110 (cycling can push slightly higher)
+  const globalCap = sport === 'cycling' ? 110 : 105
+  target = Math.min(target, globalCap)
 
   // Ensure not below band.min (except <45 min where 0 is allowed)
   if (duration_minutes >= 45) {
@@ -304,13 +336,18 @@ function generateSchedule(
 function computeFluid(
   effort: Effort,
   conditions: Conditions,
-  plan_type: PlanType
+  plan_type: PlanType,
+  session_subtype?: SessionSubtype
 ): number {
+  // Indoor cycling: no airflow, high core temp — treat as at least 'hot'
+  const isIndoor = session_subtype === 'indoor_ride'
+  const effectiveConditions: Conditions = isIndoor && conditions === 'normal' ? 'hot' : conditions
+
   const bands: Record<Conditions, { min: number; max: number }> = {
     normal: { min: 400, max: 700 },
     hot: { min: 600, max: 1000 },
   }
-  const b = bands[conditions]
+  const b = bands[effectiveConditions]
 
   const scalars: Record<Effort, number> = {
     easy: 0.35,
@@ -320,6 +357,8 @@ function computeFluid(
   }
   let p = scalars[effort]
   if (plan_type === 'race') p = Math.min(0.85, p + 0.05)
+  // Indoor: push toward upper end of already-elevated band
+  if (isIndoor) p = Math.min(0.9, p + 0.1)
 
   return roundToNearest50(b.min + p * (b.max - b.min))
 }
@@ -327,13 +366,18 @@ function computeFluid(
 function computeSodium(
   effort: Effort,
   conditions: Conditions,
-  plan_type: PlanType
+  plan_type: PlanType,
+  session_subtype?: SessionSubtype
 ): number {
+  // Indoor cycling: elevated sweat rate + sodium losses with no cooling airflow
+  const isIndoor = session_subtype === 'indoor_ride'
+  const effectiveConditions: Conditions = isIndoor && conditions === 'normal' ? 'hot' : conditions
+
   const bands: Record<Conditions, { min: number; max: number }> = {
     normal: { min: 300, max: 600 },
     hot: { min: 600, max: 1000 },
   }
-  const b = bands[conditions]
+  const b = bands[effectiveConditions]
 
   const scalars: Record<Effort, number> = {
     easy: 0.35,
@@ -343,6 +387,7 @@ function computeSodium(
   }
   let p = scalars[effort]
   if (plan_type === 'race') p = Math.min(0.85, p + 0.05)
+  if (isIndoor) p = Math.min(0.9, p + 0.1)
 
   return roundToNearest50(b.min + p * (b.max - b.min))
 }
@@ -484,7 +529,8 @@ export function generateFuelPlan(
     effort,
     plan_type,
     gi_tolerance,
-    session_subtype
+    session_subtype,
+    plan.elevation_gain_m
   )
 
   // B) Total carbs
@@ -494,8 +540,8 @@ export function generateFuelPlan(
   const schedule = generateSchedule(carb_target_g_per_hr, duration_minutes, plan.gel_product)
 
   // D) Fluid + Sodium
-  const fluid_ml_per_hr = computeFluid(effort, conditions, plan_type)
-  const sodium_mg_per_hr = computeSodium(effort, conditions, plan_type)
+  const fluid_ml_per_hr = computeFluid(effort, conditions, plan_type, session_subtype)
+  const sodium_mg_per_hr = computeSodium(effort, conditions, plan_type, session_subtype)
 
   // E) Caffeine
   const caffeine_guidance =
@@ -526,6 +572,27 @@ export function generateFuelPlan(
   if (gi_tolerance === 'low') {
     notes.push(
       'Your GI tolerance is set to low. Targets have been capped conservatively. Prioritise real-food and liquid carb sources where possible.'
+    )
+  }
+
+  if (plan.elevation_gain_m && plan.elevation_gain_m > 0 && (sport === 'trail_running' || sport === 'cycling')) {
+    const boost = computeElevationBoost(plan.elevation_gain_m, duration_minutes)
+    if (boost > 0) {
+      notes.push(
+        `${plan.elevation_gain_m}m of elevation has added +${boost}g/hr to your carb target. Climbing significantly increases energy cost. Adjust based on how climbing is distributed throughout the event.`
+      )
+    }
+  }
+
+  if (sport === 'cycling') {
+    notes.push(
+      'Cycling targets are set slightly higher than road running — reduced GI stress from no impact means most riders can tolerate more carbs per hour. Build up through training.'
+    )
+  }
+
+  if (session_subtype === 'indoor_ride') {
+    notes.push(
+      'Indoor cycling (Zwift / turbo): no airflow cooling means significantly higher sweat rates and sodium losses. Fluid and sodium targets have been elevated accordingly. Use a fan if possible and pre-cool where practical.'
     )
   }
 
