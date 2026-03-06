@@ -116,3 +116,14 @@ select option {
   background: var(--surface-2);
   color: var(--text);
 }
+
+/* Loading screen */
+@keyframes cf-pulse {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 1; }
+}
+
+.cf-dot { display: inline-block; font-size: 20px; }
+.cf-dot-1 { animation: cf-pulse 1.4s ease-in-out infinite; }
+.cf-dot-2 { animation: cf-pulse 1.4s ease-in-out 0.45s infinite; }
+.cf-dot-3 { animation: cf-pulse 1.4s ease-in-out 0.9s infinite; }

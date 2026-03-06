@@ -290,9 +290,6 @@ export default function PlanResults({ result, planValues, onStartOver }: PlanRes
                 <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
                   {bowlsRice} bowls of cooked white rice
                 </p>
-                <p style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "6px", fontStyle: "italic" }}>
-                  a nod to the marathon monks of Mt. Hiei
-                </p>
               </div>
 
               <div

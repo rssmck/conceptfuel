@@ -63,6 +63,21 @@ export default function Nav() {
             {l.label}
           </Link>
         ))}
+        <a
+          href="https://instagram.com/conceptathletic"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            fontSize: "13px",
+            color: "var(--text-muted)",
+            textDecoration: "none",
+            transition: "color 0.15s",
+            borderLeft: "1px solid var(--border)",
+            paddingLeft: "20px",
+          }}
+        >
+          ig
+        </a>
       </div>
     </nav>
   );

@@ -972,6 +972,70 @@ function PlanSetupStep({
   );
 }
 
+// ─── LOADING SCREEN ───────────────────────────────────────────────────────────
+
+const LOADING_LINES = [
+  "Calculating carb targets...",
+  "Calibrating fluid targets...",
+  "Analysing GI tolerance...",
+  "Building intake schedule...",
+  "Finalising protocol...",
+];
+
+function LoadingScreen() {
+  const [lineIndex, setLineIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLineIndex((i) => (i + 1) % LOADING_LINES.length);
+    }, 400);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "80px 20px",
+        textAlign: "center",
+      }}
+    >
+      <p
+        style={{
+          fontSize: "11px",
+          letterSpacing: "0.2em",
+          textTransform: "uppercase",
+          color: "var(--text-muted)",
+          marginBottom: "40px",
+        }}
+      >
+        concept<span style={{ color: "var(--text-muted)" }}>//</span>fuel
+      </p>
+
+      <div style={{ display: "flex", gap: "10px", marginBottom: "36px" }}>
+        <span className="cf-dot cf-dot-1" style={{ color: "var(--accent)" }}>·</span>
+        <span className="cf-dot cf-dot-2" style={{ color: "var(--accent)" }}>·</span>
+        <span className="cf-dot cf-dot-3" style={{ color: "var(--accent)" }}>·</span>
+      </div>
+
+      <p
+        style={{
+          fontSize: "13px",
+          color: "var(--text-muted)",
+          fontStyle: "italic",
+          minHeight: "20px",
+          transition: "opacity 0.2s",
+        }}
+      >
+        {LOADING_LINES[lineIndex]}
+      </p>
+    </div>
+  );
+}
+
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
 function resolveGelProduct(data: PlanFormValues): GelProduct | undefined {
@@ -983,7 +1047,7 @@ function resolveGelProduct(data: PlanFormValues): GelProduct | undefined {
 
 // ─── WIZARD CONTAINER ─────────────────────────────────────────────────────────
 
-type Step = "profile" | "plan" | "results";
+type Step = "profile" | "plan" | "loading" | "results";
 
 export default function PlanWizard() {
   const [step, setStep] = useState<Step>("profile");
@@ -1016,36 +1080,40 @@ export default function PlanWizard() {
   const handlePlanNext = (data: PlanFormValues) => {
     localStorage.setItem(LS_PLAN_KEY, JSON.stringify(data));
     setPlanValues(data);
-
-    const profileInput: ProfileInput = {
-      weight_kg: profile!.weight_kg,
-      sex: profile!.sex,
-      gi_tolerance: profile!.gi_tolerance,
-      caffeine_tolerance: profile!.caffeine_tolerance,
-    };
-
-    const planInput: PlanInput = {
-      plan_type: data.plan_type,
-      sport: data.sport,
-      effort: data.effort,
-      conditions: data.conditions,
-      duration_minutes: parseDurationToMinutes(data.duration),
-      caffeine_enabled: data.caffeine_enabled,
-      bicarb_enabled: data.bicarb_enabled,
-      bicarb_brand: data.bicarb_brand,
-      bicarb_experience: data.bicarb_experience,
-      nomio_enabled: data.nomio_enabled,
-      gel_product: resolveGelProduct(data),
-      distance: data.distance,
-      session_subtype: data.session_subtype,
-      elevation_gain_m: data.elevation_gain_m && data.elevation_gain_m > 0 ? data.elevation_gain_m : undefined,
-    };
-
-    const output = generateFuelPlan(profileInput, planInput);
-    localStorage.setItem(LS_RESULT_KEY, JSON.stringify(output));
-    setResult(output);
-    setStep("results");
+    setStep("loading");
     window.scrollTo(0, 0);
+
+    setTimeout(() => {
+      const profileInput: ProfileInput = {
+        weight_kg: profile!.weight_kg,
+        sex: profile!.sex,
+        gi_tolerance: profile!.gi_tolerance,
+        caffeine_tolerance: profile!.caffeine_tolerance,
+      };
+
+      const planInput: PlanInput = {
+        plan_type: data.plan_type,
+        sport: data.sport,
+        effort: data.effort,
+        conditions: data.conditions,
+        duration_minutes: parseDurationToMinutes(data.duration),
+        caffeine_enabled: data.caffeine_enabled,
+        bicarb_enabled: data.bicarb_enabled,
+        bicarb_brand: data.bicarb_brand,
+        bicarb_experience: data.bicarb_experience,
+        nomio_enabled: data.nomio_enabled,
+        gel_product: resolveGelProduct(data),
+        distance: data.distance,
+        session_subtype: data.session_subtype,
+        elevation_gain_m: data.elevation_gain_m && data.elevation_gain_m > 0 ? data.elevation_gain_m : undefined,
+      };
+
+      const output = generateFuelPlan(profileInput, planInput);
+      localStorage.setItem(LS_RESULT_KEY, JSON.stringify(output));
+      setResult(output);
+      setStep("results");
+      window.scrollTo(0, 0);
+    }, 2200);
   };
 
   const handleStartOver = () => {
@@ -1093,6 +1161,7 @@ export default function PlanWizard() {
       <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "32px" }}>
         {step === "profile" && "Step 1 of 2 - enter your profile details"}
         {step === "plan" && "Step 2 of 2 - configure your plan"}
+        {step === "loading" && "Building your fuel plan"}
         {step === "results" && "Your fuel plan is ready"}
       </p>
 
@@ -1139,6 +1208,7 @@ export default function PlanWizard() {
       </div>
 
       {/* Step content */}
+      {step === "loading" && <LoadingScreen />}
       {step === "profile" && <ProfileStep onNext={handleProfileNext} />}
       {step === "plan" && profile && (
         <PlanSetupStep
