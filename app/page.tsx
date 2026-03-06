@@ -116,42 +116,23 @@ export default function LandingPage() {
             No account required. Free during BETA.
           </p>
         </div>
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-          <Link
-            href="/plan"
-            style={{
-              display: "inline-block",
-              padding: "12px 28px",
-              background: "var(--accent)",
-              color: "var(--bg)",
-              fontWeight: 600,
-              fontSize: "14px",
-              borderRadius: "4px",
-              textDecoration: "none",
-              letterSpacing: "0.01em",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Get started →
-          </Link>
-          <Link
-            href="/pricing"
-            style={{
-              display: "inline-block",
-              padding: "12px 20px",
-              background: "transparent",
-              color: "var(--text-muted)",
-              fontWeight: 500,
-              fontSize: "14px",
-              borderRadius: "4px",
-              textDecoration: "none",
-              border: "1px solid var(--border)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Pricing
-          </Link>
-        </div>
+        <Link
+          href="/plan"
+          style={{
+            display: "inline-block",
+            padding: "12px 28px",
+            background: "var(--accent)",
+            color: "var(--bg)",
+            fontWeight: 600,
+            fontSize: "14px",
+            borderRadius: "4px",
+            textDecoration: "none",
+            letterSpacing: "0.01em",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Get started →
+        </Link>
       </section>
 
       {/* ── Built for ────────────────────────────────────────────────────── */}
