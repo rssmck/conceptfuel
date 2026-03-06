@@ -1055,8 +1055,16 @@ export default function PlanWizard() {
   const [planValues, setPlanValues] = useState<PlanFormValues | null>(null);
   const [result, setResult] = useState<FuelPlanOutput | null>(null);
 
-  // Restore last result from localStorage on mount
+  // Access gate
+  const [unlocked, setUnlocked] = useState(false);
+  const [gateMounted, setGateMounted] = useState(false);
+  const [gateCode, setGateCode] = useState("");
+  const [gateError, setGateError] = useState(false);
+
+  // Restore last result from localStorage on mount + check access gate
   useEffect(() => {
+    setGateMounted(true);
+    if (localStorage.getItem("cf_access") === "true") setUnlocked(true);
     try {
       const savedResult = localStorage.getItem(LS_RESULT_KEY);
       const savedProfile = localStorage.getItem(LS_PROFILE_KEY);
@@ -1122,6 +1130,17 @@ export default function PlanWizard() {
     window.scrollTo(0, 0);
   };
 
+  const handleGateSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (gateCode.trim().toUpperCase() === "FIRST") {
+      localStorage.setItem("cf_access", "true");
+      setUnlocked(true);
+    } else {
+      setGateError(true);
+      setGateCode("");
+    }
+  };
+
   const STEPS: { key: Step; label: string }[] = [
     { key: "profile", label: "Profile" },
     { key: "plan", label: "Plan" },
@@ -1132,6 +1151,132 @@ export default function PlanWizard() {
 
   return (
     <div>
+      {/* Access gate overlay */}
+      {gateMounted && !unlocked && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 300,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            background: "rgba(10,10,10,0.55)",
+          }}
+        >
+          <div
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "8px",
+              padding: "40px 32px",
+              maxWidth: "380px",
+              width: "calc(100% - 40px)",
+              textAlign: "center",
+            }}
+          >
+            <p
+              style={{
+                fontSize: "11px",
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                color: "var(--text-muted)",
+                marginBottom: "24px",
+              }}
+            >
+              concept<span style={{ color: "var(--text-muted)" }}>//</span>fuel · early access
+            </p>
+            <h2
+              style={{
+                fontSize: "22px",
+                fontWeight: 700,
+                letterSpacing: "-0.03em",
+                marginBottom: "10px",
+                color: "var(--text)",
+              }}
+            >
+              Access code
+            </h2>
+            <p
+              style={{
+                fontSize: "13px",
+                color: "var(--text-muted)",
+                marginBottom: "28px",
+                lineHeight: 1.65,
+              }}
+            >
+              concept//fuel is in early access. Enter your code to unlock the planner.
+            </p>
+            <form
+              onSubmit={handleGateSubmit}
+              style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+            >
+              <input
+                type="text"
+                placeholder="ENTER CODE"
+                value={gateCode}
+                onChange={(e) => {
+                  setGateCode(e.target.value);
+                  setGateError(false);
+                }}
+                style={{
+                  textAlign: "center",
+                  letterSpacing: "0.2em",
+                  textTransform: "uppercase",
+                  fontSize: "15px",
+                }}
+                autoFocus
+              />
+              {gateError && (
+                <p style={{ fontSize: "12px", color: "var(--danger)", marginTop: "-4px" }}>
+                  Invalid code. Try again.
+                </p>
+              )}
+              <button
+                type="submit"
+                style={{
+                  padding: "12px",
+                  background: "var(--accent)",
+                  color: "var(--bg)",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  borderRadius: "4px",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Unlock →
+              </button>
+            </form>
+            <p
+              style={{
+                fontSize: "11px",
+                color: "var(--text-muted)",
+                marginTop: "24px",
+                lineHeight: 1.7,
+              }}
+            >
+              No code?{" "}
+              <a
+                href="https://instagram.com/conceptathletic"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "var(--accent-dim)", textDecoration: "none" }}
+              >
+                @conceptathletic
+              </a>
+              {" "}or{" "}
+              <a href="/contact" style={{ color: "var(--accent-dim)", textDecoration: "none" }}>
+                get in touch
+              </a>
+              .
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Title */}
       <h1
         style={{

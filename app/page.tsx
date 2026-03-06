@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
+import WaitlistForm from "@/components/WaitlistForm";
 
 const SAMPLE_SCHEDULE = [
   { minute: 20, label: "20 min", suggestion: "1 gel (~25g carbs)" },
@@ -83,6 +84,26 @@ export default function LandingPage() {
           Nomio protocol. Evidence-informed. No AI, no guesswork. Built for
           athletes who take their performance seriously.
         </p>
+        <div
+          style={{
+            borderTop: "1px solid var(--border)",
+            marginTop: "32px",
+            paddingTop: "28px",
+          }}
+        >
+          <p
+            style={{
+              fontSize: "11px",
+              color: "var(--text-muted)",
+              letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              marginBottom: "14px",
+            }}
+          >
+            Stay in the loop
+          </p>
+          <WaitlistForm />
+        </div>
       </section>
 
       {/* ── Built for ────────────────────────────────────────────────────── */}

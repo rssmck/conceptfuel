@@ -55,14 +55,6 @@ export default function ContactForm() {
 
   return (
     <>
-      {/* Hidden form for Netlify build-time detection */}
-      <form name="contact" data-netlify="true" hidden>
-        <input name="name" />
-        <input name="email" />
-        <input name="subject" />
-        <textarea name="message" />
-      </form>
-
       <form onSubmit={handleSubmit} noValidate>
         <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
