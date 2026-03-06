@@ -7,7 +7,6 @@ export default function Nav() {
   const pathname = usePathname();
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
-  // Persist theme across sessions
   useEffect(() => {
     const saved = localStorage.getItem("cf_theme") as "dark" | "light" | null;
     if (saved) {
@@ -26,6 +25,7 @@ export default function Nav() {
   const links = [
     { href: "/", label: "home" },
     { href: "/plan", label: "plan" },
+    { href: "/about", label: "about" },
     { href: "/pricing", label: "pricing" },
   ];
 
@@ -33,7 +33,7 @@ export default function Nav() {
     <nav
       style={{
         borderBottom: "1px solid var(--border)",
-        padding: "14px 20px",
+        padding: "12px 20px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
@@ -45,18 +45,40 @@ export default function Nav() {
         zIndex: 100,
       }}
     >
-      <Link
-        href="/"
-        style={{
-          fontWeight: 700,
-          fontSize: "15px",
-          color: "var(--text)",
-          textDecoration: "none",
-          letterSpacing: "-0.02em",
-        }}
-      >
-        concept<span style={{ color: "var(--text-muted)" }}>//</span>fuel
-      </Link>
+      {/* Left: toggle + logo */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <button
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          style={{
+            background: "var(--surface-2)",
+            border: "1px solid var(--border)",
+            color: "var(--text-muted)",
+            borderRadius: "4px",
+            padding: "4px 10px",
+            fontSize: "11px",
+            cursor: "pointer",
+            lineHeight: 1.5,
+            letterSpacing: "0.04em",
+          }}
+        >
+          {theme === "dark" ? "◑ light" : "◐ dark"}
+        </button>
+        <Link
+          href="/"
+          style={{
+            fontWeight: 700,
+            fontSize: "15px",
+            color: "var(--text)",
+            textDecoration: "none",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          concept<span style={{ color: "var(--text-muted)" }}>//</span>fuel
+        </Link>
+      </div>
+
+      {/* Right: nav links */}
       <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
         {links.map((l) => (
           <Link
@@ -72,22 +94,6 @@ export default function Nav() {
             {l.label}
           </Link>
         ))}
-        <button
-          onClick={toggleTheme}
-          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          style={{
-            background: "var(--surface-2)",
-            border: "1px solid var(--border)",
-            color: "var(--text-muted)",
-            borderRadius: "4px",
-            padding: "4px 10px",
-            fontSize: "12px",
-            cursor: "pointer",
-            lineHeight: 1.5,
-          }}
-        >
-          {theme === "dark" ? "◑ light" : "◐ dark"}
-        </button>
       </div>
     </nav>
   );

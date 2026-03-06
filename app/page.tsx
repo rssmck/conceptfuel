@@ -10,15 +10,10 @@ const SAMPLE_SCHEDULE = [
 
 export default function LandingPage() {
   return (
-    <div
-      style={{
-        maxWidth: "960px",
-        margin: "0 auto",
-        padding: "60px 20px",
-      }}
-    >
-      {/* Hero */}
-      <section style={{ marginBottom: "80px" }}>
+    <div style={{ maxWidth: "960px", margin: "0 auto", padding: "60px 20px" }}>
+
+      {/* ── Hero ─────────────────────────────────────────────────────────── */}
+      <section style={{ marginBottom: "56px" }}>
         <p
           style={{
             fontSize: "11px",
@@ -64,26 +59,140 @@ export default function LandingPage() {
             fontSize: "18px",
             color: "var(--text-muted)",
             marginBottom: "12px",
-            maxWidth: "460px",
+            maxWidth: "480px",
+            lineHeight: 1.4,
           }}
         >
-          Precision race + session fuelling.
+          Precision race and session fuelling. No guesswork.
         </p>
         <p
           style={{
             fontSize: "14px",
             color: "var(--text-muted)",
             marginBottom: "36px",
-            maxWidth: "520px",
-            lineHeight: 1.7,
+            maxWidth: "540px",
+            lineHeight: 1.75,
           }}
         >
           Enter your profile and event details. Get a single decisive plan: carb
-          target, gel schedule, hydration, sodium, caffeine, bicarb and Nomio protocol.
-          No guesswork.
+          target, timed gel schedule, hydration, sodium, caffeine, bicarb and
+          Nomio protocol. Evidence-informed. Deterministic. Built for athletes
+          who take their performance seriously.
         </p>
+      </section>
 
-        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+      {/* ── Built for ────────────────────────────────────────────────────── */}
+      <section style={{ marginBottom: "56px" }}>
+        <p
+          style={{
+            fontSize: "11px",
+            color: "var(--text-muted)",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            marginBottom: "20px",
+          }}
+        >
+          Built for
+        </p>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: "10px",
+          }}
+        >
+          {[
+            {
+              sport: "Running",
+              events: "5k · 10k · Half · Marathon · Ultra",
+              icon: "→",
+            },
+            {
+              sport: "Trail Running",
+              events: "Off-road · Mountain · Fell · Ultra",
+              icon: "↗",
+            },
+            {
+              sport: "Cycling",
+              events: "Road · MTB · Gravel · Indoor / Zwift",
+              icon: "○",
+            },
+            {
+              sport: "Hyrox",
+              events: "Standard · Doubles · Relay",
+              icon: "◈",
+            },
+          ].map((s) => (
+            <div
+              key={s.sport}
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: "6px",
+                padding: "20px",
+                background: "var(--surface)",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: "11px",
+                  color: "var(--text-muted)",
+                  marginBottom: "10px",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                {s.icon}
+              </p>
+              <p
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  color: "var(--text)",
+                  marginBottom: "6px",
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                {s.sport}
+              </p>
+              <p style={{ fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                {s.events}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── CTA ──────────────────────────────────────────────────────────── */}
+      <section
+        style={{
+          marginBottom: "80px",
+          padding: "40px",
+          border: "1px solid var(--border)",
+          borderRadius: "6px",
+          background: "var(--surface)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "24px",
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <p
+            style={{
+              fontSize: "20px",
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+              marginBottom: "6px",
+              color: "var(--text)",
+            }}
+          >
+            Build your plan in 2 minutes.
+          </p>
+          <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+            No account required. Free during BETA.
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
           <Link
             href="/plan"
             style={{
@@ -96,15 +205,16 @@ export default function LandingPage() {
               borderRadius: "4px",
               textDecoration: "none",
               letterSpacing: "0.01em",
+              whiteSpace: "nowrap",
             }}
           >
-            Build your plan →
+            Get started →
           </Link>
           <Link
             href="/pricing"
             style={{
               display: "inline-block",
-              padding: "12px 28px",
+              padding: "12px 20px",
               background: "transparent",
               color: "var(--text-muted)",
               fontWeight: 500,
@@ -112,6 +222,7 @@ export default function LandingPage() {
               borderRadius: "4px",
               textDecoration: "none",
               border: "1px solid var(--border)",
+              whiteSpace: "nowrap",
             }}
           >
             Pricing
@@ -119,7 +230,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* What it covers */}
+      {/* ── What you get ─────────────────────────────────────────────────── */}
       <section style={{ marginBottom: "80px" }}>
         <p
           style={{
@@ -149,7 +260,8 @@ export default function LandingPage() {
             { label: "Caffeine", desc: "Weight-based mg range and timing guidance" },
             { label: "Bicarb protocol", desc: "Maurten or Flycarb dose, timing and cautions" },
             { label: "Nomio protocol", desc: "Broccoli sprout (sulforaphane) timing guidance" },
-            { label: "Practice notes", desc: "Safety and training trial reminders" },
+            { label: "Elevation adjustment", desc: "Trail and cycling targets boosted by climbing rate" },
+            { label: "Practice notes", desc: "Safety and training trial reminders built in" },
           ].map((item) => (
             <div
               key={item.label}
@@ -178,7 +290,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Sample output */}
+      {/* ── Sample output ─────────────────────────────────────────────────── */}
       <section style={{ marginBottom: "80px" }}>
         <p
           style={{
@@ -199,7 +311,6 @@ export default function LandingPage() {
             overflow: "hidden",
           }}
         >
-          {/* Header */}
           <div
             style={{
               background: "var(--surface)",
@@ -219,7 +330,6 @@ export default function LandingPage() {
           </div>
 
           <div style={{ padding: "20px" }}>
-            {/* Key metrics */}
             <div
               style={{
                 display: "grid",
@@ -253,7 +363,6 @@ export default function LandingPage() {
               ))}
             </div>
 
-            {/* Schedule */}
             <div style={{ marginBottom: "20px" }}>
               <p
                 style={{
@@ -309,7 +418,6 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {/* Caffeine card */}
             <div
               style={{
                 border: "1px solid var(--border)",
@@ -318,7 +426,15 @@ export default function LandingPage() {
                 marginBottom: "12px",
               }}
             >
-              <p style={{ fontSize: "11px", color: "var(--text-muted)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              <p
+                style={{
+                  fontSize: "11px",
+                  color: "var(--text-muted)",
+                  marginBottom: "8px",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                }}
+              >
                 Caffeine
               </p>
               <p style={{ fontSize: "13px", color: "var(--text)" }}>
@@ -326,7 +442,6 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {/* Caveat */}
             <div
               style={{
                 background: "rgba(255,255,255,0.04)",
@@ -343,82 +458,74 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Sports covered */}
-      <section style={{ marginBottom: "80px" }}>
+      {/* ── Concept Athletic ─────────────────────────────────────────────── */}
+      <section
+        style={{
+          padding: "40px",
+          border: "1px solid var(--border)",
+          borderRadius: "6px",
+          background: "var(--surface)",
+        }}
+      >
         <p
           style={{
             fontSize: "11px",
             color: "var(--text-muted)",
             letterSpacing: "0.12em",
             textTransform: "uppercase",
-            marginBottom: "24px",
+            marginBottom: "16px",
           }}
         >
-          Built for
+          Part of Concept Athletic
         </p>
-        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-          {[
-            { sport: "Running", events: "5k · 10k · Half · Marathon" },
-            { sport: "Hyrox", events: "Standard · Doubles · Relay" },
-          ].map((s) => (
-            <div
-              key={s.sport}
-              style={{
-                flex: "1 1 200px",
-                border: "1px solid var(--border)",
-                borderRadius: "6px",
-                padding: "20px",
-                background: "var(--surface)",
-              }}
-            >
-              <p style={{ fontSize: "16px", fontWeight: 600, marginBottom: "6px" }}>
-                {s.sport}
-              </p>
-              <p style={{ fontSize: "12px", color: "var(--text-muted)" }}>{s.events}</p>
-            </div>
-          ))}
+        <p
+          style={{
+            fontSize: "16px",
+            fontWeight: 600,
+            letterSpacing: "-0.02em",
+            color: "var(--text)",
+            marginBottom: "10px",
+          }}
+        >
+          A performance-focused, data-informed resource for individual athletes.
+        </p>
+        <p
+          style={{
+            fontSize: "13px",
+            color: "var(--text-muted)",
+            lineHeight: 1.75,
+            marginBottom: "20px",
+            maxWidth: "560px",
+          }}
+        >
+          England Athletics licensed coaching across sprinting, endurance, Hyrox,
+          trail and mountain running, and performance cycling. Beginner to elite.
+        </p>
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+          <Link
+            href="/about"
+            style={{
+              fontSize: "13px",
+              color: "var(--accent-dim)",
+              textDecoration: "none",
+              borderBottom: "1px solid var(--border)",
+              paddingBottom: "2px",
+            }}
+          >
+            Who we are →
+          </Link>
+          <span
+            style={{
+              fontSize: "13px",
+              color: "var(--text-muted)",
+              opacity: 0.6,
+            }}
+          >
+            concept athletic//coach — coming soon
+          </span>
         </div>
       </section>
 
-      {/* CTA */}
-      <section
-        style={{
-          textAlign: "center",
-          padding: "60px 20px",
-          border: "1px solid var(--border)",
-          borderRadius: "6px",
-          background: "var(--surface)",
-        }}
-      >
-        <h2
-          style={{
-            fontSize: "24px",
-            fontWeight: 700,
-            marginBottom: "12px",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Ready to fuel precisely?
-        </h2>
-        <p style={{ color: "var(--text-muted)", marginBottom: "28px", fontSize: "14px" }}>
-          Takes 2 minutes. No account required.
-        </p>
-        <Link
-          href="/plan"
-          style={{
-            display: "inline-block",
-            padding: "14px 36px",
-            background: "var(--accent)",
-            color: "var(--bg)",
-            fontWeight: 600,
-            fontSize: "15px",
-            borderRadius: "4px",
-            textDecoration: "none",
-          }}
-        >
-          Build your plan →
-        </Link>
-      </section>
     </div>
   );
 }
