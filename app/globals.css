@@ -31,6 +31,38 @@
   --nav-bg: rgba(245,242,237,0.92);
 }
 
+/* ─── SAGE THEME ─────────────────────────────────────────────────────────────── */
+/* Muted eucalyptus green — calm, outdoorsy, earthy */
+[data-theme="sage"] {
+  --bg: #edf0eb;
+  --surface: #e3e7de;
+  --surface-2: #d7dcd1;
+  --border: #b4bcac;
+  --text: #1c2418;
+  --text-muted: #627060;
+  --accent: #2b4a1c;
+  --accent-dim: #496835;
+  --danger: #cc3300;
+  --success: #2a6b30;
+  --nav-bg: rgba(237,240,235,0.92);
+}
+
+/* ─── MOCHA THEME ────────────────────────────────────────────────────────────── */
+/* Warm latte — cream, espresso, caramel */
+[data-theme="mocha"] {
+  --bg: #f2ede6;
+  --surface: #e8e0d5;
+  --surface-2: #ddd4c5;
+  --border: #c2b4a0;
+  --text: #2c1f14;
+  --text-muted: #7d6858;
+  --accent: #5c3c1e;
+  --accent-dim: #8b5e3c;
+  --danger: #cc2200;
+  --success: #2a6b30;
+  --nav-bg: rgba(242,237,230,0.92);
+}
+
 * {
   box-sizing: border-box;
 }
