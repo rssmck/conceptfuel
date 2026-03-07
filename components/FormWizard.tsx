@@ -623,7 +623,164 @@ function FormResults({ plan, name }: { plan: FormPlanOutput; name?: string }) {
   );
 }
 
-// ─── Share section ────────────────────────────────────────────────────────────
+// ─── Share canvas ─────────────────────────────────────────────────────────────
+
+function buildFormShareCanvas(
+  plan: FormPlanOutput,
+  input: FormInput | null,
+  name?: string
+): HTMLCanvasElement {
+  const W = 1200;
+  const H = 630;
+  const canvas = document.createElement("canvas");
+  canvas.width  = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+  const FONT = "'ui-monospace', 'Cascadia Code', 'Fira Mono', monospace";
+
+  // Background
+  ctx.fillStyle = "#0a0a0a";
+  ctx.fillRect(0, 0, W, H);
+
+  // Subtle grid
+  ctx.strokeStyle = "rgba(255,255,255,0.04)";
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 80) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 80) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+
+  // Brand mark
+  ctx.font = `bold 22px ${FONT}`;
+  ctx.fillStyle = "#f0f0f0";
+  ctx.fillText("concept", 60, 68);
+  ctx.fillStyle = "#555555";
+  ctx.fillText("//", 60 + ctx.measureText("concept").width, 68);
+  ctx.fillStyle = "#f0f0f0";
+  ctx.fillText("form", 60 + ctx.measureText("concept//").width, 68);
+
+  // Context (session type · goal · duration)
+  if (input) {
+    const ctxText = [
+      input.session_type.replace("_", " "),
+      input.goal,
+      `${input.duration_minutes} min`,
+    ].join(" · ");
+    ctx.font = `13px ${FONT}`;
+    ctx.fillStyle = "#555555";
+    ctx.textAlign = "right";
+    ctx.fillText(ctxText, W - 60, 68);
+    ctx.textAlign = "left";
+  }
+
+  // Divider
+  ctx.strokeStyle = "#2a2a2a";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(60, 90); ctx.lineTo(W - 60, 90); ctx.stroke();
+
+  // Greeting or protocol label
+  if (name) {
+    ctx.font = `16px ${FONT}`;
+    ctx.fillStyle = "#555555";
+    ctx.fillText(`${name}'s session plan`, 60, 140);
+  } else {
+    ctx.font = `11px ${FONT}`;
+    ctx.fillStyle = "#444444";
+    ctx.fillText("SESSION PLAN", 60, 140);
+  }
+
+  // Protocol name (large)
+  ctx.font = `bold 56px ${FONT}`;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillText(plan.protocol_name, 60, 215);
+
+  ctx.font = `18px ${FONT}`;
+  ctx.fillStyle = "#666666";
+  // Truncate desc if too long
+  const descTrunc = plan.protocol_desc.length > 72 ? plan.protocol_desc.slice(0, 70) + "…" : plan.protocol_desc;
+  ctx.fillText(descTrunc, 60, 255);
+
+  // Session structure blocks (left column)
+  const blocksY = 295;
+  ctx.font = `11px ${FONT}`;
+  ctx.fillStyle = "#444444";
+  ctx.fillText("STRUCTURE", 60, blocksY);
+  ctx.strokeStyle = "#2a2a2a";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(60, blocksY + 8); ctx.lineTo(520, blocksY + 8); ctx.stroke();
+
+  const visBlocks = plan.session_structure.slice(0, 5);
+  visBlocks.forEach((block, i) => {
+    const by = blocksY + 28 + i * 42;
+    ctx.fillStyle = i % 2 === 0 ? "#111111" : "#0e0e0e";
+    ctx.fillRect(60, by - 14, 460, 36);
+    ctx.strokeStyle = "#1e1e1e";
+    ctx.strokeRect(60, by - 14, 460, 36);
+
+    ctx.font = `bold 12px ${FONT}`;
+    ctx.fillStyle = "#e0e0e0";
+    ctx.fillText(block.phase, 74, by + 6);
+
+    ctx.font = `11px ${FONT}`;
+    ctx.fillStyle = "#888888";
+    ctx.textAlign = "right";
+    ctx.fillText(`${block.duration_min} min`, 510, by + 6);
+    ctx.textAlign = "left";
+  });
+
+  // Nutrition panel (right column)
+  const nutX = 620;
+  const nutY = 295;
+  ctx.font = `11px ${FONT}`;
+  ctx.fillStyle = "#444444";
+  ctx.fillText("NUTRITION", nutX, nutY);
+  ctx.strokeStyle = "#2a2a2a";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(nutX, nutY + 8); ctx.lineTo(W - 60, nutY + 8); ctx.stroke();
+
+  const nutItems: { label: string; value: string }[] = [];
+  if (plan.macros.protein_range) nutItems.push({ label: "PROTEIN", value: plan.macros.protein_range });
+  nutItems.push({ label: "CARBS", value: plan.macros.carb_level.toUpperCase() + " priority" });
+  nutItems.push({ label: "PRE-SESSION", value: plan.macros.pre_session_timing });
+  nutItems.push({ label: "POST-SESSION", value: plan.macros.post_session_timing });
+
+  nutItems.slice(0, 4).forEach((item, i) => {
+    const ny = nutY + 28 + i * 52;
+    ctx.fillStyle = "#111111";
+    ctx.fillRect(nutX, ny - 14, W - 60 - nutX, 44);
+    ctx.strokeStyle = "#1e1e1e";
+    ctx.strokeRect(nutX, ny - 14, W - 60 - nutX, 44);
+    ctx.font = `10px ${FONT}`;
+    ctx.fillStyle = "#555555";
+    ctx.fillText(item.label, nutX + 14, ny + 2);
+    ctx.font = `bold 14px ${FONT}`;
+    ctx.fillStyle = "#e0e0e0";
+    ctx.fillText(item.value, nutX + 14, ny + 22);
+  });
+
+  // Bottom bar
+  ctx.fillStyle = "#111111";
+  ctx.fillRect(0, H - 60, W, 60);
+  ctx.strokeStyle = "#2a2a2a";
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, H - 60); ctx.lineTo(W, H - 60); ctx.stroke();
+
+  ctx.font = `13px ${FONT}`;
+  ctx.fillStyle = "#444444";
+  ctx.fillText("Build your session plan →", 60, H - 22);
+
+  ctx.font = `bold 13px ${FONT}`;
+  ctx.fillStyle = "#666666";
+  ctx.textAlign = "right";
+  ctx.fillText("conceptathletic.com/form", W - 60, H - 22);
+  ctx.textAlign = "left";
+
+  return canvas;
+}
+
+// ─── Share copy text ──────────────────────────────────────────────────────────
 
 function buildFormCopyText(plan: FormPlanOutput, name?: string): string {
   const lines: string[] = [];
@@ -649,8 +806,20 @@ function buildFormCopyText(plan: FormPlanOutput, name?: string): string {
   return lines.join("\n");
 }
 
-function FormShareSection({ plan, name }: { plan: FormPlanOutput; name?: string }) {
-  const [copied, setCopied] = useState(false);
+function FormShareSection({
+  plan,
+  input,
+  name,
+}: {
+  plan: FormPlanOutput;
+  input: FormInput | null;
+  name?: string;
+}) {
+  const [copied, setCopied]         = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [canShare]                  = useState(() => typeof navigator !== "undefined" && !!navigator.share);
+
+  const shareText = `My ${plan.protocol_name} session plan from concept//form.\n\nconceptathletic.com/form`;
 
   const handleCopy = async () => {
     const text = buildFormCopyText(plan, name);
@@ -668,24 +837,60 @@ function FormShareSection({ plan, name }: { plan: FormPlanOutput; name?: string 
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const shareText = `My ${plan.protocol_name} session plan from concept//form.\n\nconceptathletic.com/form`;
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const canvas = buildFormShareCanvas(plan, input, name);
+      const link = document.createElement("a");
+      link.download = "concept-form-plan.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleNativeShare = async () => {
+    try {
+      const canvas = buildFormShareCanvas(plan, input, name);
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        const file = new File([blob], "form-plan.png", { type: "image/png" });
+        const shareData: ShareData = {
+          title: `My ${plan.protocol_name} session plan — concept//form`,
+          text: shareText,
+          files: [file],
+        };
+        if (navigator.canShare && navigator.canShare(shareData)) {
+          await navigator.share(shareData);
+        } else {
+          await navigator.share({ title: `concept//form — ${plan.protocol_name}`, text: shareText });
+        }
+      }, "image/png");
+    } catch {
+      // User cancelled or not supported
+    }
+  };
+
   const waHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
   const xHref  = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
 
-  const btnBase: React.CSSProperties = {
-    padding: "9px 16px",
-    border: "1px solid var(--border)",
-    borderRadius: "4px",
-    background: "var(--surface)",
-    color: "var(--text-muted)",
-    fontSize: "12px",
+  const btnStyle = (primary = false): React.CSSProperties => ({
+    padding: "10px 18px",
+    background: primary ? "var(--accent)" : "var(--surface-2)",
+    color: primary ? "var(--bg)" : "var(--text)",
     fontWeight: 600,
+    fontSize: "13px",
+    borderRadius: "4px",
+    border: `1px solid ${primary ? "transparent" : "var(--border)"}`,
     cursor: "pointer",
-    fontFamily: "inherit",
     textDecoration: "none",
-    display: "inline-block",
-    whiteSpace: "nowrap",
-  };
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    whiteSpace: "nowrap" as const,
+    fontFamily: "inherit",
+  });
 
   return (
     <div
@@ -705,18 +910,45 @@ function FormShareSection({ plan, name }: { plan: FormPlanOutput; name?: string 
           marginBottom: "16px",
         }}
       >
-        Share
+        Share your plan
       </p>
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-        <button onClick={handleCopy} style={btnBase}>
-          {copied ? "✓ Copied" : "Copy plan"}
+
+      {/* Primary actions */}
+      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "10px" }}>
+        {canShare && (
+          <button onClick={handleNativeShare} style={btnStyle(true)}>
+            ↑ Share (Instagram / WhatsApp / TikTok…)
+          </button>
+        )}
+        <button onClick={handleDownload} disabled={downloading} style={btnStyle()}>
+          {downloading ? "Generating…" : "↓ Download card"}
         </button>
-        <a href={waHref} target="_blank" rel="noopener noreferrer" style={btnBase}>
+        <button
+          onClick={handleCopy}
+          style={{
+            ...btnStyle(),
+            background: copied ? "rgba(68,255,136,0.1)" : "var(--surface-2)",
+            color: copied ? "var(--success, #44ff88)" : "var(--text)",
+            border: `1px solid ${copied ? "rgba(68,255,136,0.3)" : "var(--border)"}`,
+          }}
+        >
+          {copied ? "✓ Copied!" : "Copy text"}
+        </button>
+      </div>
+
+      {/* Social links */}
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+        <a href={waHref} target="_blank" rel="noopener noreferrer" style={btnStyle()}>
           WhatsApp
         </a>
-        <a href={xHref} target="_blank" rel="noopener noreferrer" style={btnBase}>
+        <a href={xHref} target="_blank" rel="noopener noreferrer" style={btnStyle()}>
           X / Twitter
         </a>
+        {!canShare && (
+          <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "auto 0" }}>
+            On mobile: use &ldquo;Share&rdquo; to post directly to Instagram or TikTok.
+          </p>
+        )}
       </div>
     </div>
   );
@@ -853,7 +1085,7 @@ export default function FormWizard() {
 
           <FormResults plan={plan} name={name || undefined} />
           <div style={{ marginTop: "28px" }}>
-            <FormShareSection plan={plan} name={name || undefined} />
+            <FormShareSection plan={plan} input={input} name={name || undefined} />
           </div>
         </>
       )}
