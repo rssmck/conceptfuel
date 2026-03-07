@@ -293,7 +293,7 @@ function buildShareCanvas(
 
 async function submitNetlifyForm(formName: string, data: Record<string, string>) {
   try {
-    await fetch("/", {
+    await fetch("/netlify-forms.html", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({ "form-name": formName, ...data }).toString(),

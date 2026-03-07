@@ -5,7 +5,7 @@ type GateStep = "code" | "register";
 
 async function submitMemberSignup(email: string, accessCode: string) {
   try {
-    await fetch("/", {
+    await fetch("/netlify-forms.html", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
