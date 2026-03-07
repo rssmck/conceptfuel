@@ -562,6 +562,34 @@ export default function PlanResults({ result, planValues, name, onStartOver }: P
         </div>
       )}
 
+      {/* Protocol name */}
+      {result.protocol_name && (
+        <div style={{ marginBottom: "8px" }}>
+          <p
+            style={{
+              fontSize: "11px",
+              color: "var(--text-muted)",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              marginBottom: "4px",
+            }}
+          >
+            Protocol
+          </p>
+          <p
+            style={{
+              fontSize: "20px",
+              fontWeight: 700,
+              letterSpacing: "-0.03em",
+              color: "var(--text)",
+              marginBottom: "16px",
+            }}
+          >
+            {result.protocol_name}
+          </p>
+        </div>
+      )}
+
       {/* Context bar */}
       {planValues && (
         <div

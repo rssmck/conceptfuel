@@ -8,12 +8,13 @@ export default function Nav() {
   const pathname = usePathname();
 
   const primaryLinks = [
-    { href: "/", label: "home" },
-    { href: "/plan", label: "plan" },
+    { href: "/",     label: "club" },
+    { href: "/plan", label: "fuel" },
+    { href: "/form", label: "form" },
   ];
 
   const secondaryLinks = [
-    { href: "/about", label: "about" },
+    { href: "/about",   label: "about" },
     { href: "/contact", label: "contact" },
     { href: "/pricing", label: "pricing" },
   ];
@@ -56,7 +57,7 @@ export default function Nav() {
             whiteSpace: "nowrap",
           }}
         >
-          concept<span style={{ color: "var(--text-muted)" }}>//</span>fuel
+          concept<span style={{ color: "var(--text-muted)" }}>//</span>athleticclub
         </Link>
       </div>
 

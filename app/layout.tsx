@@ -10,9 +10,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "concept//fuel BETA - Precision race fuelling",
+  title: "concept//athleticclub — Performance tools for individual athletes",
   description:
-    "Deterministic race + session fuelling planner for running and Hyrox. Get a decisive carb target, timed intake schedule, hydration and sodium guidance.",
+    "concept//athleticclub: precision fuelling, gym session planning, recovery and performance analytics for serious athletes. Evidence-informed. No guesswork.",
 };
 
 export default function RootLayout({
@@ -37,7 +37,7 @@ export default function RootLayout({
           }}
         >
           <p>
-            concept//fuel, part of{" "}
+            concept//athleticclub · part of{" "}
             <span style={{ color: "var(--accent-dim)" }}>Concept Athletic</span>
           </p>
           <p style={{ marginTop: "4px" }}>

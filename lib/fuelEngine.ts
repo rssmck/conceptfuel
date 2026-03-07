@@ -74,6 +74,7 @@ export interface NomioProtocol {
 }
 
 export interface FuelPlanOutput {
+  protocol_name: string
   carb_target_g_per_hr: number
   total_carbs_g: number
   schedule: ScheduleItem[]
@@ -514,6 +515,18 @@ function computeNomio(): NomioProtocol {
   }
 }
 
+// ─── PROTOCOL NAME ────────────────────────────────────────────────────────────
+
+function computeProtocolName(plan_type: PlanType, effort: Effort): string {
+  if (plan_type === 'race') return 'race day'
+  // session
+  if (effort === 'easy')   return 'easy endurance'
+  if (effort === 'steady') return 'steady endurance'
+  if (effort === 'hard')   return 'high output'
+  if (effort === 'race')   return 'race simulation'
+  return 'training session'
+}
+
 // ─── MAIN ENGINE ──────────────────────────────────────────────────────────────
 
 export function generateFuelPlan(
@@ -615,7 +628,10 @@ export function generateFuelPlan(
     notes.push('No in-session fuelling required. Focus on pre-session nutrition.')
   }
 
+  const protocol_name = computeProtocolName(plan_type, effort)
+
   return {
+    protocol_name,
     carb_target_g_per_hr,
     total_carbs_g,
     schedule,
