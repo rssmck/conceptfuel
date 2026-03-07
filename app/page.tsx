@@ -135,6 +135,86 @@ export default function LandingPage() {
         </Link>
       </section>
 
+      {/* ── PB protocol ──────────────────────────────────────────────────── */}
+      <section style={{ marginBottom: "56px" }}>
+        <p
+          style={{
+            fontSize: "11px",
+            color: "var(--text-muted)",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            marginBottom: "20px",
+          }}
+        >
+          The missing ingredient
+        </p>
+        <p
+          style={{
+            fontSize: "clamp(20px, 4vw, 32px)",
+            fontWeight: 700,
+            letterSpacing: "-0.03em",
+            lineHeight: 1.15,
+            color: "var(--text)",
+            marginBottom: "24px",
+            maxWidth: "640px",
+          }}
+        >
+          Fuel intelligently.<br />
+          <span style={{ color: "var(--text-muted)" }}>The rest is training.</span>
+        </p>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "1px",
+            border: "1px solid var(--border)",
+            borderRadius: "6px",
+            overflow: "hidden",
+          }}
+        >
+          {[
+            {
+              label: "Most athletes leave time on the course.",
+              desc: "Not from lack of fitness — from running out of available energy. Underfuelling in the final third is the most common and most preventable performance limiter.",
+            },
+            {
+              label: "Carbohydrate is the limiting fuel.",
+              desc: "At race intensity, fat oxidation alone cannot meet energy demand. The body's glycogen stores are finite. Precise in-race carbohydrate intake extends how long you can hold pace.",
+            },
+            {
+              label: "Precision beats guesswork every time.",
+              desc: "A decisive plan — your weight, your event, your products — outperforms generic advice. concept//fuel gives you one number to hit, timed to the minute.",
+            },
+          ].map((item) => (
+            <div
+              key={item.label}
+              style={{
+                padding: "24px",
+                background: "var(--surface)",
+                borderRight: "1px solid var(--border)",
+                borderBottom: "1px solid var(--border)",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  color: "var(--text)",
+                  marginBottom: "8px",
+                  letterSpacing: "-0.01em",
+                  lineHeight: 1.3,
+                }}
+              >
+                {item.label}
+              </p>
+              <p style={{ fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.65 }}>
+                {item.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* ── Built for ────────────────────────────────────────────────────── */}
       <section style={{ marginBottom: "56px" }}>
         <p

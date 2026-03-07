@@ -246,8 +246,8 @@ export default function PlanResults({ result, planValues, onStartOver }: PlanRes
       {result.total_carbs_g > 0 && (() => {
         const gramsRice = Math.round(result.total_carbs_g * 100 / 28);
         const bowlsRice = (result.total_carbs_g / 50).toFixed(1);
-        // Battersea Park outer loop ≈ 4km; at 5:00/km = 20 min = 1/3 hr
-        const carbsPerLap = Math.round(result.carb_target_g_per_hr / 3);
+        // Battersea Park outer loop ≈ 2.7km; at 5:00/km = 13.5 min = 0.225 hr
+        const carbsPerLap = Math.round(result.carb_target_g_per_hr * 0.225);
         const lapsEquiv = carbsPerLap > 0 ? (result.total_carbs_g / carbsPerLap).toFixed(1) : "—";
         return (
           <div style={{ marginBottom: "28px" }}>
@@ -309,7 +309,7 @@ export default function PlanResults({ result, planValues, onStartOver }: PlanRes
                   {lapsEquiv}
                 </p>
                 <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
-                  laps of Battersea Park (4 km/lap, 5:00/km)
+                  laps of Battersea Park (2.7 km/lap, 5:00/km)
                 </p>
                 <p style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "6px" }}>
                   ~{carbsPerLap} g carbs per lap at your target rate
