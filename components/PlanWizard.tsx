@@ -38,6 +38,7 @@ const PRESET_PRODUCTS: { name: string; carbs_g: number }[] = [
 // ─── ZOD SCHEMAS ─────────────────────────────────────────────────────────────
 
 const profileSchema = z.object({
+  name: z.string().optional(),
   weight_kg: z
     .number({ error: "Enter a valid weight" })
     .min(30, "Minimum 30 kg")
@@ -251,6 +252,7 @@ function ProfileStep({
         } catch {}
       }
       return {
+        name: "",
         weight_kg: 70,
         sex: "prefer_not",
         gi_tolerance: "med",
@@ -266,6 +268,21 @@ function ProfileStep({
   return (
     <form onSubmit={handleSubmit(onNext)} noValidate>
       <SectionHeading>Step 1 — Profile</SectionHeading>
+
+      {/* Name */}
+      <div style={{ marginBottom: "24px" }}>
+        <FieldLabel htmlFor="name">First name — optional</FieldLabel>
+        <input
+          id="name"
+          type="text"
+          placeholder="e.g. Eva"
+          {...register("name")}
+          style={{ maxWidth: "240px" }}
+        />
+        <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+          We&apos;ll use this to personalise your plan.
+        </p>
+      </div>
 
       {/* Weight */}
       <div style={{ marginBottom: "24px" }}>
@@ -1278,6 +1295,7 @@ export default function PlanWizard() {
         <PlanResults
           result={result}
           planValues={planValues}
+          name={profile?.name?.trim() || undefined}
           onStartOver={handleStartOver}
         />
       )}

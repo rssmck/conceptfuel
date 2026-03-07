@@ -11,6 +11,7 @@ interface PlanResultsProps {
     effort: string;
     duration: string;
   } | null;
+  name?: string;
   onStartOver: () => void;
 }
 
@@ -307,9 +308,11 @@ async function submitNetlifyForm(formName: string, data: Record<string, string>)
 function SavePlanForm({
   result,
   planValues,
+  name,
 }: {
   result: FuelPlanOutput;
   planValues: PlanResultsProps["planValues"] | null;
+  name?: string;
 }) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
@@ -321,6 +324,7 @@ function SavePlanForm({
     try {
       await submitNetlifyForm("save_plan", {
         email: email.trim(),
+        name: name ?? "",
         sport: planValues?.sport ?? "",
         plan_type: planValues?.plan_type ?? "",
         effort: planValues?.effort ?? "",
@@ -522,7 +526,7 @@ function ShareSection({
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
-export default function PlanResults({ result, planValues, onStartOver }: PlanResultsProps) {
+export default function PlanResults({ result, planValues, name, onStartOver }: PlanResultsProps) {
   // Fire usage tracking once when plan first renders
   useEffect(() => {
     const accessCode = typeof window !== "undefined"
@@ -535,12 +539,29 @@ export default function PlanResults({ result, planValues, onStartOver }: PlanRes
       duration_minutes: planValues?.duration ?? "",
       carb_target_g_per_hr: String(result.carb_target_g_per_hr),
       access_code: accessCode,
+      name: name ?? "",
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div>
+      {/* Personalised greeting */}
+      {name && (
+        <div style={{ marginBottom: "20px" }}>
+          <h2
+            style={{
+              fontSize: "20px",
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+              color: "var(--text)",
+            }}
+          >
+            Hi {name}, here is your fuelling plan.
+          </h2>
+        </div>
+      )}
+
       {/* Context bar */}
       {planValues && (
         <div
@@ -907,7 +928,7 @@ export default function PlanResults({ result, planValues, onStartOver }: PlanRes
         <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "14px" }}>
           Enter your email and we&apos;ll keep a copy of this plan for you.
         </p>
-        <SavePlanForm result={result} planValues={planValues} />
+        <SavePlanForm result={result} planValues={planValues} name={name} />
       </div>
 
       {/* Start over */}
