@@ -97,7 +97,7 @@ export default function ClubPage() {
           concept
           <span style={{ color: "var(--text-muted)" }}>//</span>
           <br />
-          athleticclub
+          club
         </h1>
         <p
           style={{

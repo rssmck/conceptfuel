@@ -105,11 +105,19 @@ function OptionCard({
 
 // ─── Configure step ───────────────────────────────────────────────────────────
 
+const SEX_OPTIONS = [
+  { value: "male",         label: "Male" },
+  { value: "female",       label: "Female" },
+  { value: "prefer_not",   label: "Prefer not to say" },
+];
+
 function ConfigureStep({
   onSubmit,
 }: {
-  onSubmit: (input: FormInput) => void;
+  onSubmit: (input: FormInput, name: string, sex: string) => void;
 }) {
+  const [name, setName]                     = useState<string>("");
+  const [sex, setSex]                       = useState<string>("");
   const [sessionType, setSessionType]       = useState<SessionType | null>(null);
   const [trainingStyle, setTrainingStyle]   = useState<TrainingStyle | null>(null);
   const [cardio, setCardio]                 = useState<CardioLevel>("none");
@@ -125,19 +133,66 @@ function ConfigureStep({
     if (!goal) { setError("Select your training goal"); return; }
     setError(null);
     const weightNum = weight ? parseFloat(weight) : undefined;
-    onSubmit({
-      session_type:    sessionType,
-      training_style:  trainingStyle,
-      cardio,
-      goal,
-      duration_minutes: duration,
-      weight_kg:        weightNum && !isNaN(weightNum) ? weightNum : undefined,
-    });
+    onSubmit(
+      {
+        session_type:    sessionType,
+        training_style:  trainingStyle,
+        cardio,
+        goal,
+        duration_minutes: duration,
+        weight_kg:        weightNum && !isNaN(weightNum) ? weightNum : undefined,
+      },
+      name.trim(),
+      sex
+    );
   };
 
   return (
     <form onSubmit={handleSubmit}>
       <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+
+        {/* Name + Sex row */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+          <div>
+            <label style={labelStyle} htmlFor="form-name">
+              First name // optional
+            </label>
+            <input
+              id="form-name"
+              type="text"
+              placeholder="your first name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div>
+            <span style={labelStyle}>Sex // optional</span>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              {SEX_OPTIONS.map((s) => (
+                <button
+                  key={s.value}
+                  type="button"
+                  onClick={() => setSex(sex === s.value ? "" : s.value)}
+                  style={{
+                    padding: "8px 12px",
+                    border: `1px solid ${sex === s.value ? "var(--accent)" : "var(--border)"}`,
+                    borderRadius: "4px",
+                    background: "var(--surface)",
+                    color: sex === s.value ? "var(--accent)" : "var(--text-muted)",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {/* Session type */}
         <div>
@@ -287,9 +342,26 @@ const CARB_LEVEL_COLOUR: Record<string, string> = {
   low:      "var(--text-muted)",
 };
 
-function FormResults({ plan }: { plan: FormPlanOutput }) {
+function FormResults({ plan, name }: { plan: FormPlanOutput; name?: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+
+      {/* Personalised greeting */}
+      {name && (
+        <div style={{ marginBottom: "4px" }}>
+          <h2
+            style={{
+              fontSize: "clamp(18px, 4vw, 26px)",
+              fontWeight: 700,
+              letterSpacing: "-0.03em",
+              color: "var(--text)",
+              margin: 0,
+            }}
+          >
+            Hi {name}, here is your session plan.
+          </h2>
+        </div>
+      )}
 
       {/* Protocol header */}
       <div
@@ -551,6 +623,105 @@ function FormResults({ plan }: { plan: FormPlanOutput }) {
   );
 }
 
+// ─── Share section ────────────────────────────────────────────────────────────
+
+function buildFormCopyText(plan: FormPlanOutput, name?: string): string {
+  const lines: string[] = [];
+  lines.push("concept//form — Session Plan");
+  lines.push("=".repeat(36));
+  if (name) lines.push(`Athlete: ${name}`);
+  lines.push(`Protocol: ${plan.protocol_name}`);
+  lines.push(`\n${plan.protocol_desc}`);
+  lines.push("\n── Session Structure ──");
+  for (const b of plan.session_structure) {
+    lines.push(`${b.phase} (${b.duration_min} min)`);
+    b.items.forEach((item) => lines.push(`  · ${item}`));
+  }
+  lines.push("\n── Warm-up Mobility ──");
+  plan.warm_up_mobility.forEach((m) => lines.push(`  · ${m.name} — ${m.hold}`));
+  lines.push("\n── Cool-down Mobility ──");
+  plan.cool_down_mobility.forEach((m) => lines.push(`  · ${m.name} — ${m.hold}`));
+  lines.push("\n── Nutrition ──");
+  if (plan.macros.protein_range) lines.push(`Protein: ${plan.macros.protein_range}`);
+  lines.push(`Pre-session: ${plan.macros.pre_session_timing} — ${plan.macros.pre_session_foods}`);
+  lines.push(`Post-session: ${plan.macros.post_session_timing} — ${plan.macros.post_session_foods}`);
+  lines.push("\nconcept//athleticclub — conceptathletic.com/form");
+  return lines.join("\n");
+}
+
+function FormShareSection({ plan, name }: { plan: FormPlanOutput; name?: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    const text = buildFormCopyText(plan, name);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const el = document.createElement("textarea");
+      el.value = text;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const shareText = `My ${plan.protocol_name} session plan from concept//form.\n\nconceptathletic.com/form`;
+  const waHref = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
+  const xHref  = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
+
+  const btnBase: React.CSSProperties = {
+    padding: "9px 16px",
+    border: "1px solid var(--border)",
+    borderRadius: "4px",
+    background: "var(--surface)",
+    color: "var(--text-muted)",
+    fontSize: "12px",
+    fontWeight: 600,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    textDecoration: "none",
+    display: "inline-block",
+    whiteSpace: "nowrap",
+  };
+
+  return (
+    <div
+      style={{
+        padding: "24px",
+        border: "1px solid var(--border)",
+        borderRadius: "6px",
+        background: "var(--surface)",
+      }}
+    >
+      <p
+        style={{
+          fontSize: "11px",
+          color: "var(--text-muted)",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          marginBottom: "16px",
+        }}
+      >
+        Share
+      </p>
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+        <button onClick={handleCopy} style={btnBase}>
+          {copied ? "✓ Copied" : "Copy plan"}
+        </button>
+        <a href={waHref} target="_blank" rel="noopener noreferrer" style={btnBase}>
+          WhatsApp
+        </a>
+        <a href={xHref} target="_blank" rel="noopener noreferrer" style={btnBase}>
+          X / Twitter
+        </a>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 type Step = "configure" | "loading" | "results";
@@ -559,11 +730,12 @@ export default function FormWizard() {
   const [step, setStep]       = useState<Step>("configure");
   const [plan, setPlan]       = useState<FormPlanOutput | null>(null);
   const [input, setInput]     = useState<FormInput | null>(null);
+  const [name, setName]       = useState<string>("");
 
-  const handleConfigure = (formInput: FormInput) => {
+  const handleConfigure = (formInput: FormInput, formName: string) => {
     setInput(formInput);
+    setName(formName);
     setStep("loading");
-    // Brief loading state for UX then generate plan
     setTimeout(() => {
       const result = generateFormPlan(formInput);
       setPlan(result);
@@ -575,6 +747,7 @@ export default function FormWizard() {
     setStep("configure");
     setPlan(null);
     setInput(null);
+    setName("");
   };
 
   return (
@@ -611,7 +784,7 @@ export default function FormWizard() {
 
       {/* Steps */}
       {step === "configure" && (
-        <ConfigureStep onSubmit={handleConfigure} />
+        <ConfigureStep onSubmit={(input, n) => handleConfigure(input, n)} />
       )}
 
       {step === "loading" && (
@@ -678,7 +851,10 @@ export default function FormWizard() {
             </button>
           </div>
 
-          <FormResults plan={plan} />
+          <FormResults plan={plan} name={name || undefined} />
+          <div style={{ marginTop: "28px" }}>
+            <FormShareSection plan={plan} name={name || undefined} />
+          </div>
         </>
       )}
     </div>
