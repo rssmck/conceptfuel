@@ -271,11 +271,11 @@ function ProfileStep({
 
       {/* Name */}
       <div style={{ marginBottom: "24px" }}>
-        <FieldLabel htmlFor="name">First name — optional</FieldLabel>
+        <FieldLabel htmlFor="name">First name // optional</FieldLabel>
         <input
           id="name"
           type="text"
-          placeholder="e.g. Eva"
+          placeholder="your first name"
           {...register("name")}
           style={{ maxWidth: "240px" }}
         />
