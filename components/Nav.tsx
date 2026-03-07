@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
@@ -6,13 +7,24 @@ import ThemeToggle from "./ThemeToggle";
 export default function Nav() {
   const pathname = usePathname();
 
-  const links = [
+  const primaryLinks = [
     { href: "/", label: "home" },
     { href: "/plan", label: "plan" },
+  ];
+
+  const secondaryLinks = [
     { href: "/about", label: "about" },
     { href: "/contact", label: "contact" },
     { href: "/pricing", label: "pricing" },
   ];
+
+  const linkStyle = (href: string): React.CSSProperties => ({
+    fontSize: "13px",
+    color: pathname === href ? "var(--accent)" : "var(--text-muted)",
+    textDecoration: "none",
+    transition: "color 0.15s",
+    whiteSpace: "nowrap",
+  });
 
   return (
     <nav
@@ -31,7 +43,7 @@ export default function Nav() {
       }}
     >
       {/* Left: toggle + logo */}
-      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
         <ThemeToggle />
         <Link
           href="/"
@@ -41,6 +53,7 @@ export default function Nav() {
             color: "var(--text)",
             textDecoration: "none",
             letterSpacing: "-0.02em",
+            whiteSpace: "nowrap",
           }}
         >
           concept<span style={{ color: "var(--text-muted)" }}>//</span>fuel
@@ -48,21 +61,23 @@ export default function Nav() {
       </div>
 
       {/* Right: nav links */}
-      <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
-        {links.map((l) => (
-          <Link
-            key={l.href}
-            href={l.href}
-            style={{
-              fontSize: "13px",
-              color: pathname === l.href ? "var(--accent)" : "var(--text-muted)",
-              textDecoration: "none",
-              transition: "color 0.15s",
-            }}
-          >
+      <div style={{ display: "flex", gap: "20px", alignItems: "center", marginLeft: "16px" }}>
+        {/* Primary links — always visible */}
+        {primaryLinks.map((l) => (
+          <Link key={l.href} href={l.href} style={linkStyle(l.href)}>
             {l.label}
           </Link>
         ))}
+
+        {/* Secondary links — hidden on mobile */}
+        <div className="cf-nav-secondary">
+          {secondaryLinks.map((l) => (
+            <Link key={l.href} href={l.href} style={linkStyle(l.href)}>
+              {l.label}
+            </Link>
+          ))}
+        </div>
+
         <a
           href="https://instagram.com/conceptathletic"
           target="_blank"
@@ -73,7 +88,8 @@ export default function Nav() {
             textDecoration: "none",
             transition: "color 0.15s",
             borderLeft: "1px solid var(--border)",
-            paddingLeft: "20px",
+            paddingLeft: "16px",
+            whiteSpace: "nowrap",
           }}
         >
           ig

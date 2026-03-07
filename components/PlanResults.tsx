@@ -222,13 +222,7 @@ export default function PlanResults({ result, planValues, onStartOver }: PlanRes
       {/* Key metrics */}
       <div style={{ marginBottom: "28px" }}>
         <SectionTitle>Key targets</SectionTitle>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-            gap: "10px",
-          }}
-        >
+        <div className="cf-metric-grid">
           <MetricCard
             label="Carb target"
             value={`${result.carb_target_g_per_hr} g/hr`}
@@ -363,7 +357,7 @@ export default function PlanResults({ result, planValues, onStartOver }: PlanRes
                       fontVariantNumeric: "tabular-nums",
                     }}
                   >
-                    {item.minute_offset} min
+                    {item.minute_offset === 0 ? "Pre-start" : `${item.minute_offset} min`}
                   </span>
                   <span style={{ fontSize: "13px", color: "var(--text)", flex: 1 }}>
                     {item.suggestion}
@@ -626,6 +620,7 @@ export default function PlanResults({ result, planValues, onStartOver }: PlanRes
 
       {/* Actions */}
       <div
+        className="cf-result-actions"
         style={{
           display: "flex",
           gap: "12px",

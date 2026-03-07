@@ -274,19 +274,17 @@ function makeSuggestion(carbs_g: number, product?: GelProduct): string {
     const actual = servings * product.carbs_g
     return `${servings} x ${product.name} (${actual}g)`
   }
-  // Generic fallback
-  if (carbs_g <= 30 && carbs_g >= 20) return '1 gel (~25g carbs)'
-  if (carbs_g <= 35 && carbs_g > 30) return '1-2 gels'
-  if (carbs_g >= 45 && carbs_g <= 55) return '2 gels or 500 ml drink mix'
-  if (carbs_g >= 55) return '2-3 gels or 500-750 ml drink mix'
-  if (carbs_g <= 15) return 'small gel or chew (~15g carbs)'
-  return `~${carbs_g}g carbs (1 gel ~25g; adjust to your products)`
+  // Generic: show actual target amount so the maths is transparent
+  if (carbs_g >= 45) return `~${carbs_g}g (2 gels or 500ml drink mix; adjust to your products)`
+  if (carbs_g >= 20) return `~${carbs_g}g (gel or chews; adjust to your products)`
+  return `~${carbs_g}g (chews or small gel; adjust to your products)`
 }
 
 function generateSchedule(
   carb_target_g_per_hr: number,
   duration_minutes: number,
-  product?: GelProduct
+  product?: GelProduct,
+  includePreStart?: boolean
 ): ScheduleItem[] {
   if (carb_target_g_per_hr < 30) return []
 
@@ -303,24 +301,31 @@ function generateSchedule(
     )
     carbs_per_dose = product.carbs_g // 1 serving per interval
   } else {
-    // Rate-first scheduling for generic / no product
-    if (carb_target_g_per_hr >= 90) {
-      freq_minutes = 15
-    } else if (carb_target_g_per_hr >= 60) {
-      freq_minutes = 20
-    } else {
-      freq_minutes = 30
-    }
-    const dose_raw = carb_target_g_per_hr * (freq_minutes / 60)
-    carbs_per_dose = roundToNearest5(dose_raw)
+    // Rate-first scheduling for generic / no product.
+    // Use 20-min intervals for ≥60 g/hr — this gives clean, round dose amounts
+    // that match real-world practice (e.g. 90 g/hr → 30g every 20 min).
+    freq_minutes = carb_target_g_per_hr >= 60 ? 20 : 30
+    carbs_per_dose = Math.round(carb_target_g_per_hr * (freq_minutes / 60))
   }
 
-  // Start offset: no earlier than 15 min, no later than 20 min
+  const items: ScheduleItem[] = []
+
+  // Pre-start gel for longer race plans
+  if (includePreStart) {
+    const preCarbs = product ? product.carbs_g : 25
+    items.push({
+      minute_offset: 0,
+      carbs_g: preCarbs,
+      suggestion: product
+        ? `1 x ${product.name} (${preCarbs}g) — at the start line`
+        : '~25g (1 gel at the start line)',
+    })
+  }
+
+  // Start offset: first in-race intake no later than 20 min
   const start = duration_minutes >= 60 ? Math.min(freq_minutes, 20) : 15
 
-  const items: ScheduleItem[] = []
   let minute = start
-
   while (minute <= duration_minutes - 10) {
     const servings =
       product && product.carbs_g > 0
@@ -544,7 +549,8 @@ export function generateFuelPlan(
   const total_carbs_g = Math.round(carb_target_g_per_hr * (duration_minutes / 60))
 
   // C) Schedule
-  const schedule = generateSchedule(carb_target_g_per_hr, duration_minutes, plan.gel_product)
+  const includePreStart = plan_type === 'race' && duration_minutes >= 90
+  const schedule = generateSchedule(carb_target_g_per_hr, duration_minutes, plan.gel_product, includePreStart)
 
   // D) Fluid + Sodium
   const fluid_ml_per_hr = computeFluid(effort, conditions, plan_type, session_subtype)

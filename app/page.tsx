@@ -2,16 +2,16 @@ import Link from "next/link";
 import ThemeToggle from "@/components/ThemeToggle";
 
 const SAMPLE_SCHEDULE = [
-  { minute: 20, label: "20 min", suggestion: "1 gel (~25g carbs)" },
-  { minute: 40, label: "40 min", suggestion: "1 gel (~25g carbs)" },
-  { minute: 60, label: "60 min", suggestion: "1 gel (~25g carbs)" },
-  { minute: 80, label: "80 min", suggestion: "1 gel (~25g carbs)" },
-  { minute: 100, label: "100 min", suggestion: "1 gel (~25g carbs)" },
+  { minute: 0,  label: "Pre-start", suggestion: "~25g (1 gel at the start line)" },
+  { minute: 20, label: "20 min",    suggestion: "~30g (gel + chews or drink mix)" },
+  { minute: 40, label: "40 min",    suggestion: "~30g (gel + chews or drink mix)" },
+  { minute: 60, label: "60 min",    suggestion: "~30g (gel + chews or drink mix)" },
+  { minute: 80, label: "80 min",    suggestion: "~30g (gel + chews or drink mix)" },
 ];
 
 export default function LandingPage() {
   return (
-    <div style={{ maxWidth: "960px", margin: "0 auto", padding: "60px 20px" }}>
+    <div className="cf-page">
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section style={{ marginBottom: "56px" }}>
@@ -80,7 +80,7 @@ export default function LandingPage() {
         >
           Enter your profile and event details. Get a single decisive plan: carb
           target, timed gel schedule, hydration, sodium, caffeine, bicarb and
-          Nomio protocol. Evidence-informed. No AI, no guesswork. Built for
+          Nomio protocol. Evidence-informed. No guesswork. Built for
           athletes who take their performance seriously.
         </p>
       </section>
@@ -399,7 +399,7 @@ export default function LandingPage() {
                 ))}
               </div>
               <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "8px" }}>
-                Assumes ~25g carbs per gel; adjust to your products.
+                ~30g every 20 min = 90g/hr. Schedule continues to ~200 min. Adjust to your products.
               </p>
             </div>
 

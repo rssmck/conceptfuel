@@ -141,47 +141,71 @@ function RadioGroup<T extends string>({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-      {options.map((opt) => (
-        <label
-          key={opt.value}
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: "10px",
-            padding: "10px 14px",
-            border: `1px solid ${value === opt.value ? "var(--accent)" : "var(--border)"}`,
-            borderRadius: "4px",
-            cursor: "pointer",
-            background:
-              value === opt.value ? "rgba(255,255,255,0.05)" : "var(--surface)",
-            transition: "all 0.15s",
-          }}
-        >
-          <input
-            type="radio"
-            name={name}
-            value={opt.value}
-            checked={value === opt.value}
-            onChange={() => onChange(opt.value)}
-            style={{ marginTop: "2px" }}
-          />
-          <span>
-            <span style={{ fontSize: "13px", color: "var(--text)" }}>{opt.label}</span>
-            {opt.desc && (
+      {options.map((opt) => {
+        const isSelected = value === opt.value;
+        return (
+          <label
+            key={opt.value}
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "10px",
+              padding: "12px 14px",
+              border: `1px solid ${isSelected ? "var(--accent)" : "var(--border)"}`,
+              borderLeft: `3px solid ${isSelected ? "var(--accent)" : "transparent"}`,
+              borderRadius: "4px",
+              cursor: "pointer",
+              background: isSelected ? "var(--surface-2)" : "var(--surface)",
+              WebkitTapHighlightColor: "transparent",
+            }}
+          >
+            <input
+              type="radio"
+              name={name}
+              value={opt.value}
+              checked={isSelected}
+              onChange={() => onChange(opt.value)}
+              style={{ marginTop: "2px", flexShrink: 0 }}
+            />
+            <span style={{ flex: 1 }}>
               <span
                 style={{
-                  display: "block",
-                  fontSize: "11px",
-                  color: "var(--text-muted)",
-                  marginTop: "2px",
+                  fontSize: "13px",
+                  color: isSelected ? "var(--text)" : "var(--text-muted)",
+                  fontWeight: isSelected ? 600 : 400,
                 }}
               >
-                {opt.desc}
+                {opt.label}
+              </span>
+              {opt.desc && (
+                <span
+                  style={{
+                    display: "block",
+                    fontSize: "11px",
+                    color: "var(--text-muted)",
+                    marginTop: "2px",
+                  }}
+                >
+                  {opt.desc}
+                </span>
+              )}
+            </span>
+            {isSelected && (
+              <span
+                style={{
+                  fontSize: "13px",
+                  color: "var(--accent)",
+                  fontWeight: 700,
+                  flexShrink: 0,
+                  marginTop: "1px",
+                }}
+              >
+                ✓
               </span>
             )}
-          </span>
-        </label>
-      ))}
+          </label>
+        );
+      })}
     </div>
   );
 }
@@ -311,7 +335,7 @@ function ProfileStep({
                 },
                 {
                   value: "high",
-                  label: "High (iron gut)",
+                  label: "High (well trained gut)",
                   desc: "Rarely have GI issues — can push upper bands",
                 },
               ]}
@@ -430,6 +454,7 @@ function PlanSetupStep({
   const sport = watch("sport");
   const bicarbEnabled = watch("bicarb_enabled");
   const cafEnabled = watch("caffeine_enabled");
+  const nomioEnabled = watch("nomio_enabled");
   const distance = watch("distance");
   const gelName = watch("gel_product_name");
 
@@ -795,21 +820,28 @@ function PlanSetupStep({
             display: "flex",
             alignItems: "center",
             gap: "10px",
+            padding: "12px 14px",
+            border: `1px solid ${cafEnabled && profile.caffeine_tolerance !== "none" ? "var(--accent)" : "var(--border)"}`,
+            borderLeft: `3px solid ${cafEnabled && profile.caffeine_tolerance !== "none" ? "var(--accent)" : "transparent"}`,
+            borderRadius: "4px",
+            background: cafEnabled && profile.caffeine_tolerance !== "none" ? "var(--surface-2)" : "var(--surface)",
             cursor: profile.caffeine_tolerance === "none" ? "not-allowed" : "pointer",
+            WebkitTapHighlightColor: "transparent",
+            opacity: profile.caffeine_tolerance === "none" ? 0.5 : 1,
           }}
         >
           <input
             type="checkbox"
             {...register("caffeine_enabled")}
             disabled={profile.caffeine_tolerance === "none"}
-            style={{ width: "16px", height: "16px" }}
+            style={{ width: "16px", height: "16px", flexShrink: 0 }}
           />
-          <span style={{ fontSize: "13px", color: "var(--text)" }}>
+          <span style={{ fontSize: "13px", color: "var(--text)", flex: 1, fontWeight: cafEnabled && profile.caffeine_tolerance !== "none" ? 600 : 400 }}>
             Include caffeine guidance
           </span>
           {profile.caffeine_tolerance === "none" && (
             <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
-              (disabled - tolerance set to none)
+              (disabled)
             </span>
           )}
         </label>
@@ -818,14 +850,25 @@ function PlanSetupStep({
       {/* Bicarb toggle */}
       <div style={{ marginBottom: bicarbEnabled ? "16px" : "32px" }}>
         <label
-          style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            padding: "12px 14px",
+            border: `1px solid ${bicarbEnabled ? "var(--accent)" : "var(--border)"}`,
+            borderLeft: `3px solid ${bicarbEnabled ? "var(--accent)" : "transparent"}`,
+            borderRadius: "4px",
+            background: bicarbEnabled ? "var(--surface-2)" : "var(--surface)",
+            cursor: "pointer",
+            WebkitTapHighlightColor: "transparent",
+          }}
         >
           <input
             type="checkbox"
             {...register("bicarb_enabled")}
-            style={{ width: "16px", height: "16px" }}
+            style={{ width: "16px", height: "16px", flexShrink: 0 }}
           />
-          <span style={{ fontSize: "13px", color: "var(--text)" }}>
+          <span style={{ fontSize: "13px", color: "var(--text)", fontWeight: bicarbEnabled ? 600 : 400 }}>
             Include bicarbonate (bicarb) protocol
           </span>
         </label>
@@ -834,7 +877,7 @@ function PlanSetupStep({
             fontSize: "11px",
             color: "var(--text-muted)",
             marginTop: "4px",
-            marginLeft: "26px",
+            marginLeft: "4px",
           }}
         >
           Maurten or Flycarb. Significant GI risk. Trial in training first.
@@ -876,14 +919,25 @@ function PlanSetupStep({
       {/* Nomio toggle */}
       <div style={{ marginBottom: "32px" }}>
         <label
-          style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            padding: "12px 14px",
+            border: `1px solid ${nomioEnabled ? "var(--accent)" : "var(--border)"}`,
+            borderLeft: `3px solid ${nomioEnabled ? "var(--accent)" : "transparent"}`,
+            borderRadius: "4px",
+            background: nomioEnabled ? "var(--surface-2)" : "var(--surface)",
+            cursor: "pointer",
+            WebkitTapHighlightColor: "transparent",
+          }}
         >
           <input
             type="checkbox"
             {...register("nomio_enabled")}
-            style={{ width: "16px", height: "16px" }}
+            style={{ width: "16px", height: "16px", flexShrink: 0 }}
           />
-          <span style={{ fontSize: "13px", color: "var(--text)" }}>
+          <span style={{ fontSize: "13px", color: "var(--text)", fontWeight: nomioEnabled ? 600 : 400 }}>
             Include Nomio protocol
           </span>
         </label>
@@ -892,7 +946,7 @@ function PlanSetupStep({
             fontSize: "11px",
             color: "var(--text-muted)",
             marginTop: "4px",
-            marginLeft: "26px",
+            marginLeft: "4px",
           }}
         >
           Broccoli sprout concentrate (sulforaphane). Separate from bicarb. Trial before race use.

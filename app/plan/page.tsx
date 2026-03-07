@@ -7,13 +7,7 @@ export const metadata = {
 
 export default function PlanPage() {
   return (
-    <div
-      style={{
-        maxWidth: "720px",
-        margin: "0 auto",
-        padding: "48px 20px",
-      }}
-    >
+    <div className="cf-page-narrow">
       <PlanWizard />
     </div>
   );

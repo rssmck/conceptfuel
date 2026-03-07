@@ -81,9 +81,19 @@ select {
   padding: 8px 12px;
   width: 100%;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 16px; /* 16px prevents iOS Safari auto-zoom on focus */
   outline: none;
   transition: border-color 0.15s, background 0.25s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+@media (min-width: 601px) {
+  input[type="number"],
+  input[type="text"],
+  select {
+    font-size: 14px;
+  }
 }
 
 input[type="number"]:focus,
@@ -115,6 +125,67 @@ button {
 select option {
   background: var(--surface-2);
   color: var(--text);
+}
+
+/* ─── RESPONSIVE ─────────────────────────────────────────────────────────────── */
+
+/* Nav: hide secondary links on small screens */
+.cf-nav-secondary {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+/* Page containers */
+.cf-page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 60px 20px;
+}
+
+.cf-page-narrow {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 48px 20px;
+}
+
+/* Metric grid — 2 col on mobile, auto-fit on desktop */
+.cf-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (min-width: 480px) {
+  .cf-metric-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  /* Nav: hide about / contact / pricing — keep home, plan, ig */
+  .cf-nav-secondary {
+    display: none;
+  }
+
+  /* Reduce page padding on mobile */
+  .cf-page {
+    padding: 32px 16px;
+  }
+
+  .cf-page-narrow {
+    padding: 24px 16px;
+  }
+
+  /* Stack the result action buttons full-width on mobile */
+  .cf-result-actions {
+    flex-direction: column;
+  }
+
+  .cf-result-actions button {
+    width: 100%;
+    text-align: center;
+  }
 }
 
 /* Loading screen */
