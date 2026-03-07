@@ -13,5 +13,26 @@
     <form name="waitlist" data-netlify="true" hidden>
       <input name="email" type="email" />
     </form>
+    <!-- plan usage tracking (fires when a plan is generated) -->
+    <form name="plan_usage" data-netlify="true" hidden>
+      <input name="sport" type="text" />
+      <input name="plan_type" type="text" />
+      <input name="effort" type="text" />
+      <input name="duration_minutes" type="number" />
+      <input name="carb_target_g_per_hr" type="number" />
+      <input name="access_code" type="text" />
+    </form>
+    <!-- save plan with email -->
+    <form name="save_plan" data-netlify="true" hidden>
+      <input name="email" type="email" />
+      <input name="sport" type="text" />
+      <input name="plan_type" type="text" />
+      <input name="effort" type="text" />
+      <input name="duration" type="text" />
+      <input name="carb_target_g_per_hr" type="number" />
+      <input name="total_carbs_g" type="number" />
+      <input name="fluid_ml_per_hr" type="number" />
+      <input name="sodium_mg_per_hr" type="number" />
+    </form>
   </body>
 </html>

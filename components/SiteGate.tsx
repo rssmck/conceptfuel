@@ -12,10 +12,14 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
     if (localStorage.getItem("cf_access") === "true") setUnlocked(true);
   }, []);
 
+  const VALID_CODES = ["FIRST", "LEEDS", "BFR", "LYTHAM", "BLACKPOOL", "WESHAM", "LEEDSCITY"];
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (code.trim().toUpperCase() === "FIRST") {
+    const entered = code.trim().toUpperCase();
+    if (VALID_CODES.includes(entered)) {
       localStorage.setItem("cf_access", "true");
+      localStorage.setItem("cf_access_code", entered);
       setUnlocked(true);
     } else {
       setError(true);

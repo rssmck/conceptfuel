@@ -302,9 +302,9 @@ function generateSchedule(
     carbs_per_dose = product.carbs_g // 1 serving per interval
   } else {
     // Rate-first scheduling for generic / no product.
-    // Use 20-min intervals for ≥60 g/hr — this gives clean, round dose amounts
-    // that match real-world practice (e.g. 90 g/hr → 30g every 20 min).
-    freq_minutes = carb_target_g_per_hr >= 60 ? 20 : 30
+    // Use 30-min intervals — most athletes take 1 gel every 30 min in practice.
+    // e.g. 90 g/hr → 45g every 30 min (≈ 2 gels); 60 g/hr → 30g every 30 min (≈ 1 gel).
+    freq_minutes = 30
     carbs_per_dose = Math.round(carb_target_g_per_hr * (freq_minutes / 60))
   }
 
@@ -545,12 +545,14 @@ export function generateFuelPlan(
     plan.elevation_gain_m
   )
 
-  // B) Total carbs
-  const total_carbs_g = Math.round(carb_target_g_per_hr * (duration_minutes / 60))
-
-  // C) Schedule
+  // B) Schedule (computed before total so we can sum actual delivered carbs)
   const includePreStart = plan_type === 'race' && duration_minutes >= 90
   const schedule = generateSchedule(carb_target_g_per_hr, duration_minutes, plan.gel_product, includePreStart)
+
+  // C) Total carbs — sum actual schedule carbs so displayed figure matches the plan
+  const total_carbs_g = schedule.length > 0
+    ? schedule.reduce((sum, item) => sum + item.carbs_g, 0)
+    : Math.round(carb_target_g_per_hr * (duration_minutes / 60))
 
   // D) Fluid + Sodium
   const fluid_ml_per_hr = computeFluid(effort, conditions, plan_type, session_subtype)
