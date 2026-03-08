@@ -46,7 +46,7 @@ const TRAINING_GOALS: { value: TrainingGoal; label: string; desc: string }[] = [
   { value: "general",     label: "General",     desc: "Health, fitness, no single focus" },
 ];
 
-const DURATIONS = [45, 60, 75, 90];
+const DURATIONS = [30, 45, 60, 75, 90];
 
 // ─── Exercise glossary ────────────────────────────────────────────────────────
 // Brief description of each lift for display in the main workout section.
@@ -637,16 +637,7 @@ function FormResults({ plan, name }: { plan: FormPlanOutput; name?: string }) {
 
             <div style={{ padding: "10px 14px", background: "var(--surface-2)", border: "1px solid var(--border)", borderTop: "none", borderRadius: "0 0 6px 6px" }}>
               <p style={{ fontSize: "10px", color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>
-                Not sure about an exercise?{" "}
-                <a
-                  href="https://www.youtube.com/@AlanThrall"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: "var(--accent-dim)", textDecoration: "none" }}
-                >
-                  Alan Thrall on YouTube
-                </a>
-                {" "}has clear demo videos for most barbell and dumbbell movements.
+                Not sure about a movement? Search the exercise name on YouTube for a demo. Focus on controlled form over load — technique first.
               </p>
             </div>
           </div>

@@ -817,7 +817,7 @@ function PlanSetupStep({
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
           {(fuelType === "session"
             ? ["0:30", "0:45", "1:00", "1:15", "1:30", "2:00"]
-            : ["0:45", "1:00", "1:30", "2:00", "3:00", "4:00"]
+            : ["0:45", "1:00", "1:30", "2:00", "3:00", "4:00", "5:00"]
           ).map((d) => (
             <button
               key={d}
