@@ -10,6 +10,9 @@ interface PlanResultsProps {
     sport: string;
     effort: string;
     duration: string;
+    race_name?: string;
+    session_name?: string;
+    subtitle?: string;
   } | null;
   name?: string;
   onStartOver: () => void;
@@ -138,6 +141,18 @@ function buildCopyText(result: FuelPlanOutput): string {
 
 // ─── SHARE CARD CANVAS ────────────────────────────────────────────────────────
 
+const CANVAS_THEMES = {
+  dark:  { bg: "#0a0a0a", surface: "#111111", surface2: "#1a1a1a", border: "#2a2a2a", text: "#f0f0f0", muted: "#888888", dimmed: "#555555", rowA: "#111111", rowB: "#0e0e0e", grid: "rgba(255,255,255,0.04)" },
+  light: { bg: "#f5f2ed", surface: "#ede9e3", surface2: "#e5e0d9", border: "#ccc8c0", text: "#1a1714", muted: "#7a7570", dimmed: "#999999", rowA: "#e8e4de", rowB: "#e3dfd9", grid: "rgba(0,0,0,0.03)" },
+  sage:  { bg: "#edf0eb", surface: "#e3e7de", surface2: "#d7dcd1", border: "#b4bcac", text: "#1c2418", muted: "#627060", dimmed: "#8a9e88", rowA: "#dde1d8", rowB: "#d8dcd3", grid: "rgba(0,0,0,0.03)" },
+  mocha: { bg: "#f2ede6", surface: "#e8e0d5", surface2: "#ddd4c5", border: "#c2b4a0", text: "#2c1f14", muted: "#7d6858", dimmed: "#a09080", rowA: "#e2d9cc", rowB: "#ddd4c7", grid: "rgba(0,0,0,0.03)" },
+};
+
+function getCanvasTheme() {
+  const t = typeof localStorage !== "undefined" ? (localStorage.getItem("cf_theme") ?? "dark") : "dark";
+  return CANVAS_THEMES[t as keyof typeof CANVAS_THEMES] ?? CANVAS_THEMES.dark;
+}
+
 function buildShareCanvas(
   result: FuelPlanOutput,
   planValues: PlanResultsProps["planValues"]
@@ -148,59 +163,62 @@ function buildShareCanvas(
   canvas.width = W;
   canvas.height = H;
   const ctx = canvas.getContext("2d")!;
+  const T = getCanvasTheme();
+  const FONT = "'ui-monospace', 'Cascadia Code', 'Fira Mono', monospace";
 
   // Background
-  ctx.fillStyle = "#0a0a0a";
+  ctx.fillStyle = T.bg;
   ctx.fillRect(0, 0, W, H);
 
-  // Subtle grid lines
-  ctx.strokeStyle = "rgba(255,255,255,0.04)";
+  // Subtle grid
+  ctx.strokeStyle = T.grid;
   ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 80) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-  }
-  for (let y = 0; y < H; y += 80) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-  }
-
-  const FONT = "'ui-monospace', 'Cascadia Code', 'Fira Mono', monospace";
+  for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
   // Brand mark
   ctx.font = `bold 22px ${FONT}`;
-  ctx.fillStyle = "#f0f0f0";
+  ctx.fillStyle = T.text;
   ctx.fillText("concept", 60, 68);
-  ctx.fillStyle = "#555555";
+  ctx.fillStyle = T.muted;
   ctx.fillText("//", 60 + ctx.measureText("concept").width, 68);
-  ctx.fillStyle = "#f0f0f0";
+  ctx.fillStyle = T.text;
   ctx.fillText("fuel", 60 + ctx.measureText("concept//").width, 68);
 
-  // Context pill (sport · effort · duration)
+  // Context pill
   if (planValues) {
     const sportLabel: Record<string, string> = {
-      running: "Running",
-      trail_running: "Trail Running",
-      cycling: "Cycling",
-      hyrox: "Hyrox",
+      running: "Running", trail_running: "Trail Running", cycling: "Cycling", hyrox: "Hyrox",
     };
-    const ctxText = `${sportLabel[planValues.sport] ?? planValues.sport} · ${planValues.plan_type} · ${planValues.effort} · ${planValues.duration}hr`;
+    let ctxParts: string[] = [];
+    if (planValues.plan_type === "race") {
+      if (planValues.race_name) ctxParts.push(planValues.race_name);
+      if (planValues.subtitle) ctxParts.push(planValues.subtitle);
+      ctxParts.push("Fuel for race");
+    } else {
+      if (planValues.session_name) ctxParts.push(planValues.session_name);
+      ctxParts.push(sportLabel[planValues.sport] ?? planValues.sport);
+      if (planValues.subtitle) ctxParts.push(planValues.subtitle);
+    }
+    const ctxText = ctxParts.join(" · ");
     ctx.font = `13px ${FONT}`;
-    ctx.fillStyle = "#555555";
+    ctx.fillStyle = T.dimmed;
     ctx.textAlign = "right";
     ctx.fillText(ctxText, W - 60, 68);
     ctx.textAlign = "left";
   }
 
   // Divider
-  ctx.strokeStyle = "#2a2a2a";
+  ctx.strokeStyle = T.border;
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(60, 90); ctx.lineTo(W - 60, 90); ctx.stroke();
 
   // Big carb target
   ctx.font = `bold 100px ${FONT}`;
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = T.text;
   ctx.fillText(`${result.carb_target_g_per_hr}`, 60, 230);
   ctx.font = `bold 32px ${FONT}`;
-  ctx.fillStyle = "#888888";
+  ctx.fillStyle = T.muted;
   ctx.fillText("g/hr carbohydrate", 60, 272);
 
   // Secondary metrics row
@@ -213,16 +231,16 @@ function buildShareCanvas(
   const metricW = 220;
   metrics.forEach((m, i) => {
     const x = 60 + i * (metricW + 20);
-    ctx.fillStyle = "#1a1a1a";
+    ctx.fillStyle = T.surface2;
     ctx.fillRect(x, metricY, metricW, 80);
-    ctx.strokeStyle = "#2a2a2a";
+    ctx.strokeStyle = T.border;
     ctx.lineWidth = 1;
     ctx.strokeRect(x, metricY, metricW, 80);
     ctx.font = `10px ${FONT}`;
-    ctx.fillStyle = "#666666";
+    ctx.fillStyle = T.muted;
     ctx.fillText(m.label, x + 14, metricY + 22);
     ctx.font = `bold 24px ${FONT}`;
-    ctx.fillStyle = "#f0f0f0";
+    ctx.fillStyle = T.text;
     ctx.fillText(m.value, x + 14, metricY + 57);
   });
 
@@ -232,31 +250,30 @@ function buildShareCanvas(
     const schedX = 720;
     const schedY = 115;
     ctx.font = `11px ${FONT}`;
-    ctx.fillStyle = "#444444";
+    ctx.fillStyle = T.dimmed;
     ctx.fillText("INTAKE SCHEDULE", schedX, schedY);
 
-    ctx.strokeStyle = "#222222";
+    ctx.strokeStyle = T.border;
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(schedX, schedY + 8); ctx.lineTo(W - 60, schedY + 8); ctx.stroke();
 
     schedItems.forEach((item, i) => {
       const iy = schedY + 32 + i * 52;
-      ctx.fillStyle = i % 2 === 0 ? "#111111" : "#0e0e0e";
+      ctx.fillStyle = i % 2 === 0 ? T.rowA : T.rowB;
       ctx.fillRect(schedX, iy - 18, W - 60 - schedX, 46);
 
       const label = item.minute_offset === 0 ? "Pre-start" : `${item.minute_offset} min`;
       ctx.font = `bold 13px ${FONT}`;
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = T.text;
       ctx.fillText(label, schedX + 12, iy + 6);
 
       ctx.font = `11px ${FONT}`;
-      ctx.fillStyle = "#666666";
-      // Truncate long suggestions
+      ctx.fillStyle = T.muted;
       const sugg = item.suggestion.length > 32 ? item.suggestion.slice(0, 30) + "…" : item.suggestion;
       ctx.fillText(sugg, schedX + 12, iy + 22);
 
       ctx.font = `bold 12px ${FONT}`;
-      ctx.fillStyle = "#888888";
+      ctx.fillStyle = T.muted;
       ctx.textAlign = "right";
       ctx.fillText(`${item.carbs_g}g`, W - 72, iy + 6);
       ctx.textAlign = "left";
@@ -264,24 +281,24 @@ function buildShareCanvas(
 
     if (result.schedule.length > 4) {
       ctx.font = `11px ${FONT}`;
-      ctx.fillStyle = "#444444";
+      ctx.fillStyle = T.dimmed;
       ctx.fillText(`+ ${result.schedule.length - 4} more intakes`, schedX + 12, schedY + 32 + 4 * 52 + 10);
     }
   }
 
   // Bottom bar
-  ctx.fillStyle = "#111111";
+  ctx.fillStyle = T.surface;
   ctx.fillRect(0, H - 60, W, 60);
-  ctx.strokeStyle = "#2a2a2a";
+  ctx.strokeStyle = T.border;
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, H - 60); ctx.lineTo(W, H - 60); ctx.stroke();
 
   ctx.font = `13px ${FONT}`;
-  ctx.fillStyle = "#444444";
+  ctx.fillStyle = T.dimmed;
   ctx.fillText("Generate your fuel plan →", 60, H - 22);
 
   ctx.font = `bold 13px ${FONT}`;
-  ctx.fillStyle = "#666666";
+  ctx.fillStyle = T.muted;
   ctx.textAlign = "right";
   ctx.fillText("conceptathletic.com/fuel", W - 60, H - 22);
   ctx.textAlign = "left";
@@ -606,18 +623,32 @@ export default function PlanResults({ result, planValues, name, onStartOver }: P
             color: "var(--text-muted)",
           }}
         >
-          <span>{{
-            running: "Running",
-            trail_running: "Trail Running",
-            cycling: "Cycling",
-            hyrox: "Hyrox",
-          }[planValues.sport] ?? planValues.sport}</span>
-          <span>·</span>
-          <span style={{ textTransform: "capitalize" }}>{planValues.plan_type}</span>
-          <span>·</span>
-          <span style={{ textTransform: "capitalize" }}>{planValues.effort} effort</span>
-          <span>·</span>
-          <span>{planValues.duration} hr</span>
+          {planValues.plan_type === "race" ? (
+            <>
+              {planValues.race_name && <><span style={{ color: "var(--text)", fontWeight: 600 }}>{planValues.race_name}</span><span>·</span></>}
+              {planValues.subtitle && <><span>{planValues.subtitle}</span><span>·</span></>}
+              <span>Fuel for race</span>
+              <span>·</span>
+              <span style={{ textTransform: "capitalize" }}>{planValues.effort} effort</span>
+              <span>·</span>
+              <span>{planValues.duration} hr</span>
+            </>
+          ) : (
+            <>
+              {planValues.session_name && <><span style={{ color: "var(--text)", fontWeight: 600 }}>{planValues.session_name}</span><span>·</span></>}
+              <span>{{
+                running: "Running",
+                trail_running: "Trail Running",
+                cycling: "Cycling",
+                hyrox: "Hyrox",
+              }[planValues.sport] ?? planValues.sport}</span>
+              {planValues.subtitle && <><span>·</span><span>{planValues.subtitle}</span></>}
+              <span>·</span>
+              <span style={{ textTransform: "capitalize" }}>{planValues.effort} effort</span>
+              <span>·</span>
+              <span>{planValues.duration} hr</span>
+            </>
+          )}
         </div>
       )}
 

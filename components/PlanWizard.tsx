@@ -422,13 +422,19 @@ function ProfileStep({
 
 // ─── STEP 2: PLAN SETUP ───────────────────────────────────────────────────────
 
+const SESSION_DISPLAY_TYPES = [
+  "Intervals", "Tempo", "Long run", "Easy run", "Threshold", "Brick / hybrid", "Strength + run",
+];
+
 function PlanSetupStep({
   profile,
+  fuelType,
   onNext,
   onBack,
 }: {
   profile: ProfileFormValues;
-  onNext: (data: PlanFormValues) => void;
+  fuelType: "race" | "session";
+  onNext: (data: PlanFormValues, context: FuelContext) => void;
   onBack: () => void;
 }) {
   const {
@@ -448,11 +454,11 @@ function PlanSetupStep({
         } catch {}
       }
       return {
-        plan_type: "race",
+        plan_type: fuelType,
         sport: "running",
-        effort: "race",
+        effort: fuelType === "race" ? "race" : "hard",
         conditions: "normal",
-        duration: "3:30",
+        duration: fuelType === "race" ? "3:30" : "1:00",
         caffeine_enabled: profile.caffeine_tolerance !== "none",
         bicarb_enabled: false,
         bicarb_brand: undefined,
@@ -461,7 +467,7 @@ function PlanSetupStep({
         gel_product_name: "Generic gel",
         gel_product_carbs: 25,
         disclaimer_accepted: undefined,
-        distance: "marathon",
+        distance: fuelType === "race" ? "marathon" : undefined,
         session_subtype: undefined,
       };
     })(),
@@ -479,6 +485,18 @@ function PlanSetupStep({
   const [paceStr, setPaceStr] = useState("");
   const [paceUnit, setPaceUnit] = useState<PaceUnit>("km");
   const [paceError, setPaceError] = useState("");
+
+  // Context fields (race / session metadata)
+  const [raceName, setRaceName] = useState("");
+  const [sessionName, setSessionName] = useState("");
+  const [sessionDisplayType, setSessionDisplayType] = useState("");
+  const [sessionReps, setSessionReps] = useState("");
+  const [sessionRepDist, setSessionRepDist] = useState("");
+
+  // Keep plan_type in sync with fuelType prop
+  useEffect(() => {
+    setValue("plan_type", fuelType);
+  }, [fuelType, setValue]);
 
   // Auto-disable caffeine if profile says none
   useEffect(() => {
@@ -502,37 +520,126 @@ function PlanSetupStep({
     setValue("duration", result, { shouldValidate: true });
   };
 
-  return (
-    <form onSubmit={handleSubmit(onNext)} noValidate>
-      <SectionHeading>Step 2 - Plan setup</SectionHeading>
+  const handleSubmitWithContext = (data: PlanFormValues) => {
+    // Compute subtitle for share card
+    let subtitle = "";
+    if (fuelType === "race") {
+      const distLabel: Record<string, string> = { "5k": "5km", "10k": "10km", "half": "21.1km", "marathon": "42.2km" };
+      subtitle = distLabel[data.distance ?? ""] ?? "";
+    } else {
+      const repsNum = parseInt(sessionReps);
+      const repDistNum = parseInt(sessionRepDist);
+      if (!isNaN(repsNum) && repsNum > 0 && !isNaN(repDistNum) && repDistNum > 0) {
+        const distLabel = repDistNum >= 1000 ? `${(repDistNum / 1000).toFixed(repDistNum % 1000 === 0 ? 0 : 1)}km` : `${repDistNum}m`;
+        subtitle = `${repsNum} × ${distLabel}`;
+      } else if (sessionDisplayType) {
+        subtitle = sessionDisplayType;
+      }
+    }
 
-      {/* Plan type */}
-      <div style={{ marginBottom: "24px" }}>
-        <FieldLabel>Plan type</FieldLabel>
-        <Controller
-          name="plan_type"
-          control={control}
-          render={({ field }) => (
-            <RadioGroup
-              name="plan_type"
-              value={field.value}
-              onChange={field.onChange}
-              options={[
-                {
-                  value: "race",
-                  label: "Race",
-                  desc: "Competition — targets biased to upper end",
-                },
-                {
-                  value: "session",
-                  label: "Training session",
-                  desc: "Practice / long effort / intervals",
-                },
-              ]}
-            />
+    const context: FuelContext = {
+      race_name: fuelType === "race" ? raceName.trim() || undefined : undefined,
+      session_name: fuelType === "session" ? sessionName.trim() || undefined : undefined,
+      session_display_type: sessionDisplayType || undefined,
+      session_reps: parseInt(sessionReps) || undefined,
+      session_rep_dist_m: parseInt(sessionRepDist) || undefined,
+      subtitle: subtitle || undefined,
+    };
+
+    onNext(data, context);
+  };
+
+  return (
+    <form onSubmit={handleSubmit(handleSubmitWithContext)} noValidate>
+      <SectionHeading>Step 2 — Plan setup · {fuelType === "race" ? "Race" : "Training session"}</SectionHeading>
+
+      {/* Race / session context fields */}
+      {fuelType === "race" ? (
+        <div style={{ marginBottom: "24px" }}>
+          <FieldLabel htmlFor="race_name">Race name // optional</FieldLabel>
+          <input
+            id="race_name"
+            type="text"
+            placeholder="e.g. Leeds Half Marathon"
+            value={raceName}
+            onChange={(e) => setRaceName(e.target.value)}
+            style={{ maxWidth: "360px" }}
+          />
+          <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+            Shown on your share card.
+          </p>
+        </div>
+      ) : (
+        <div
+          style={{
+            marginBottom: "24px",
+            padding: "16px",
+            border: "1px solid var(--border)",
+            borderRadius: "4px",
+            background: "var(--surface)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "16px",
+          }}
+        >
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+            <div>
+              <FieldLabel htmlFor="session_name">Session name // optional</FieldLabel>
+              <input
+                id="session_name"
+                type="text"
+                placeholder="e.g. Track session"
+                value={sessionName}
+                onChange={(e) => setSessionName(e.target.value)}
+              />
+            </div>
+            <div>
+              <FieldLabel htmlFor="session_display_type">Session type // optional</FieldLabel>
+              <select
+                id="session_display_type"
+                value={sessionDisplayType}
+                onChange={(e) => setSessionDisplayType(e.target.value)}
+              >
+                <option value="">— Select type —</option>
+                {SESSION_DISPLAY_TYPES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          {sessionDisplayType === "Intervals" && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <div>
+                <FieldLabel htmlFor="session_reps">Reps // optional</FieldLabel>
+                <input
+                  id="session_reps"
+                  type="number"
+                  placeholder="e.g. 8"
+                  min="1"
+                  max="50"
+                  value={sessionReps}
+                  onChange={(e) => setSessionReps(e.target.value)}
+                />
+              </div>
+              <div>
+                <FieldLabel htmlFor="session_rep_dist">Rep distance (m) // optional</FieldLabel>
+                <input
+                  id="session_rep_dist"
+                  type="number"
+                  placeholder="e.g. 800"
+                  min="50"
+                  max="10000"
+                  value={sessionRepDist}
+                  onChange={(e) => setSessionRepDist(e.target.value)}
+                />
+                <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
+                  Formats as "8 × 800m" on your plan
+                </p>
+              </div>
+            </div>
           )}
-        />
-      </div>
+        </div>
+      )}
 
       {/* Sport */}
       <div style={{ marginBottom: "24px" }}>
@@ -569,7 +676,7 @@ function PlanSetupStep({
       </div>
 
       {/* Distance (running only) */}
-      {sport === "running" && planType === "race" && (
+      {sport === "running" && fuelType === "race" && (
         <div style={{ marginBottom: "24px" }}>
           <FieldLabel htmlFor="distance">Race distance</FieldLabel>
           <select id="distance" {...register("distance")}>
@@ -584,7 +691,7 @@ function PlanSetupStep({
       )}
 
       {/* Session subtype */}
-      {planType === "session" && (
+      {fuelType === "session" && (
         <div style={{ marginBottom: "24px" }}>
           <FieldLabel htmlFor="session_subtype">Session type</FieldLabel>
           <select id="session_subtype" {...register("session_subtype")}>
@@ -713,7 +820,7 @@ function PlanSetupStep({
       )}
 
       {/* Pace estimator — races only. Sessions use total duration directly. */}
-      {planType === "race" && sport === "running" && distance && distance !== "other" && (
+      {fuelType === "race" && sport === "running" && distance && distance !== "other" && (
         <div
           style={{
             marginBottom: "24px",
@@ -1116,14 +1223,102 @@ function resolveGelProduct(data: PlanFormValues): GelProduct | undefined {
   return { name, carbs_g: carbs };
 }
 
+// ─── CHOICE STEP ──────────────────────────────────────────────────────────────
+
+function ChoiceStep({ onChoice }: { onChoice: (type: "race" | "session") => void }) {
+  const cardBase: React.CSSProperties = {
+    padding: "36px 28px",
+    border: "1px solid var(--border)",
+    borderRadius: "6px",
+    background: "var(--surface)",
+    cursor: "pointer",
+    textAlign: "left",
+    fontFamily: "inherit",
+    transition: "border-color 0.15s, background 0.15s",
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+  };
+
+  return (
+    <div>
+      <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "28px" }}>
+        What are you fuelling for today?
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+        <button
+          type="button"
+          onClick={() => onChoice("race")}
+          style={cardBase}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
+            (e.currentTarget as HTMLElement).style.background = "var(--surface-2)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+            (e.currentTarget as HTMLElement).style.background = "var(--surface)";
+          }}
+        >
+          <p style={{ fontSize: "22px", margin: 0 }}>🏁</p>
+          <div>
+            <p style={{ fontSize: "16px", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)", margin: "0 0 6px" }}>
+              Fuel for race
+            </p>
+            <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>
+              Competition day. Targets biased to upper end — maximise performance.
+            </p>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onChoice("session")}
+          style={cardBase}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)";
+            (e.currentTarget as HTMLElement).style.background = "var(--surface-2)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
+            (e.currentTarget as HTMLElement).style.background = "var(--surface)";
+          }}
+        >
+          <p style={{ fontSize: "22px", margin: 0 }}>⚡</p>
+          <div>
+            <p style={{ fontSize: "16px", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)", margin: "0 0 6px" }}>
+              Fuel for session
+            </p>
+            <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>
+              Training, intervals, long runs, tempo — practice your strategy.
+            </p>
+          </div>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── PLAN CONTEXT STATE TYPE ───────────────────────────────────────────────────
+
+type FuelContext = {
+  race_name?: string;
+  session_name?: string;
+  session_display_type?: string;
+  session_reps?: number;
+  session_rep_dist_m?: number;
+  subtitle?: string;
+};
+
 // ─── WIZARD CONTAINER ─────────────────────────────────────────────────────────
 
-type Step = "profile" | "plan" | "loading" | "results";
+type Step = "choice" | "profile" | "plan" | "loading" | "results";
 
 export default function PlanWizard() {
-  const [step, setStep] = useState<Step>("profile");
+  const [step, setStep] = useState<Step>("choice");
+  const [fuelType, setFuelType] = useState<"race" | "session">("race");
   const [profile, setProfile] = useState<ProfileFormValues | null>(null);
   const [planValues, setPlanValues] = useState<PlanFormValues | null>(null);
+  const [fuelContext, setFuelContext] = useState<FuelContext>({});
   const [result, setResult] = useState<FuelPlanOutput | null>(null);
 
   // Restore last result from localStorage on mount
@@ -1141,6 +1336,12 @@ export default function PlanWizard() {
     } catch {}
   }, []);
 
+  const handleChoice = (type: "race" | "session") => {
+    setFuelType(type);
+    setStep("profile");
+    window.scrollTo(0, 0);
+  };
+
   const handleProfileNext = (data: ProfileFormValues) => {
     localStorage.setItem(LS_PROFILE_KEY, JSON.stringify(data));
     setProfile(data);
@@ -1148,9 +1349,10 @@ export default function PlanWizard() {
     window.scrollTo(0, 0);
   };
 
-  const handlePlanNext = (data: PlanFormValues) => {
+  const handlePlanNext = (data: PlanFormValues, context: FuelContext) => {
     localStorage.setItem(LS_PLAN_KEY, JSON.stringify(data));
     setPlanValues(data);
+    setFuelContext(context);
     setStep("loading");
     window.scrollTo(0, 0);
 
@@ -1163,7 +1365,7 @@ export default function PlanWizard() {
       };
 
       const planInput: PlanInput = {
-        plan_type: data.plan_type,
+        plan_type: fuelType,
         sport: data.sport,
         effort: data.effort,
         conditions: data.conditions,
@@ -1188,12 +1390,14 @@ export default function PlanWizard() {
   };
 
   const handleStartOver = () => {
-    setStep("profile");
+    setStep("choice");
     setResult(null);
+    setFuelContext({});
     window.scrollTo(0, 0);
   };
 
   const STEPS: { key: Step; label: string }[] = [
+    { key: "choice", label: "Mode" },
     { key: "profile", label: "Profile" },
     { key: "plan", label: "Plan" },
     { key: "results", label: "Results" },
@@ -1230,8 +1434,9 @@ export default function PlanWizard() {
         </span>
       </h1>
       <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "32px" }}>
-        {step === "profile" && "Step 1 of 2 - enter your profile details"}
-        {step === "plan" && "Step 2 of 2 - configure your plan"}
+        {step === "choice" && "Fuel for race or training session?"}
+        {step === "profile" && `Step 1 of 2 — ${fuelType === "race" ? "race fuelling" : "session fuelling"} · enter your profile`}
+        {step === "plan" && "Step 2 of 2 — configure your plan"}
         {step === "loading" && "Building your fuel plan"}
         {step === "results" && "Your fuel plan is ready"}
       </p>
@@ -1279,11 +1484,13 @@ export default function PlanWizard() {
       </div>
 
       {/* Step content */}
+      {step === "choice" && <ChoiceStep onChoice={handleChoice} />}
       {step === "loading" && <LoadingScreen />}
       {step === "profile" && <ProfileStep onNext={handleProfileNext} />}
       {step === "plan" && profile && (
         <PlanSetupStep
           profile={profile}
+          fuelType={fuelType}
           onNext={handlePlanNext}
           onBack={() => {
             setStep("profile");
@@ -1291,10 +1498,18 @@ export default function PlanWizard() {
           }}
         />
       )}
-      {step === "results" && result && (
+      {step === "results" && result && planValues && (
         <PlanResults
           result={result}
-          planValues={planValues}
+          planValues={{
+            plan_type: fuelType,
+            sport: planValues.sport,
+            effort: planValues.effort,
+            duration: planValues.duration,
+            race_name: fuelContext.race_name,
+            session_name: fuelContext.session_name,
+            subtitle: fuelContext.subtitle,
+          }}
           name={profile?.name?.trim() || undefined}
           onStartOver={handleStartOver}
         />

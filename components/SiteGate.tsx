@@ -1,7 +1,26 @@
 "use client";
 import { useState, useEffect } from "react";
 
-type GateStep = "code" | "register";
+type GateStep = "code" | "register" | "theme";
+
+const VALID_CODES = [
+  "FIRST", "LEEDS", "BFR", "LYTHAM", "BLACKPOOL", "WESHAM", "LEEDSCITY", "GRYPHONS",
+];
+
+const THEMES = [
+  { key: "light", label: "Light",  bg: "#f5f2ed", surface: "#ede9e3", accent: "#1a1714", text: "#1a1714", muted: "#7a7570" },
+  { key: "sage",  label: "Sage",   bg: "#edf0eb", surface: "#e3e7de", accent: "#2b4a1c", text: "#1c2418", muted: "#627060" },
+  { key: "mocha", label: "Mocha",  bg: "#f2ede6", surface: "#e8e0d5", accent: "#5c3c1e", text: "#2c1f14", muted: "#7d6858" },
+  { key: "dark",  label: "Dark",   bg: "#0a0a0a", surface: "#111111", accent: "#ffffff", text: "#f0f0f0", muted: "#888888" },
+];
+
+function applyTheme(theme: string) {
+  if (theme === "dark") {
+    document.documentElement.removeAttribute("data-theme");
+  } else {
+    document.documentElement.setAttribute("data-theme", theme);
+  }
+}
 
 async function submitMemberSignup(email: string, accessCode: string) {
   try {
@@ -15,40 +34,55 @@ async function submitMemberSignup(email: string, accessCode: string) {
       }).toString(),
     });
   } catch {
-    // Best-effort — don't block the user
+    // Best-effort
   }
 }
 
 export default function SiteGate({ children }: { children: React.ReactNode }) {
-  const [unlocked, setUnlocked] = useState(false);
-  const [mounted,  setMounted]  = useState(false);
-  const [step,     setStep]     = useState<GateStep>("code");
+  const [unlocked, setUnlocked]   = useState(false);
+  const [mounted,  setMounted]    = useState(false);
+  const [step,     setStep]       = useState<GateStep>("code");
 
-  // Code step state
+  // Code step
   const [code,  setCode]  = useState("");
   const [error, setError] = useState(false);
 
-  // Register step state
-  const [email,       setEmail]       = useState("");
-  const [emailError,  setEmailError]  = useState(false);
-  const [submitting,  setSubmitting]  = useState(false);
+  // Register step
+  const [email,      setEmail]      = useState("");
+  const [emailError, setEmailError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  const VALID_CODES = ["FIRST", "LEEDS", "BFR", "LYTHAM", "BLACKPOOL", "WESHAM", "LEEDSCITY"];
+  // Theme step
+  const [selectedTheme, setSelectedTheme] = useState("dark");
 
   useEffect(() => {
     setMounted(true);
     const hasAccess = localStorage.getItem("cf_access") === "true";
     const hasEmail  = localStorage.getItem("cf_email_done") === "true";
-    if (hasAccess && hasEmail) {
+    const hasTheme  = localStorage.getItem("cf_theme_chosen") === "true";
+
+    if (hasAccess && hasEmail && hasTheme) {
       setUnlocked(true);
+    } else if (hasAccess && hasEmail && !hasTheme) {
+      setStep("theme");
     } else if (hasAccess && !hasEmail) {
-      // Already have a code but haven't registered — go straight to register step
       setStep("register");
     }
+
+    // Pre-select saved theme (or match current page theme)
+    const saved = localStorage.getItem("cf_theme");
+    const attr  = document.documentElement.getAttribute("data-theme");
+    setSelectedTheme(saved ?? attr ?? "light");
   }, []);
 
-  const unlock = () => {
-    localStorage.setItem("cf_email_done", "true");
+  const handleThemeSelect = (theme: string) => {
+    setSelectedTheme(theme);
+    applyTheme(theme);
+    localStorage.setItem("cf_theme", theme);
+  };
+
+  const handleThemeContinue = () => {
+    localStorage.setItem("cf_theme_chosen", "true");
     setUnlocked(true);
   };
 
@@ -76,10 +110,16 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
     const accessCode = localStorage.getItem("cf_access_code") ?? "unknown";
     await submitMemberSignup(trimmed, accessCode);
     localStorage.setItem("cf_member_email", trimmed);
-    unlock();
+    localStorage.setItem("cf_email_done", "true");
+    setStep("theme");
   };
 
-  const handleSkip = () => unlock();
+  const handleSkipRegister = () => {
+    localStorage.setItem("cf_email_done", "true");
+    setStep("theme");
+  };
+
+  // ── Shared styles ────────────────────────────────────────────────────────────
 
   const overlayStyle: React.CSSProperties = {
     position: "fixed",
@@ -98,7 +138,7 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
     border: "1px solid var(--border)",
     borderRadius: "8px",
     padding: "40px 32px",
-    maxWidth: "380px",
+    maxWidth: "420px",
     width: "calc(100% - 40px)",
     textAlign: "center",
   };
@@ -136,6 +176,7 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
     border: "none",
     cursor: "pointer",
     width: "100%",
+    fontFamily: "inherit",
   };
 
   return (
@@ -145,6 +186,7 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
         <div style={overlayStyle}>
           <div style={cardStyle}>
 
+            {/* ── Code step ─────────────────────────────────────────────── */}
             {step === "code" && (
               <>
                 <p style={labelStyle}>
@@ -199,6 +241,7 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
               </>
             )}
 
+            {/* ── Register step ─────────────────────────────────────────── */}
             {step === "register" && (
               <>
                 <p style={labelStyle}>
@@ -242,7 +285,7 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
                 >
                   Already registered?{" "}
                   <button
-                    onClick={handleSkip}
+                    onClick={handleSkipRegister}
                     style={{
                       background: "none",
                       border: "none",
@@ -257,6 +300,75 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
                     continue
                   </button>
                 </p>
+              </>
+            )}
+
+            {/* ── Theme step ────────────────────────────────────────────── */}
+            {step === "theme" && (
+              <>
+                <p style={labelStyle}>
+                  concept<span style={{ color: "var(--text-muted)" }}>//</span>athleticclub · environment
+                </p>
+                <h2 style={headingStyle}>Choose your palette</h2>
+                <p style={bodyStyle}>
+                  Select how you&apos;d like the platform to look. You can change this anytime.
+                </p>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "10px",
+                    marginBottom: "24px",
+                    textAlign: "left",
+                  }}
+                >
+                  {THEMES.map((theme) => {
+                    const isSelected = selectedTheme === theme.key;
+                    return (
+                      <button
+                        key={theme.key}
+                        type="button"
+                        onClick={() => handleThemeSelect(theme.key)}
+                        style={{
+                          background: theme.bg,
+                          border: `2px solid ${isSelected ? theme.accent : "transparent"}`,
+                          borderRadius: "6px",
+                          padding: "14px",
+                          cursor: "pointer",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "10px",
+                          outline: "none",
+                          transition: "border-color 0.15s",
+                          fontFamily: "inherit",
+                          boxShadow: isSelected ? `0 0 0 1px ${theme.accent}` : "none",
+                        }}
+                      >
+                        {/* Colour swatches */}
+                        <div style={{ display: "flex", gap: "5px" }}>
+                          <div style={{ width: "18px", height: "18px", borderRadius: "50%", background: theme.accent }} />
+                          <div style={{ width: "18px", height: "18px", borderRadius: "50%", background: theme.muted }} />
+                          <div style={{ width: "18px", height: "18px", borderRadius: "50%", background: theme.surface }} />
+                        </div>
+                        <div>
+                          <p style={{ fontSize: "12px", fontWeight: 700, color: theme.text, margin: 0, letterSpacing: "-0.01em" }}>
+                            {theme.label}
+                          </p>
+                          {isSelected && (
+                            <p style={{ fontSize: "10px", color: theme.muted, margin: "2px 0 0", letterSpacing: "0.05em" }}>
+                              selected ✓
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button type="button" style={btnStyle} onClick={handleThemeContinue}>
+                  Enter the club →
+                </button>
               </>
             )}
 

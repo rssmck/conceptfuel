@@ -625,6 +625,18 @@ function FormResults({ plan, name }: { plan: FormPlanOutput; name?: string }) {
 
 // ─── Share canvas ─────────────────────────────────────────────────────────────
 
+const FORM_CANVAS_THEMES = {
+  dark:  { bg: "#0a0a0a", surface: "#111111", surface2: "#1a1a1a", border: "#2a2a2a", text: "#f0f0f0", muted: "#888888", dimmed: "#555555", rowA: "#111111", rowB: "#0e0e0e", grid: "rgba(255,255,255,0.04)" },
+  light: { bg: "#f5f2ed", surface: "#ede9e3", surface2: "#e5e0d9", border: "#ccc8c0", text: "#1a1714", muted: "#7a7570", dimmed: "#999999", rowA: "#e8e4de", rowB: "#e3dfd9", grid: "rgba(0,0,0,0.03)" },
+  sage:  { bg: "#edf0eb", surface: "#e3e7de", surface2: "#d7dcd1", border: "#b4bcac", text: "#1c2418", muted: "#627060", dimmed: "#8a9e88", rowA: "#dde1d8", rowB: "#d8dcd3", grid: "rgba(0,0,0,0.03)" },
+  mocha: { bg: "#f2ede6", surface: "#e8e0d5", surface2: "#ddd4c5", border: "#c2b4a0", text: "#2c1f14", muted: "#7d6858", dimmed: "#a09080", rowA: "#e2d9cc", rowB: "#ddd4c7", grid: "rgba(0,0,0,0.03)" },
+};
+
+function getFormCanvasTheme() {
+  const t = typeof localStorage !== "undefined" ? (localStorage.getItem("cf_theme") ?? "dark") : "dark";
+  return FORM_CANVAS_THEMES[t as keyof typeof FORM_CANVAS_THEMES] ?? FORM_CANVAS_THEMES.dark;
+}
+
 function buildFormShareCanvas(
   plan: FormPlanOutput,
   input: FormInput | null,
@@ -637,31 +649,28 @@ function buildFormShareCanvas(
   canvas.height = H;
   const ctx = canvas.getContext("2d")!;
   const FONT = "'ui-monospace', 'Cascadia Code', 'Fira Mono', monospace";
+  const T = getFormCanvasTheme();
 
   // Background
-  ctx.fillStyle = "#0a0a0a";
+  ctx.fillStyle = T.bg;
   ctx.fillRect(0, 0, W, H);
 
   // Subtle grid
-  ctx.strokeStyle = "rgba(255,255,255,0.04)";
+  ctx.strokeStyle = T.grid;
   ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 80) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
-  }
-  for (let y = 0; y < H; y += 80) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-  }
+  for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
   // Brand mark
   ctx.font = `bold 22px ${FONT}`;
-  ctx.fillStyle = "#f0f0f0";
+  ctx.fillStyle = T.text;
   ctx.fillText("concept", 60, 68);
-  ctx.fillStyle = "#555555";
+  ctx.fillStyle = T.muted;
   ctx.fillText("//", 60 + ctx.measureText("concept").width, 68);
-  ctx.fillStyle = "#f0f0f0";
+  ctx.fillStyle = T.text;
   ctx.fillText("form", 60 + ctx.measureText("concept//").width, 68);
 
-  // Context (session type · goal · duration)
+  // Context
   if (input) {
     const ctxText = [
       input.session_type.replace("_", " "),
@@ -669,62 +678,60 @@ function buildFormShareCanvas(
       `${input.duration_minutes} min`,
     ].join(" · ");
     ctx.font = `13px ${FONT}`;
-    ctx.fillStyle = "#555555";
+    ctx.fillStyle = T.dimmed;
     ctx.textAlign = "right";
     ctx.fillText(ctxText, W - 60, 68);
     ctx.textAlign = "left";
   }
 
   // Divider
-  ctx.strokeStyle = "#2a2a2a";
+  ctx.strokeStyle = T.border;
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(60, 90); ctx.lineTo(W - 60, 90); ctx.stroke();
 
-  // Greeting or protocol label
+  // Greeting or label
   if (name) {
     ctx.font = `16px ${FONT}`;
-    ctx.fillStyle = "#555555";
+    ctx.fillStyle = T.dimmed;
     ctx.fillText(`${name}'s session plan`, 60, 140);
   } else {
     ctx.font = `11px ${FONT}`;
-    ctx.fillStyle = "#444444";
+    ctx.fillStyle = T.dimmed;
     ctx.fillText("SESSION PLAN", 60, 140);
   }
 
   // Protocol name (large)
   ctx.font = `bold 56px ${FONT}`;
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = T.text;
   ctx.fillText(plan.protocol_name, 60, 215);
 
   ctx.font = `18px ${FONT}`;
-  ctx.fillStyle = "#666666";
-  // Truncate desc if too long
+  ctx.fillStyle = T.muted;
   const descTrunc = plan.protocol_desc.length > 72 ? plan.protocol_desc.slice(0, 70) + "…" : plan.protocol_desc;
   ctx.fillText(descTrunc, 60, 255);
 
   // Session structure blocks (left column)
   const blocksY = 295;
   ctx.font = `11px ${FONT}`;
-  ctx.fillStyle = "#444444";
+  ctx.fillStyle = T.dimmed;
   ctx.fillText("STRUCTURE", 60, blocksY);
-  ctx.strokeStyle = "#2a2a2a";
+  ctx.strokeStyle = T.border;
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(60, blocksY + 8); ctx.lineTo(520, blocksY + 8); ctx.stroke();
 
-  const visBlocks = plan.session_structure.slice(0, 5);
-  visBlocks.forEach((block, i) => {
+  plan.session_structure.slice(0, 5).forEach((block, i) => {
     const by = blocksY + 28 + i * 42;
-    ctx.fillStyle = i % 2 === 0 ? "#111111" : "#0e0e0e";
+    ctx.fillStyle = i % 2 === 0 ? T.rowA : T.rowB;
     ctx.fillRect(60, by - 14, 460, 36);
-    ctx.strokeStyle = "#1e1e1e";
+    ctx.strokeStyle = T.border;
     ctx.strokeRect(60, by - 14, 460, 36);
 
     ctx.font = `bold 12px ${FONT}`;
-    ctx.fillStyle = "#e0e0e0";
+    ctx.fillStyle = T.text;
     ctx.fillText(block.phase, 74, by + 6);
 
     ctx.font = `11px ${FONT}`;
-    ctx.fillStyle = "#888888";
+    ctx.fillStyle = T.muted;
     ctx.textAlign = "right";
     ctx.fillText(`${block.duration_min} min`, 510, by + 6);
     ctx.textAlign = "left";
@@ -734,9 +741,9 @@ function buildFormShareCanvas(
   const nutX = 620;
   const nutY = 295;
   ctx.font = `11px ${FONT}`;
-  ctx.fillStyle = "#444444";
+  ctx.fillStyle = T.dimmed;
   ctx.fillText("NUTRITION", nutX, nutY);
-  ctx.strokeStyle = "#2a2a2a";
+  ctx.strokeStyle = T.border;
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(nutX, nutY + 8); ctx.lineTo(W - 60, nutY + 8); ctx.stroke();
 
@@ -748,31 +755,31 @@ function buildFormShareCanvas(
 
   nutItems.slice(0, 4).forEach((item, i) => {
     const ny = nutY + 28 + i * 52;
-    ctx.fillStyle = "#111111";
+    ctx.fillStyle = T.surface;
     ctx.fillRect(nutX, ny - 14, W - 60 - nutX, 44);
-    ctx.strokeStyle = "#1e1e1e";
+    ctx.strokeStyle = T.border;
     ctx.strokeRect(nutX, ny - 14, W - 60 - nutX, 44);
     ctx.font = `10px ${FONT}`;
-    ctx.fillStyle = "#555555";
+    ctx.fillStyle = T.dimmed;
     ctx.fillText(item.label, nutX + 14, ny + 2);
     ctx.font = `bold 14px ${FONT}`;
-    ctx.fillStyle = "#e0e0e0";
+    ctx.fillStyle = T.text;
     ctx.fillText(item.value, nutX + 14, ny + 22);
   });
 
   // Bottom bar
-  ctx.fillStyle = "#111111";
+  ctx.fillStyle = T.surface;
   ctx.fillRect(0, H - 60, W, 60);
-  ctx.strokeStyle = "#2a2a2a";
+  ctx.strokeStyle = T.border;
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, H - 60); ctx.lineTo(W, H - 60); ctx.stroke();
 
   ctx.font = `13px ${FONT}`;
-  ctx.fillStyle = "#444444";
+  ctx.fillStyle = T.dimmed;
   ctx.fillText("Build your session plan →", 60, H - 22);
 
   ctx.font = `bold 13px ${FONT}`;
-  ctx.fillStyle = "#666666";
+  ctx.fillStyle = T.muted;
   ctx.textAlign = "right";
   ctx.fillText("conceptathletic.com/form", W - 60, H - 22);
   ctx.textAlign = "left";
