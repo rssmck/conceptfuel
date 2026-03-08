@@ -71,7 +71,7 @@ const planSchema = z
     disclaimer_accepted: z.literal(true, {
       error: "You must read and accept the disclaimer to continue.",
     }),
-    distance: z.enum(["5k", "10k", "half", "marathon", "other"]).optional(),
+    distance: z.enum(["5k", "10k", "half", "marathon", "twenty_miles", "other"]).optional(),
     session_subtype: z
       .enum(["long_run", "tempo_threshold", "intervals", "hyrox_sim", "long_ride", "tempo_ride", "trail_run", "indoor_ride"])
       .optional(),
@@ -480,11 +480,13 @@ function PlanSetupStep({
   const nomioEnabled = watch("nomio_enabled");
   const distance = watch("distance");
   const gelName = watch("gel_product_name");
+  const sessionSubtype = watch("session_subtype");
 
   // Pace estimator local state
   const [paceStr, setPaceStr] = useState("");
   const [paceUnit, setPaceUnit] = useState<PaceUnit>("km");
   const [paceError, setPaceError] = useState("");
+  const [customDistanceKm, setCustomDistanceKm] = useState("");
 
   // Context fields (race / session metadata)
   const [raceName, setRaceName] = useState("");
@@ -506,9 +508,13 @@ function PlanSetupStep({
   }, [profile.caffeine_tolerance, setValue]);
 
   const handleCalculatePace = () => {
-    const distKm = distanceToKm(distance ?? "");
+    let distKm = distanceToKm(distance ?? "");
+    if (!distKm && distance === "other") {
+      const parsed = parseFloat(customDistanceKm);
+      if (parsed > 0 && isFinite(parsed)) distKm = parsed;
+    }
     if (!distKm) {
-      setPaceError("Select a known distance (5k, 10k, half, marathon) first.");
+      setPaceError("Select a known distance or enter a custom km value first.");
       return;
     }
     const result = estimateDuration(paceStr, paceUnit, distKm);
@@ -524,7 +530,7 @@ function PlanSetupStep({
     // Compute subtitle for share card
     let subtitle = "";
     if (fuelType === "race") {
-      const distLabel: Record<string, string> = { "5k": "5km", "10k": "10km", "half": "21.1km", "marathon": "42.2km" };
+      const distLabel: Record<string, string> = { "5k": "5km", "10k": "10km", "half": "21.1km", "marathon": "42.2km", "twenty_miles": "20 miles" };
       subtitle = distLabel[data.distance ?? ""] ?? "";
     } else {
       const repsNum = parseInt(sessionReps);
@@ -682,10 +688,26 @@ function PlanSetupStep({
           <select id="distance" {...register("distance")}>
             <option value="5k">5k</option>
             <option value="10k">10k</option>
-            <option value="half">Half marathon</option>
-            <option value="marathon">Marathon</option>
-            <option value="other">Other / Ultra</option>
+            <option value="half">Half marathon (21.1 km)</option>
+            <option value="marathon">Marathon (42.2 km)</option>
+            <option value="twenty_miles">20 miles (32.2 km)</option>
+            <option value="other">Other / custom</option>
           </select>
+          {distance === "other" && (
+            <div style={{ marginTop: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
+              <input
+                type="number"
+                min="1"
+                max="1000"
+                step="0.1"
+                placeholder="e.g. 50"
+                value={customDistanceKm}
+                onChange={(e) => setCustomDistanceKm(e.target.value)}
+                style={{ maxWidth: "110px" }}
+              />
+              <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>km</span>
+            </div>
+          )}
           <FieldError message={errors.distance?.message} />
         </div>
       )}
@@ -720,6 +742,11 @@ function PlanSetupStep({
             )}
           </select>
           <FieldError message={errors.session_subtype?.message} />
+          {sessionSubtype === "intervals" && (
+            <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "6px", lineHeight: 1.6 }}>
+              Interval sessions are fuelled <em>around</em> the session, not during — a gel 30 min before warm-up. Set duration as your best estimate; total time is variable.
+            </p>
+          )}
         </div>
       )}
 
@@ -787,15 +814,31 @@ function PlanSetupStep({
           {...register("duration")}
           style={{ maxWidth: "120px" }}
         />
-        <p
-          style={{
-            fontSize: "11px",
-            color: "var(--text-muted)",
-            marginTop: "4px",
-          }}
-        >
-          Total event/session time e.g. 1:00, 2:30, 4:00
-        </p>
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
+          {(fuelType === "session"
+            ? ["0:30", "0:45", "1:00", "1:15", "1:30", "2:00"]
+            : ["0:45", "1:00", "1:30", "2:00", "3:00", "4:00"]
+          ).map((d) => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setValue("duration", d, { shouldValidate: true })}
+              style={{
+                padding: "3px 10px",
+                fontSize: "11px",
+                border: "1px solid var(--border)",
+                borderRadius: "3px",
+                background: "var(--surface)",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                letterSpacing: "0.03em",
+              }}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
         <FieldError message={errors.duration?.message} />
       </div>
 
@@ -820,7 +863,7 @@ function PlanSetupStep({
       )}
 
       {/* Pace estimator — races only. Sessions use total duration directly. */}
-      {fuelType === "race" && sport === "running" && distance && distance !== "other" && (
+      {fuelType === "race" && sport === "running" && distance && (distance !== "other" || customDistanceKm) && (
         <div
           style={{
             marginBottom: "24px",

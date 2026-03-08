@@ -1,13 +1,14 @@
 // Pace and distance utilities — pure, no side effects
 
 export type PaceUnit = 'km' | 'mile'
-export type KnownDistance = '5k' | '10k' | 'half' | 'marathon'
+export type KnownDistance = '5k' | '10k' | 'half' | 'marathon' | 'twenty_miles'
 
 const DISTANCE_KM: Record<KnownDistance, number> = {
   '5k': 5,
   '10k': 10,
   'half': 21.0975,
   'marathon': 42.195,
+  'twenty_miles': 32.187,
 }
 
 const KM_PER_MILE = 1.60934

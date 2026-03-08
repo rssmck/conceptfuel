@@ -10,7 +10,7 @@ export type PlanType = 'race' | 'session'
 export type Sport = 'running' | 'trail_running' | 'cycling' | 'hyrox'
 export type Effort = 'easy' | 'steady' | 'hard' | 'race'
 export type Conditions = 'normal' | 'hot'
-export type Distance = '5k' | '10k' | 'half' | 'marathon' | 'other'
+export type Distance = '5k' | '10k' | 'half' | 'marathon' | 'twenty_miles' | 'other'
 export type SessionSubtype = 'long_run' | 'tempo_threshold' | 'intervals' | 'hyrox_sim' | 'long_ride' | 'tempo_ride' | 'trail_run' | 'indoor_ride'
 export type BicarbBrand = 'maurten' | 'flycarb'
 export type BicarbExperience = 'first_time' | 'experienced'
@@ -559,8 +559,13 @@ export function generateFuelPlan(
   )
 
   // B) Schedule (computed before total so we can sum actual delivered carbs)
+  // Interval sessions: no in-session schedule — fuel pre-session only.
+  // Rest intervals make deterministic gel timing impractical and unnecessary.
+  const isIntervalSession = plan_type === 'session' && session_subtype === 'intervals'
   const includePreStart = plan_type === 'race' && duration_minutes >= 90
-  const schedule = generateSchedule(carb_target_g_per_hr, duration_minutes, plan.gel_product, includePreStart)
+  const schedule = isIntervalSession
+    ? []
+    : generateSchedule(carb_target_g_per_hr, duration_minutes, plan.gel_product, includePreStart)
 
   // C) Total carbs — sum actual schedule carbs so displayed figure matches the plan
   const total_carbs_g = schedule.length > 0
@@ -621,6 +626,15 @@ export function generateFuelPlan(
   if (session_subtype === 'indoor_ride') {
     notes.push(
       'Indoor cycling (Zwift / turbo): no airflow cooling means significantly higher sweat rates and sodium losses. Fluid and sodium targets have been elevated accordingly. Use a fan if possible and pre-cool where practical.'
+    )
+  }
+
+  if (isIntervalSession) {
+    notes.push(
+      'Track and interval sessions: fuel around the session, not during it. Have a gel or carb drink 30 min before your warm-up. Rest intervals between reps mean in-session gel timing is impractical — your gut needs blood flow, not carbs, mid-effort. Keep electrolytes available throughout.'
+    )
+    notes.push(
+      'Session duration is variable — 16×400m with 100m jog recovery plus warm-up and cool-down might run 55 min to 90 min depending on pace. Set your duration as an estimate; your carb target per-hour remains valid regardless of total session length.'
     )
   }
 
