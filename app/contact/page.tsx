@@ -1,5 +1,9 @@
-export const metadata = {
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
   title: "Contact — Concept Athletic",
+  description: "Get in touch with Concept Athletic. Questions, feedback or access code requests.",
+  alternates: { canonical: "https://conceptclub.co.uk/contact" },
 };
 
 import ContactForm from "./ContactForm";

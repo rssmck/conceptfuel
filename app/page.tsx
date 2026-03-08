@@ -1,4 +1,20 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = {
+  title: "concept//athleticclub — Performance tools for individual athletes",
+  description:
+    "Precision fuelling plans, gym session planning and performance analytics for serious athletes. Evidence-informed tools for runners, cyclists and strength athletes.",
+  openGraph: {
+    title: "concept//athleticclub — Performance tools for individual athletes",
+    description:
+      "Precision fuelling plans, gym session planning and performance analytics for serious athletes. Evidence-informed tools for runners, cyclists and strength athletes.",
+    url: "https://conceptclub.co.uk",
+  },
+  alternates: {
+    canonical: "https://conceptclub.co.uk",
+  },
+};
 
 const MODULES = [
   {
@@ -67,8 +83,52 @@ const PHILOSOPHY = [
   },
 ];
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://conceptclub.co.uk/#website",
+      "url": "https://conceptclub.co.uk",
+      "name": "concept//athleticclub",
+      "description": "Performance tools for individual athletes",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Concept Athletic",
+        "url": "https://conceptclub.co.uk",
+        "sameAs": ["https://www.instagram.com/conceptathletic/"],
+      },
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://conceptclub.co.uk/plan#app",
+      "name": "concept//fuel — Race & session fuel planner",
+      "url": "https://conceptclub.co.uk/plan",
+      "applicationCategory": "SportsApplication",
+      "description": "Personalised carbohydrate, hydration and sodium plans for races and training sessions. Gel schedules and caffeine guidance for runners, cyclists and Hyrox athletes.",
+      "operatingSystem": "Any",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GBP" },
+    },
+    {
+      "@type": "WebApplication",
+      "@id": "https://conceptclub.co.uk/form#app",
+      "name": "concept//form — Gym session planner",
+      "url": "https://conceptclub.co.uk/form",
+      "applicationCategory": "SportsApplication",
+      "description": "Personalised gym session plans including primary lifts, mobility, macros and recovery — tailored to your training goal and style.",
+      "operatingSystem": "Any",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GBP" },
+    },
+  ],
+};
+
 export default function ClubPage() {
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
     <div className="cf-page">
 
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
@@ -337,5 +397,6 @@ export default function ClubPage() {
       </section>
 
     </div>
+    </>
   );
 }

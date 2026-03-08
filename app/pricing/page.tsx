@@ -1,7 +1,11 @@
 import Link from "next/link";
 
-export const metadata = {
-  title: "Pricing — concept//fuel",
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Pricing — concept//athleticclub",
+  description: "Early access to concept//athleticclub is free. See what's included and what's coming.",
+  alternates: { canonical: "https://conceptclub.co.uk/pricing" },
 };
 
 // TODO: Implement Stripe when ready. Currently stub only.

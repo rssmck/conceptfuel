@@ -11,9 +11,57 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "concept//athleticclub — Performance tools for individual athletes",
+  metadataBase: new URL("https://conceptclub.co.uk"),
+  title: {
+    default: "concept//athleticclub — Performance tools for individual athletes",
+    template: "%s — concept//athleticclub",
+  },
   description:
-    "concept//athleticclub: precision fuelling, gym session planning, recovery and performance analytics for serious athletes. Evidence-informed. No guesswork.",
+    "Precision fuelling plans, gym session planning and performance analytics for serious athletes. Evidence-informed tools for runners, cyclists and strength athletes. No guesswork.",
+  keywords: [
+    "sports nutrition",
+    "running fuel plan",
+    "carbohydrate calculator",
+    "endurance fuelling",
+    "marathon nutrition",
+    "gel schedule",
+    "athlete nutrition",
+    "gym session planner",
+    "strength training plan",
+    "cycling nutrition",
+    "race day fuelling",
+    "concept athletic",
+  ],
+  authors: [{ name: "Concept Athletic" }],
+  creator: "Concept Athletic",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true },
+  },
+  openGraph: {
+    type: "website",
+    siteName: "concept//athleticclub",
+    title: "concept//athleticclub — Performance tools for individual athletes",
+    description:
+      "Precision fuelling plans, gym session planning and performance analytics for serious athletes. Evidence-informed. No guesswork.",
+    url: "https://conceptclub.co.uk",
+    images: [
+      {
+        url: "/icons/icon-512.png",
+        width: 512,
+        height: 512,
+        alt: "concept//athleticclub",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "concept//athleticclub — Performance tools for individual athletes",
+    description:
+      "Precision fuelling plans, gym session planning and performance analytics for serious athletes.",
+    images: ["/icons/icon-512.png"],
+  },
 };
 
 export default function RootLayout({

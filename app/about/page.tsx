@@ -1,5 +1,16 @@
-export const metadata = {
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
   title: "About — Concept Athletic",
+  description:
+    "Concept Athletic builds evidence-informed performance tools for individual athletes. No coaches, no subscriptions — just precise, practical guidance for runners, cyclists and gym athletes.",
+  openGraph: {
+    title: "About — Concept Athletic",
+    description:
+      "Evidence-informed performance tools for individual athletes. Precise, practical guidance for runners, cyclists and gym athletes.",
+    url: "https://conceptclub.co.uk/about",
+  },
+  alternates: { canonical: "https://conceptclub.co.uk/about" },
 };
 
 function Divider() {
