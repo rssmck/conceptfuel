@@ -297,10 +297,52 @@ function buildShareCanvas(
   ctx.fillStyle = T.dimmed;
   ctx.fillText("Generate your fuel plan →", 60, H - 22);
 
-  ctx.font = `bold 13px ${FONT}`;
+  // Instagram handle with icon (right-aligned, subtle)
+  const igLabel = "@conceptathletic";
+  ctx.font = `13px ${FONT}`;
+  const igLabelW = ctx.measureText(igLabel).width;
+  const igIconSize = 14;
+  const igGap = 6;
+  const igTotalW = igIconSize + igGap + igLabelW;
+  const igX = W - 60 - igTotalW;
+  const igY = H - 29;
+
+  // Draw Instagram icon (rounded square + circle + dot)
   ctx.fillStyle = T.muted;
-  ctx.textAlign = "right";
-  ctx.fillText("conceptathletic.com/fuel", W - 60, H - 22);
+  const r = 3; const s = igIconSize;
+  ctx.beginPath();
+  ctx.moveTo(igX + r, igY); ctx.lineTo(igX + s - r, igY);
+  ctx.quadraticCurveTo(igX + s, igY, igX + s, igY + r);
+  ctx.lineTo(igX + s, igY + s - r);
+  ctx.quadraticCurveTo(igX + s, igY + s, igX + s - r, igY + s);
+  ctx.lineTo(igX + r, igY + s);
+  ctx.quadraticCurveTo(igX, igY + s, igX, igY + s - r);
+  ctx.lineTo(igX, igY + r);
+  ctx.quadraticCurveTo(igX, igY, igX + r, igY);
+  ctx.closePath();
+  ctx.fill();
+  // Inner circle (cutout via destination-out or just bg colour ring)
+  ctx.fillStyle = T.surface;
+  ctx.beginPath();
+  ctx.arc(igX + s / 2, igY + s / 2, s * 0.27, 0, Math.PI * 2);
+  ctx.fill();
+  // Dot top-right
+  ctx.fillStyle = T.muted;
+  ctx.beginPath();
+  ctx.arc(igX + s - 3.5, igY + 3.5, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  // Outer ring outline
+  ctx.strokeStyle = T.surface;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(igX + s / 2, igY + s / 2, s * 0.27 + 1, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Handle text
+  ctx.fillStyle = T.muted;
+  ctx.font = `13px ${FONT}`;
+  ctx.textAlign = "left";
+  ctx.fillText(igLabel, igX + igIconSize + igGap, H - 22);
   ctx.textAlign = "left";
 
   return canvas;

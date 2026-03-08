@@ -1225,9 +1225,18 @@ function resolveGelProduct(data: PlanFormValues): GelProduct | undefined {
 
 // ─── CHOICE STEP ──────────────────────────────────────────────────────────────
 
+function ExamplePlanRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: "8px", padding: "5px 0", borderBottom: "1px solid var(--border)" }}>
+      <span style={{ fontSize: "10px", color: "var(--text-muted)", letterSpacing: "0.08em", textTransform: "uppercase", whiteSpace: "nowrap" }}>{label}</span>
+      <span style={{ fontSize: "11px", color: "var(--text)", fontWeight: 600, textAlign: "right" }}>{value}</span>
+    </div>
+  );
+}
+
 function ChoiceStep({ onChoice }: { onChoice: (type: "race" | "session") => void }) {
   const cardBase: React.CSSProperties = {
-    padding: "36px 28px",
+    padding: "24px 22px",
     border: "1px solid var(--border)",
     borderRadius: "6px",
     background: "var(--surface)",
@@ -1237,7 +1246,8 @@ function ChoiceStep({ onChoice }: { onChoice: (type: "race" | "session") => void
     transition: "border-color 0.15s, background 0.15s",
     display: "flex",
     flexDirection: "column",
-    gap: "12px",
+    gap: "16px",
+    width: "100%",
   };
 
   return (
@@ -1259,14 +1269,20 @@ function ChoiceStep({ onChoice }: { onChoice: (type: "race" | "session") => void
             (e.currentTarget as HTMLElement).style.background = "var(--surface)";
           }}
         >
-          <p style={{ fontSize: "22px", margin: 0 }}>🏁</p>
           <div>
-            <p style={{ fontSize: "16px", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)", margin: "0 0 6px" }}>
+            <p style={{ fontSize: "15px", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)", margin: "0 0 5px" }}>
               Fuel for race
             </p>
-            <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>
-              Competition day. Targets biased to upper end — maximise performance.
+            <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>
+              Competition day — targets biased to upper end.
             </p>
+          </div>
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: "12px", display: "flex", flexDirection: "column", gap: "0px" }}>
+            <p style={{ fontSize: "9px", color: "var(--text-muted)", letterSpacing: "0.14em", textTransform: "uppercase", margin: "0 0 8px" }}>Example output</p>
+            <ExamplePlanRow label="Carb target" value="90 g/hr" />
+            <ExamplePlanRow label="Intakes" value="3 × gel · 2 × bar" />
+            <ExamplePlanRow label="Schedule" value="Pre · 45km · 90km" />
+            <ExamplePlanRow label="Sodium" value="600–900 mg/hr" />
           </div>
         </button>
 
@@ -1283,14 +1299,20 @@ function ChoiceStep({ onChoice }: { onChoice: (type: "race" | "session") => void
             (e.currentTarget as HTMLElement).style.background = "var(--surface)";
           }}
         >
-          <p style={{ fontSize: "22px", margin: 0 }}>⚡</p>
           <div>
-            <p style={{ fontSize: "16px", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)", margin: "0 0 6px" }}>
+            <p style={{ fontSize: "15px", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)", margin: "0 0 5px" }}>
               Fuel for session
             </p>
-            <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>
-              Training, intervals, long runs, tempo — practice your strategy.
+            <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>
+              Training, intervals, long runs, tempo.
             </p>
+          </div>
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: "12px", display: "flex", flexDirection: "column", gap: "0px" }}>
+            <p style={{ fontSize: "9px", color: "var(--text-muted)", letterSpacing: "0.14em", textTransform: "uppercase", margin: "0 0 8px" }}>Example output</p>
+            <ExamplePlanRow label="Carb target" value="60 g/hr" />
+            <ExamplePlanRow label="Intakes" value="1 × gel · sports drink" />
+            <ExamplePlanRow label="Schedule" value="Pre · 20 min · 40 min" />
+            <ExamplePlanRow label="Caffeine" value="200 mg pre-session" />
           </div>
         </button>
       </div>

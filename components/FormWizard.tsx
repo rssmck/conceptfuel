@@ -48,6 +48,115 @@ const TRAINING_GOALS: { value: TrainingGoal; label: string; desc: string }[] = [
 
 const DURATIONS = [45, 60, 75, 90];
 
+// ─── Exercise glossary ────────────────────────────────────────────────────────
+// Brief description of each lift for display in the main workout section.
+
+const EXERCISE_GLOSSARY: Record<string, { muscles: string; desc: string }> = {
+  // Legs
+  "Barbell back squat":             { muscles: "Quads · Glutes · Hamstrings", desc: "King of lower-body compounds. Bar on traps, squat to depth, drive through the floor." },
+  "Romanian deadlift":              { muscles: "Hamstrings · Glutes · Lower back", desc: "Hip-hinge movement keeping a long spine. Lower the bar by pushing your hips back, not bending the knees." },
+  "Bulgarian split squat":          { muscles: "Quads · Glutes · Hip flexors", desc: "Rear foot elevated single-leg squat. High quad and glute demand, great for fixing imbalances." },
+  "Bulgarian split squat (bodyweight)": { muscles: "Quads · Glutes · Hip flexors", desc: "Bodyweight version of the split squat — rear foot elevated on a bench." },
+  "Barbell hip thrust":             { muscles: "Glutes · Hamstrings", desc: "Bar across your hips, upper back on a bench. Drive through your heels until your hips lock out fully." },
+  "Good morning":                   { muscles: "Hamstrings · Glutes · Lower back", desc: "Bar on traps, hinge forward at the hips. A demanding posterior chain movement — keep the spine neutral." },
+  "Leg press":                      { muscles: "Quads · Glutes · Hamstrings", desc: "Machine compound push. Foot position affects muscle emphasis — higher = more glute, lower = more quad." },
+  "Hack squat":                     { muscles: "Quads · Glutes", desc: "Machine squat with an upright torso. Heavy quad emphasis — great for building mass." },
+  "Lying leg curl":                 { muscles: "Hamstrings", desc: "Isolation for the hamstrings lying face down. Control the lowering phase for maximum effect." },
+  "Leg extension":                  { muscles: "Quadriceps", desc: "Seated knee-extension machine isolating the quad. Useful for adding volume without spinal load." },
+  "Seated calf raise":              { muscles: "Soleus (lower calf)", desc: "Performed seated, this targets the soleus — the deeper calf muscle beneath the gastrocnemius." },
+  "Squat":                          { muscles: "Quads · Glutes · Core", desc: "Foundational bodyweight squat. Feet hip-width apart, chest up, sit back and down, drive through the whole foot." },
+  "Walking lunges":                 { muscles: "Quads · Glutes · Balance", desc: "Step forward into a lunge, driving the back knee close to the floor. Great for unilateral leg development." },
+  "Nordic hamstring curl":          { muscles: "Hamstrings (eccentric)", desc: "Kneel with feet anchored, lower your torso slowly under control. One of the best injury-prevention tools for runners." },
+  "Jump squat":                     { muscles: "Quads · Glutes · Power", desc: "Squat down then explode into a jump. Develops lower body power and rate of force development." },
+  "Dumbbell goblet squat":          { muscles: "Quads · Glutes · Core", desc: "Hold a dumbbell at chest height and squat. Keeps the torso upright — excellent technique builder." },
+  "Dumbbell Romanian deadlift":     { muscles: "Hamstrings · Glutes", desc: "Same movement as the barbell RDL but with dumbbells — often easier on the lower back." },
+  // Glutes
+  "Sumo deadlift":                  { muscles: "Inner thighs · Glutes · Hamstrings", desc: "Wide-stance deadlift with toes flared out. Greater adductor and glute involvement than conventional." },
+  "Single-leg RDL":                 { muscles: "Hamstrings · Glutes · Balance", desc: "Single-leg hip hinge — the non-working leg floats behind. Demands stability and posterior chain control." },
+  "Goblet squat":                   { muscles: "Quads · Glutes · Core", desc: "Hold a dumbbell or kettlebell at chest, squat with an upright torso. Beginner-friendly and very effective." },
+  "Hip thrust machine":             { muscles: "Glutes", desc: "Machine version of the hip thrust — isolates the glutes with guided resistance." },
+  "Cable kickback":                 { muscles: "Glute max", desc: "Cable attached to ankle, kick the leg back and up. Good for building the mind-muscle connection with your glutes." },
+  "Hip abduction machine":          { muscles: "Glute medius · Outer hip", desc: "Seated machine pushing the legs apart. Targets the glute medius — important for knee tracking and hip stability." },
+  "Leg press (feet high, wide)":    { muscles: "Glutes · Hamstrings", desc: "High, wide foot placement shifts the emphasis away from quads and onto the glutes and hamstrings." },
+  "Seated leg curl":                { muscles: "Hamstrings", desc: "Hamstring isolation in a seated position — slightly different feel to the lying version." },
+  "Hip thrust (bodyweight)":        { muscles: "Glutes", desc: "Bodyweight hip thrust with upper back on a bench. Great activation exercise before adding load." },
+  "Glute bridge":                   { muscles: "Glutes · Hamstrings", desc: "Floor-based glute activation — lie on your back, drive your hips to the ceiling. A good warm-up or finisher." },
+  "Single-leg glute bridge":        { muscles: "Glutes · Core", desc: "Same as the glute bridge but one leg raised — adds a stability challenge and increases load per side." },
+  "Sumo squat":                     { muscles: "Inner thighs · Glutes · Quads", desc: "Wide-stance squat with toes flared. Targets the inner thighs more than a standard squat." },
+  "Step-up":                        { muscles: "Quads · Glutes", desc: "Step onto a box or bench with one foot and drive the body up. Excellent unilateral strength builder." },
+  "Dumbbell sumo deadlift":         { muscles: "Inner thighs · Glutes · Hamstrings", desc: "Wide-stance deadlift holding dumbbells. More accessible than the barbell version." },
+  // Back
+  "Deadlift":                       { muscles: "Full posterior chain · Traps · Core", desc: "The fundamental pull. Lift a barbell from the floor to lockout — builds total body strength and posterior chain mass." },
+  "Bent-over barbell row":          { muscles: "Lats · Rhomboids · Rear delts", desc: "Barbell held at hip height, torso hinged forward. Pull the bar to your lower sternum. A cornerstone back builder." },
+  "Single-arm dumbbell row":        { muscles: "Lats · Rhomboids", desc: "One knee and hand braced on a bench. Pull the dumbbell to your hip. Focus on driving the elbow back." },
+  "Pull-up / chin-up":              { muscles: "Lats · Biceps · Upper back", desc: "Hang from a bar and pull your chin over it. Pull-up = overhand (lats), chin-up = underhand (more bicep)." },
+  "Meadows row":                    { muscles: "Lats · Mid-back", desc: "One end of a barbell in a landmine, row from a staggered stance. Excellent for lat thickness." },
+  "Lat pulldown":                   { muscles: "Lats · Biceps", desc: "Cable vertical pull with a wide bar. Pull to the top of your chest — a great substitute or complement to pull-ups." },
+  "Seated cable row":               { muscles: "Mid-back · Lats · Rhomboids", desc: "Horizontal cable pull with a close grip. Retract the shoulder blades at the top of each rep." },
+  "Machine chest-supported row":    { muscles: "Mid-back · Rear delts", desc: "Chest resting on a pad removes lower-back stress. Lets you focus purely on the pulling muscles." },
+  "Assisted pull-up":               { muscles: "Lats · Biceps", desc: "Machine-assisted version — counterweight reduces the load. Great for building pull-up strength progressively." },
+  "Face pull":                      { muscles: "Rear delts · External rotators", desc: "Cable pulled to the face with a rope attachment. Essential for shoulder health and posture." },
+  "Pull-up":                        { muscles: "Lats · Biceps · Upper back", desc: "Overhand grip pull from a dead hang to chin over bar. One of the best upper-body strength tests." },
+  "Chin-up":                        { muscles: "Lats · Biceps", desc: "Underhand grip — slightly more bicep involvement than a pull-up. Easier for most people to start with." },
+  "Inverted row":                   { muscles: "Lats · Rhomboids · Biceps", desc: "Hang below a fixed bar and pull your chest up to it. A horizontal bodyweight pull — scalable by foot position." },
+  "Dead hang":                      { muscles: "Grip · Shoulders · Decompression", desc: "Simply hang from a bar with straight arms. Decompresses the spine and builds grip and shoulder health." },
+  "Superman hold":                  { muscles: "Lower back · Glutes", desc: "Lie face down, raise arms and legs off the floor simultaneously. Activates the lower back and posterior chain." },
+  "Dumbbell single-arm row":        { muscles: "Lats · Rhomboids", desc: "Unilateral horizontal pull using a dumbbell. Focus on keeping your torso square and driving the elbow straight back." },
+  "Cable row":                      { muscles: "Mid-back · Lats", desc: "Seated cable pull with a variety of grips. Consistent tension throughout the range of motion." },
+  // Chest
+  "Barbell bench press":            { muscles: "Pectorals · Anterior delts · Triceps", desc: "The standard horizontal push. Flat back, feet on the floor, bar touches the lower chest and drives back to lockout." },
+  "Dumbbell bench press":           { muscles: "Pectorals · Anterior delts · Triceps", desc: "Greater range of motion than barbell. Each arm works independently, which can expose and correct imbalances." },
+  "Incline bench press":            { muscles: "Upper pectorals · Anterior delts", desc: "Bench set to 30–45°. Shifts emphasis to the upper chest and front deltoid." },
+  "Cable flye":                     { muscles: "Pectorals", desc: "Cable set at mid-height, arms arc inward like a hug. Excellent chest isolation with tension at full stretch." },
+  "Press-up":                       { muscles: "Pectorals · Triceps · Anterior delts", desc: "Classic bodyweight horizontal push. Keep your body in a straight line from head to heel." },
+  "Diamond press-up":               { muscles: "Triceps · Inner chest", desc: "Narrow hand placement under the chest forms a diamond shape. Tricep-dominant push-up variation." },
+  "Dumbbell flye":                  { muscles: "Pectorals", desc: "Lying on a bench, arc dumbbells out and down then squeeze back together. A chest isolation movement with a good stretch." },
+  "Chest press machine":            { muscles: "Pectorals · Triceps", desc: "Guided horizontal push — good for learning the movement pattern or training to failure safely." },
+  "Cable crossover":                { muscles: "Pectorals", desc: "Cables set high, pull handles down and across in front of you. Maintains tension on the pecs at full contraction." },
+  // Shoulders
+  "Overhead press":                 { muscles: "Anterior & medial delts · Triceps · Upper traps", desc: "Press a barbell or dumbbells overhead to lockout. One of the key indicators of upper body strength." },
+  "Arnold press":                   { muscles: "All three delt heads", desc: "Start with palms facing you, rotate as you press. Named after Arnold Schwarzenegger — hits all deltoid heads." },
+  "Lateral raise":                  { muscles: "Medial delts", desc: "Raise dumbbells out to the side to shoulder height. Isolation for the side deltoid — the muscle that creates shoulder width." },
+  "Dumbbell overhead press":        { muscles: "Anterior & medial delts · Triceps", desc: "Same pattern as the barbell OHP but with dumbbells — greater range of motion and shoulder stability demand." },
+  "Seated machine press":           { muscles: "Anterior & medial delts · Triceps", desc: "Guided overhead press on a machine. Lower back is supported — good option for volume or when fatigued." },
+  "Cable lateral raise":            { muscles: "Medial delts", desc: "Cable provides constant tension unlike dumbbells — the resistance doesn't drop off at the bottom." },
+  "EZ-bar upright row":             { muscles: "Lateral delts · Upper traps", desc: "Pull the bar up to chin height with a narrow grip. Builds upper traps and side delts." },
+  "Pike press-up":                  { muscles: "Anterior delts · Triceps", desc: "Bodyweight vertical push with hips raised high. A progression towards the handstand press-up." },
+  "Handstand press-up":             { muscles: "Anterior delts · Triceps · Core", desc: "Advanced inverted press against a wall. Exceptional shoulder strength and body control required." },
+  "Band pull-apart":                { muscles: "Rear delts · External rotators", desc: "Hold a resistance band with straight arms and pull it apart at chest height. Excellent shoulder health and posture." },
+  "Machine lateral raise":          { muscles: "Medial delts", desc: "Lateral raise on a machine — isolates the side delt with guided resistance." },
+  // Arms
+  "Barbell curl":                   { muscles: "Biceps", desc: "Standard barbell bicep curl. Elbows stay at your sides — curl the bar to shoulder height then lower slowly." },
+  "Hammer curl":                    { muscles: "Brachialis · Brachioradialis · Biceps", desc: "Neutral grip dumbbell curl. Builds the muscle beneath the bicep (brachialis) for arm thickness." },
+  "Tricep pushdown":                { muscles: "Triceps", desc: "Cable pushdown with a bar or rope. Keep elbows pinned to your sides and extend to lockout." },
+  "Overhead tricep extension":      { muscles: "Triceps (long head)", desc: "Arms overhead, lower a weight behind your head. Stretches and works the long head of the tricep." },
+  "Close-grip bench press":         { muscles: "Triceps · Pectorals", desc: "Barbell press with hands shoulder-width apart. Shifts emphasis from the chest to the triceps." },
+  "Preacher curl":                  { muscles: "Biceps (short head)", desc: "Arms resting on an angled pad — removes momentum. Isolates the bicep, especially the short head." },
+  "Dumbbell curl":                  { muscles: "Biceps", desc: "Alternating or simultaneous dumbbell curls. Classic bicep isolation movement." },
+  "Concentration curl":             { muscles: "Biceps (peak)", desc: "Seated, elbow braced against inner thigh. Fully isolates the bicep — good for building the peak." },
+  "Machine bicep curl":             { muscles: "Biceps", desc: "Guided bicep isolation on a machine. Good for consistent form and training to failure." },
+  "Cable bicep curl":               { muscles: "Biceps", desc: "Curl with a cable for constant tension throughout the full range of motion." },
+  "Rope pushdown":                  { muscles: "Triceps (lateral & medial heads)", desc: "Rope attachment spreads at the bottom allowing the wrists to pronate — better lateral head activation." },
+  "Skull crushers":                 { muscles: "Triceps (long head)", desc: "Lower a barbell or EZ-bar to your forehead then extend. A classic tricep mass builder." },
+  "Machine tricep extension":       { muscles: "Triceps", desc: "Guided tricep isolation. Useful for adding volume safely." },
+  "Chair dip (tricep)":             { muscles: "Triceps · Anterior delts", desc: "Hands on a chair, lower your body and press back up. Beginner-friendly bodyweight tricep exercise." },
+  // Core
+  "Plank":                          { muscles: "Core · Anterior chain", desc: "Forearms on the floor, body rigid and straight. An isometric hold for core stability — quality over duration." },
+  "Dead bug":                       { muscles: "Core (anti-extension)", desc: "Lie on your back, lower opposite arm and leg simultaneously. Teaches the core to resist extension — safe and effective." },
+  "Ab wheel rollout":               { muscles: "Core · Lats · Shoulders", desc: "Roll out from kneeling until your arms are extended, then pull back. High-demand core stability exercise." },
+  "Hollow hold":                    { muscles: "Core (compression)", desc: "Lie on your back and hollow out your midline — lower back pressed flat. A gymnastics staple for core control." },
+  "Hanging leg raise":              { muscles: "Lower abs · Hip flexors", desc: "Hang from a bar and raise your legs. Keep them straight for maximum challenge, bent for an easier start." },
+  "Cable crunch":                   { muscles: "Rectus abdominis", desc: "Kneel at a cable, pull the rope to crunch your spine. Weighted ab exercise allowing progressive overload." },
+  "Russian twist":                  { muscles: "Obliques · Core", desc: "Seated with feet off the floor, rotate side to side. A rotational core exercise — add a weight for more challenge." },
+  "Side plank":                     { muscles: "Obliques · Lateral core", desc: "Lie on one forearm and hold the body in a rigid lateral line. Targets the obliques and quadratus lumborum." },
+  // Full body / hybrid
+  "KB swing":                       { muscles: "Posterior chain · Glutes · Power", desc: "Hip hinge to drive a kettlebell forward explosively. A fantastic conditioning and posterior chain movement." },
+  "Farmer's carry":                 { muscles: "Grip · Core · Traps · Total body", desc: "Pick up heavy weights and walk. Builds total body stability, grip strength, and core stiffness." },
+  "Push press":                     { muscles: "Delts · Triceps · Legs (drive)", desc: "Dip and drive with the legs to press a barbell overhead. More weight than a strict press — develops power." },
+  "Assault bike sprint":            { muscles: "Total body conditioning", desc: "Arms and legs drive the fan bike. Maximum effort for short intervals — brutal and highly effective." },
+  "Battle ropes":                   { muscles: "Upper body · Conditioning", desc: "Slam, wave, or alternate heavy ropes. Upper body power endurance and a significant cardiovascular challenge." },
+};
+
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const labelStyle: React.CSSProperties = {
@@ -470,6 +579,80 @@ function FormResults({ plan, name }: { plan: FormPlanOutput; name?: string }) {
         </div>
       </div>
 
+      {/* Main workout — primary lifts extracted from session_structure */}
+      {(() => {
+        const primaryBlock = plan.session_structure.find((b) => b.phase === "Primary lifts");
+        if (!primaryBlock) return null;
+        return (
+          <div>
+            <div style={{ marginBottom: "14px" }}>
+              <p style={{ fontSize: "11px", color: "var(--text-muted)", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 4px" }}>
+                Main workout · {primaryBlock.duration_min} min
+              </p>
+              <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0, lineHeight: 1.5 }}>
+                The primary lifts for today&apos;s session. These are the heaviest, most demanding exercises — do them first when you&apos;re freshest.
+              </p>
+            </div>
+
+            {/* Rep scheme note */}
+            {primaryBlock.note && (
+              <div style={{ padding: "10px 16px", background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: "6px 6px 0 0", marginBottom: "1px" }}>
+                <p style={{ fontSize: "11px", color: "var(--accent-dim)", margin: 0, fontWeight: 600 }}>
+                  {primaryBlock.note}
+                </p>
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "1px", border: "1px solid var(--border)", borderRadius: primaryBlock.note ? "0 0 6px 6px" : "6px", overflow: "hidden" }}>
+              {primaryBlock.items.map((exercise, idx) => {
+                const info = EXERCISE_GLOSSARY[exercise];
+                return (
+                  <div
+                    key={exercise}
+                    style={{
+                      padding: "14px 18px",
+                      background: idx % 2 === 0 ? "var(--surface)" : "var(--surface-2)",
+                      borderBottom: "1px solid var(--border)",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", marginBottom: info ? "6px" : 0 }}>
+                      <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--text)", margin: 0, letterSpacing: "-0.01em" }}>
+                        {idx + 1}. {exercise}
+                      </p>
+                      {info && (
+                        <span style={{ fontSize: "10px", color: "var(--accent-dim)", whiteSpace: "nowrap", fontWeight: 600, letterSpacing: "0.04em", paddingTop: "2px" }}>
+                          {info.muscles}
+                        </span>
+                      )}
+                    </div>
+                    {info && (
+                      <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>
+                        {info.desc}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ padding: "10px 14px", background: "var(--surface-2)", border: "1px solid var(--border)", borderTop: "none", borderRadius: "0 0 6px 6px" }}>
+              <p style={{ fontSize: "10px", color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>
+                Not sure about an exercise?{" "}
+                <a
+                  href="https://www.youtube.com/@AlanThrall"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--accent-dim)", textDecoration: "none" }}
+                >
+                  Alan Thrall on YouTube
+                </a>
+                {" "}has clear demo videos for most barbell and dumbbell movements.
+              </p>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Macros */}
       <div>
         <p style={{ fontSize: "11px", color: "var(--text-muted)", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: "14px" }}>
@@ -778,10 +961,47 @@ function buildFormShareCanvas(
   ctx.fillStyle = T.dimmed;
   ctx.fillText("Build your session plan →", 60, H - 22);
 
-  ctx.font = `bold 13px ${FONT}`;
+  // Instagram handle with icon (right-aligned, subtle)
+  const igLabel = "@conceptathletic";
+  ctx.font = `13px ${FONT}`;
+  const igLabelW = ctx.measureText(igLabel).width;
+  const igIconSize = 14;
+  const igGap = 6;
+  const igTotalW = igIconSize + igGap + igLabelW;
+  const igX = W - 60 - igTotalW;
+  const igY = H - 29;
+
   ctx.fillStyle = T.muted;
-  ctx.textAlign = "right";
-  ctx.fillText("conceptathletic.com/form", W - 60, H - 22);
+  const r = 3; const s = igIconSize;
+  ctx.beginPath();
+  ctx.moveTo(igX + r, igY); ctx.lineTo(igX + s - r, igY);
+  ctx.quadraticCurveTo(igX + s, igY, igX + s, igY + r);
+  ctx.lineTo(igX + s, igY + s - r);
+  ctx.quadraticCurveTo(igX + s, igY + s, igX + s - r, igY + s);
+  ctx.lineTo(igX + r, igY + s);
+  ctx.quadraticCurveTo(igX, igY + s, igX, igY + s - r);
+  ctx.lineTo(igX, igY + r);
+  ctx.quadraticCurveTo(igX, igY, igX + r, igY);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = T.surface;
+  ctx.beginPath();
+  ctx.arc(igX + s / 2, igY + s / 2, s * 0.27, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = T.muted;
+  ctx.beginPath();
+  ctx.arc(igX + s - 3.5, igY + 3.5, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = T.surface;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(igX + s / 2, igY + s / 2, s * 0.27 + 1, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.fillStyle = T.muted;
+  ctx.font = `13px ${FONT}`;
+  ctx.textAlign = "left";
+  ctx.fillText(igLabel, igX + igIconSize + igGap, H - 22);
   ctx.textAlign = "left";
 
   return canvas;
