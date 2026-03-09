@@ -14,6 +14,7 @@ export interface FormInput {
   goal:            TrainingGoal
   duration_minutes: number
   weight_kg?:      number
+  include_warmup?: boolean   // default true
 }
 
 export interface SessionBlock {
@@ -368,9 +369,10 @@ function buildSessionStructure(input: FormInput): SessionBlock[] {
   const types = resolveTypes(input.session_type)
   const session_type = types[0]
   const blocks: SessionBlock[] = []
+  const withWarmUp = input.include_warmup !== false
 
   // Time allocation
-  const warmUpMin  = duration_minutes <= 30 ? 5 : duration_minutes <= 60 ? 8 : 10
+  const warmUpMin  = withWarmUp ? (duration_minutes <= 30 ? 5 : duration_minutes <= 60 ? 8 : 10) : 0
   const coolDownMin = duration_minutes <= 30 ? 5 : 7
   const cardioMin: Record<CardioLevel, number> = { none: 0, short: 12, moderate: 25, endurance: 40 }
   const cardioTime = cardioMin[cardio]
@@ -378,12 +380,14 @@ function buildSessionStructure(input: FormInput): SessionBlock[] {
   const primaryMin = Math.round(remaining * 0.6)
   const accessoryMin = remaining - primaryMin
 
-  // Warm-up
-  const warmUpItems = [
-    `${Math.round(warmUpMin * 0.4)} min light cardio (bike, row or treadmill) to elevate core temp`,
-    ...WARM_UP_MOBILITY[session_type].slice(0, 3).map(m => m.name),
-  ]
-  blocks.push({ phase: 'Warm-up', duration_min: warmUpMin, items: warmUpItems })
+  // Warm-up (optional)
+  if (withWarmUp) {
+    const warmUpItems = [
+      `${Math.round(warmUpMin * 0.4)} min light cardio (bike, row or treadmill) to elevate core temp`,
+      ...WARM_UP_MOBILITY[session_type].slice(0, 3).map(m => m.name),
+    ]
+    blocks.push({ phase: 'Warm-up', duration_min: warmUpMin, items: warmUpItems })
+  }
 
   // Primary lifts — distribute across all selected types
   const primaryCount = duration_minutes >= 60 ? 4 : 3
@@ -557,6 +561,7 @@ export function generateFormPlan(input: FormInput): FormPlanOutput {
         : 'Light to moderate soreness is normal. Active recovery (walk, mobility session) outperforms complete rest.',
     },
     warm_up_mobility:   (() => {
+      if (input.include_warmup === false) return []
       const types = resolveTypes(input.session_type)
       if (types.length === 1) return WARM_UP_MOBILITY[types[0]]
       return dedupeByName(types.flatMap(t => WARM_UP_MOBILITY[t]))

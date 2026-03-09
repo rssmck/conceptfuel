@@ -9,6 +9,8 @@ import {
   type CardioLevel,
   type TrainingGoal,
 } from "@/lib/formEngine";
+import { useAuth } from "@/contexts/AuthContext";
+import { createClient } from "@/lib/supabase/client";
 
 // ─── Option maps ──────────────────────────────────────────────────────────────
 
@@ -243,6 +245,7 @@ function ConfigureStep({
   const [goal, setGoal]                     = useState<TrainingGoal | null>(null);
   const [duration, setDuration]             = useState<number>(60);
   const [weight, setWeight]                 = useState<string>("");
+  const [includeWarmup, setIncludeWarmup]   = useState<boolean>(true);
   const [error, setError]                   = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -261,6 +264,7 @@ function ConfigureStep({
         goal,
         duration_minutes: duration,
         weight_kg:        weightNum && !isNaN(weightNum) ? weightNum : undefined,
+        include_warmup:   includeWarmup,
       },
       name.trim(),
       sex
@@ -439,6 +443,36 @@ function ConfigureStep({
             <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "6px" }}>
               Used for protein targets
             </p>
+          </div>
+        </div>
+
+        {/* Warm-up toggle */}
+        <div>
+          <span style={labelStyle}>Warm-up</span>
+          <div style={{ display: "flex", gap: "8px" }}>
+            {[
+              { val: true,  label: "Include warm-up" },
+              { val: false, label: "Skip warm-up" },
+            ].map(({ val, label }) => (
+              <button
+                key={String(val)}
+                type="button"
+                onClick={() => setIncludeWarmup(val)}
+                style={{
+                  padding: "8px 16px",
+                  border: `1px solid ${includeWarmup === val ? "var(--accent)" : "var(--border)"}`,
+                  borderRadius: "4px",
+                  background: "var(--surface)",
+                  color: includeWarmup === val ? "var(--accent)" : "var(--text-muted)",
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -1323,9 +1357,12 @@ function FormShareSection({
   input: FormInput | null;
   name?: string;
 }) {
+  const { user, openAuth }            = useAuth();
   const [copied, setCopied]           = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [savingWorkout, setSavingWorkout] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved]   = useState(false);
   const [canShare]                    = useState(() => typeof navigator !== "undefined" && !!navigator.share);
 
   const shareText = `My ${plan.protocol_name} session plan from concept//form.\n\nconceptathletic.com/form`;
@@ -1369,6 +1406,30 @@ function FormShareSection({
       link.click();
     } finally {
       setSavingWorkout(false);
+    }
+  };
+
+  const handleSaveToProfile = async () => {
+    if (!user) { openAuth("signup"); return; }
+    setSavingProfile(true);
+    try {
+      const supabase = createClient();
+      const types = Array.isArray(input?.session_type)
+        ? input.session_type
+        : input?.session_type ? [input.session_type] : [];
+      await supabase.from("saved_workouts").insert({
+        user_id:          user.id,
+        label:            plan.protocol_name,
+        session_type:     types,
+        duration_minutes: input?.duration_minutes ?? 0,
+        goal:             input?.goal ?? "",
+        plan_json:        plan,
+        input_json:       input,
+      });
+      setProfileSaved(true);
+      setTimeout(() => setProfileSaved(false), 3000);
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -1436,21 +1497,41 @@ function FormShareSection({
         >
           Gym reference
         </p>
-        <button
-          onClick={handleSaveWorkout}
-          disabled={savingWorkout}
-          style={{
-            ...btnStyle(true),
-            width: "100%",
-            justifyContent: "center",
-            padding: "13px 18px",
-            fontSize: "14px",
-          }}
-        >
-          {savingWorkout ? "Building…" : "↓ Save full workout to device"}
-        </button>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <button
+            onClick={handleSaveWorkout}
+            disabled={savingWorkout}
+            style={{
+              ...btnStyle(true),
+              flex: 1,
+              justifyContent: "center",
+              padding: "13px 18px",
+              fontSize: "14px",
+            }}
+          >
+            {savingWorkout ? "Building…" : "↓ Save to device"}
+          </button>
+          <button
+            onClick={handleSaveToProfile}
+            disabled={savingProfile || profileSaved}
+            style={{
+              ...btnStyle(),
+              flex: 1,
+              justifyContent: "center",
+              padding: "13px 18px",
+              fontSize: "14px",
+              ...(profileSaved ? {
+                background: "rgba(68,255,136,0.1)",
+                color: "var(--success, #44ff88)",
+                border: "1px solid rgba(68,255,136,0.3)",
+              } : {}),
+            }}
+          >
+            {profileSaved ? "✓ Saved to profile" : savingProfile ? "Saving…" : user ? "Save to profile" : "Sign in to save"}
+          </button>
+        </div>
         <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "8px", lineHeight: 1.6 }}>
-          Full workout card — structure, exercises, mobility, nutrition. Save to your camera roll and open in the gym.
+          Full workout card — structure, exercises, mobility, nutrition. Save to device or your profile.
         </p>
       </div>
 
