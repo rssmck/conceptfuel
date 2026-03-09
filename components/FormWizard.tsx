@@ -16,15 +16,18 @@ import { addFormSessionToCalendar } from "@/lib/calendar";
 // ─── Option maps ──────────────────────────────────────────────────────────────
 
 const SESSION_TYPES: { value: SessionType; label: string }[] = [
-  { value: "legs",       label: "Legs" },
-  { value: "glutes",     label: "Glutes" },
-  { value: "back",       label: "Back" },
-  { value: "chest",      label: "Chest" },
-  { value: "shoulders",  label: "Shoulders" },
-  { value: "arms",       label: "Arms" },
-  { value: "core",       label: "Core" },
-  { value: "full_body",  label: "Full body" },
-  { value: "hybrid",     label: "Hybrid" },
+  { value: "legs",             label: "Legs" },
+  { value: "glutes",           label: "Glutes" },
+  { value: "back",             label: "Back" },
+  { value: "chest",            label: "Chest" },
+  { value: "shoulders",        label: "Shoulders" },
+  { value: "arms",             label: "Arms" },
+  { value: "core",             label: "Core" },
+  { value: "full_body",        label: "Full body" },
+  { value: "hybrid",           label: "Hybrid" },
+  { value: "runner_strength",  label: "Runner strength" },
+  { value: "sprint_power",     label: "Sprint / Power" },
+  { value: "plyo",             label: "Plyometrics" },
 ];
 
 const TRAINING_STYLES: { value: TrainingStyle; label: string; desc: string }[] = [
@@ -163,6 +166,21 @@ const EXERCISE_GLOSSARY: Record<string, { muscles: string; desc: string }> = {
   "Push press":                     { muscles: "Delts · Triceps · Legs (drive)", desc: "Dip and drive with the legs to press a barbell overhead. More weight than a strict press — develops power." },
   "Assault bike sprint":            { muscles: "Total body conditioning", desc: "Arms and legs drive the fan bike. Maximum effort for short intervals — brutal and highly effective." },
   "Battle ropes":                   { muscles: "Upper body · Conditioning", desc: "Slam, wave, or alternate heavy ropes. Upper body power endurance and a significant cardiovascular challenge." },
+  // Sprint / Power & Plyometrics
+  "Power clean":                    { muscles: "Full body · Posterior chain · Power", desc: "Explosive pull from the floor into a front rack catch. One of the best rate-of-force-development movements available." },
+  "Box jump":                       { muscles: "Quads · Glutes · Calves · Power", desc: "Explode upward from a two-foot stance and land softly on a box with knees bent. Step down — don't jump down." },
+  "Broad jump":                     { muscles: "Quads · Glutes · Calves · Power", desc: "Drive horizontally from a two-foot stance and land as far forward as possible. Stick a controlled landing, reset, repeat." },
+  "Depth jump":                     { muscles: "Quads · Calves · Reactive strength", desc: "Step off a box, hit the ground, and immediately explode upward. Minimal ground contact time is the goal." },
+  "Tuck jump":                      { muscles: "Quads · Calves · Hip flexors", desc: "Jump vertically and pull both knees to your chest at the top. Land softly with soft knees, reset, repeat." },
+  "Lateral bound":                  { muscles: "Glutes · Quads · Adductors", desc: "Push off one leg and bound laterally onto the other. Stick the landing before bounding back. Develops frontal plane power." },
+  "Explosive press-up":             { muscles: "Pectorals · Triceps · Anterior delts", desc: "Lower with control, then drive up explosively — hands leave the floor at the top. Develops upper body power." },
+  "Single-leg broad jump":          { muscles: "Glutes · Quads · Calves", desc: "Single-leg horizontal jump — push off one foot and land on two. Demands unilateral power and landing control." },
+  "Ankle hops":                     { muscles: "Calves · Achilles · Ankle stiffness", desc: "Rapid low-amplitude hops using only the ankle. Minimal knee bend — build spring and calf reactive strength." },
+  "Pogos":                          { muscles: "Calves · Achilles · Reactive strength", desc: "Continuous quick bounces on the balls of the feet. Think of your lower leg as a stiff spring. Key for running economy." },
+  "Calf raise (explosive)":         { muscles: "Gastrocnemius · Soleus", desc: "Drive up fast onto the balls of your feet and lower with control. Develops calf power and ankle stiffness." },
+  "A-skip":                         { muscles: "Hip flexors · Calves · Coordination", desc: "Exaggerated skipping — drive the knee to hip height and pull the foot back under the hips on descent. A running drills staple." },
+  "Single-leg hop":                 { muscles: "Glutes · Quads · Calves · Balance", desc: "Hop repeatedly on one leg over a short distance. Develops unilateral power and reactive leg stiffness." },
+  "Reactive depth jump":            { muscles: "Quads · Calves · Reactive strength", desc: "Like a depth jump but with a horizontal or lateral bound on landing. Trains complex reactive ability." },
 };
 
 // ─── Shared styles ────────────────────────────────────────────────────────────

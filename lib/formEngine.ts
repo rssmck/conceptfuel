@@ -2,6 +2,7 @@
 
 export type SessionType =
   | 'legs' | 'glutes' | 'back' | 'chest' | 'shoulders' | 'arms' | 'core' | 'full_body' | 'hybrid'
+  | 'runner_strength' | 'sprint_power' | 'plyo'
 
 export type TrainingStyle = 'free_weights' | 'machines' | 'bodyweight' | 'mixed'
 export type CardioLevel   = 'none' | 'short' | 'moderate' | 'endurance'
@@ -130,6 +131,24 @@ const PRIMARY_EXERCISES: Record<SessionType, Record<TrainingStyle, string[]>> = 
     bodyweight:   ['Burpee', 'Box jump', 'Mountain climber', 'Squat jump', 'Push-up', 'Bear crawl'],
     mixed:        ["Deadlift", "KB swing", "Farmer's carry", "Assault bike sprint", "Battle ropes"],
   },
+  runner_strength: {
+    free_weights: ['Romanian deadlift', 'Bulgarian split squat', 'Barbell hip thrust', 'Single-leg RDL', 'Good morning'],
+    machines:     ['Leg press', 'Lying leg curl', 'Hip abduction machine', 'Leg extension', 'Seated calf raise'],
+    bodyweight:   ['Nordic hamstring curl', 'Single-leg glute bridge', 'Step-up', 'Walking lunges', 'Glute bridge'],
+    mixed:        ['Romanian deadlift', 'Bulgarian split squat', 'Leg press', 'Nordic hamstring curl', 'Hip thrust machine'],
+  },
+  sprint_power: {
+    free_weights: ['Power clean', 'Jump squat', 'Push press', 'Barbell back squat', 'Romanian deadlift'],
+    machines:     ['Assault bike sprint', 'Leg press', 'Sled push / pull', 'Seated leg curl', 'Hack squat'],
+    bodyweight:   ['Box jump', 'Broad jump', 'Jump squat', 'Explosive press-up', 'Single-leg broad jump'],
+    mixed:        ['Power clean', 'Box jump', 'Jump squat', 'Push press', 'Assault bike sprint'],
+  },
+  plyo: {
+    free_weights: ['Box jump', 'Broad jump', 'Jump squat', 'Depth jump', 'Lateral bound'],
+    machines:     ['Assault bike sprint', 'Sled push / pull', 'Box jump', 'Broad jump', 'Jump squat'],
+    bodyweight:   ['Box jump', 'Broad jump', 'Tuck jump', 'Lateral bound', 'Depth jump'],
+    mixed:        ['Box jump', 'Broad jump', 'Jump squat', 'Tuck jump', 'Lateral bound'],
+  },
 }
 
 const ACCESSORY_EXERCISES: Record<SessionType, string[]> = {
@@ -141,7 +160,10 @@ const ACCESSORY_EXERCISES: Record<SessionType, string[]> = {
   arms:      ['Preacher curl', 'Rope pushdown', 'Concentration curl', 'Cable overhead extension', 'Reverse curl'],
   core:      ['Side plank', 'Cable woodchop', 'Dead bug', 'Pallof press', 'Hanging knee raise'],
   full_body: ['Face pull', 'Lateral raise', 'Leg curl', 'Cable crunch', 'Single-leg press'],
-  hybrid:    ['Box jump', 'Assault bike interval', 'KB swing', 'Battle ropes', 'Plank circuit'],
+  hybrid:         ['Box jump', 'Assault bike interval', 'KB swing', 'Battle ropes', 'Plank circuit'],
+  runner_strength: ['Nordic hamstring curl', 'Standing calf raise', 'Hip abduction machine', 'Side plank', 'Dead bug'],
+  sprint_power:    ['Ankle hops', 'Depth jump', 'Calf raise (explosive)', 'Single-leg press', 'Pogos'],
+  plyo:            ['Pogos', 'Ankle hops', 'A-skip', 'Single-leg hop', 'Reactive depth jump'],
 }
 
 const REP_SCHEMES: Record<TrainingGoal, string> = {
@@ -219,6 +241,30 @@ const WARM_UP_MOBILITY: Record<SessionType, MobilityItem[]> = {
     { name: 'High knee march', cue: 'Exaggerated march, drive knee to hip height', hold: '30s' },
     { name: 'Lateral shuffle', cue: 'Stay low, quick lateral steps, 5m each way', hold: '4 × 5m' },
   ],
+  runner_strength: [
+    { name: 'Hip circle', cue: 'Hands on hips, large controlled circles', hold: '10 each direction' },
+    { name: 'Leg swing (front to back)', cue: 'Hold wall, swing leg through full range', hold: '10 each leg' },
+    { name: 'Lateral leg swing', cue: 'Hold wall, swing leg across body and out', hold: '10 each leg' },
+    { name: 'Clamshell (bodyweight)', cue: 'Side-lying, feet stacked, rotate top knee up', hold: '15 each side' },
+    { name: 'Bodyweight glute bridge', cue: 'Drive hips high, squeeze at top for 1s', hold: '2 × 15 reps' },
+    { name: 'Single-leg balance hold', cue: 'Stand on one leg, slight knee bend, hold still', hold: '30s each side' },
+  ],
+  sprint_power: [
+    { name: 'High knee march', cue: 'Exaggerated march, drive knee to hip height, pump arms', hold: '2 × 20m' },
+    { name: 'Leg swing (front to back)', cue: 'Hold wall, swing leg through full range — increasing amplitude', hold: '10 each leg' },
+    { name: 'Lateral leg swing', cue: 'Hold wall, swing leg across body and out', hold: '10 each leg' },
+    { name: 'Hip circle', cue: 'Hands on hips, large circles both directions', hold: '10 each direction' },
+    { name: 'Ankle circle', cue: 'Draw full circles at the ankle joint', hold: '10 each direction' },
+    { name: 'A-skip (slow)', cue: 'Exaggerated skipping — drive knee up, pull foot beneath hips', hold: '2 × 15m' },
+  ],
+  plyo: [
+    { name: 'Ankling drill', cue: 'Quick, low-amplitude toe-off contacts — stay on balls of feet', hold: '2 × 20m' },
+    { name: 'High knee march', cue: 'Exaggerated march building to a fast tempo', hold: '2 × 20m' },
+    { name: 'Leg swing (front to back)', cue: 'Increasing range with each rep', hold: '10 each leg' },
+    { name: 'Hip circle', cue: 'Hands on hips, large controlled circles', hold: '10 each direction' },
+    { name: 'Pogos (easy)', cue: 'Gentle continuous hops on the balls of the feet — ankle spring, minimal knee', hold: '3 × 10s' },
+    { name: 'A-skip', cue: 'Drive knee to hip height, foot pulls back under hips on descent', hold: '2 × 20m' },
+  ],
 }
 
 const COOL_DOWN_MOBILITY: Record<SessionType, MobilityItem[]> = {
@@ -289,6 +335,27 @@ const COOL_DOWN_MOBILITY: Record<SessionType, MobilityItem[]> = {
     { name: 'Doorframe chest stretch', cue: 'Open chest and anterior shoulders', hold: '30s' },
     { name: 'Supine twist', cue: 'Lying on back, knee across to opposite side', hold: '30s each side' },
   ],
+  runner_strength: [
+    { name: 'Hip flexor lunge stretch', cue: 'Back knee down, drive hips forward — essential after posterior chain work', hold: '60s each side' },
+    { name: 'Pigeon pose', cue: 'Front shin forward, fold gently over leg', hold: '60s each side' },
+    { name: 'Standing hamstring fold', cue: 'Hinge at hip, soft knees, let upper body hang heavy', hold: '45s' },
+    { name: 'Calf stretch (wall)', cue: 'Straight back leg, heel on floor, lean in', hold: '45s each side' },
+    { name: 'Figure-4 stretch', cue: 'Lying on back, ankle over opposite knee, pull thigh toward you', hold: '45s each side' },
+  ],
+  sprint_power: [
+    { name: 'Hip flexor lunge stretch', cue: 'Back knee down, drive hips forward — important after explosive lower body work', hold: '60s each side' },
+    { name: 'Quad stretch (side-lying)', cue: 'Pull heel to glutes, press hips forward', hold: '45s each side' },
+    { name: 'Standing hamstring fold', cue: 'Hinge at hip, soft knees, upper body hangs heavy', hold: '45s' },
+    { name: 'Calf stretch (wall)', cue: 'Straight back leg, heel flat on floor, lean in', hold: '45s each side' },
+    { name: 'Pigeon pose', cue: 'Hip opener — particularly important after heavy power work', hold: '60s each side' },
+  ],
+  plyo: [
+    { name: 'Calf stretch (wall)', cue: 'Straight back leg, heel flat on floor — Achilles and calf are loaded heavily in plyo', hold: '60s each side' },
+    { name: 'Hip flexor lunge stretch', cue: 'Back knee down, drive hips forward', hold: '45s each side' },
+    { name: 'Quad stretch (side-lying)', cue: 'Pull heel to glutes, press hips forward', hold: '45s each side' },
+    { name: 'Pigeon pose', cue: 'Hip opener — front shin forward, fold gently', hold: '60s each side' },
+    { name: 'Ankle circle', cue: 'Seated, draw slow full circles — decompress the ankle joint', hold: '10 each direction per side' },
+  ],
 }
 
 // ─── ENGINE FUNCTIONS ─────────────────────────────────────────────────────────
@@ -297,6 +364,24 @@ function getProtocolName(goal: TrainingGoal, session_type: SessionType | Session
   const types = resolveTypes(session_type)
   const primary = types[0]
 
+  if (primary === 'runner_strength') {
+    return {
+      name: 'runner S&C',
+      desc: 'Posterior chain, single-leg stability and injury-prevention work tailored for runners. Builds the strength base that translates directly to running economy.',
+    }
+  }
+  if (primary === 'sprint_power') {
+    return {
+      name: 'power block',
+      desc: 'Explosive compound movements targeting rate of force development. Quality of effort matters more than volume — full recovery between sets.',
+    }
+  }
+  if (primary === 'plyo') {
+    return {
+      name: 'plyometric block',
+      desc: 'Jump and reactive training targeting ground contact time and lower limb stiffness. Land well, reset completely, and prioritise intent over fatigue.',
+    }
+  }
   if (primary === 'hybrid' || (cardio === 'endurance' || cardio === 'moderate')) {
     return {
       name: 'conditioning block',
@@ -349,6 +434,7 @@ function getIntensityLevel(
   const groupScore: Record<SessionType, number> = {
     legs: 5, glutes: 4, full_body: 5, hybrid: 5,
     back: 3, chest: 3, shoulders: 2, arms: 1, core: 2,
+    runner_strength: 4, sprint_power: 5, plyo: 5,
   }
   const goalScore: Record<TrainingGoal, number> = {
     strength: 4, athletic: 4, hypertrophy: 3, general: 2, aesthetic: 2,

@@ -18,17 +18,6 @@ export const metadata: Metadata = {
 
 const MODULES = [
   {
-    slug: "fuel",
-    href: "/plan",
-    status: "live",
-    label: "concept//fuel",
-    tagline: "Race & session fuelling",
-    desc:
-      "Precision carbohydrate targets, timed gel schedules, hydration and sodium — calibrated to your sport, event and effort level. Evidence-informed. One decisive plan.",
-    badge: "BETA",
-    cta: "Open fuel planner",
-  },
-  {
     slug: "form",
     href: "/form",
     status: "live",
@@ -40,13 +29,34 @@ const MODULES = [
     cta: "Open form planner",
   },
   {
+    slug: "fuel",
+    href: "/plan",
+    status: "live",
+    label: "concept//fuel",
+    tagline: "Race & session fuelling",
+    desc:
+      "Precision carbohydrate targets, timed gel schedules, hydration and sodium — calibrated to your sport, event and effort level. Evidence-informed. One decisive plan.",
+    badge: "BETA",
+    cta: "Open fuel planner",
+  },
+  {
+    slug: "method",
+    href: "/method",
+    status: "live",
+    label: "concept//method",
+    tagline: "The science behind the tools",
+    desc:
+      "Transparent write-ups on how concept//fuel and concept//form work, and the research they are built on. No paywall. No watered-down summaries.",
+    cta: "Read the method",
+  },
+  {
     slug: "run",
     href: null,
     status: "soon",
     label: "concept//run",
     tagline: "Running performance",
     desc:
-      "Pace strategy, effort zones, block periodisation and race-day planning for runners from 5k to ultra. Coming to concept//athleticclub.",
+      "Pace strategy, effort zones, block periodisation and race-day planning. Coming to concept//athleticclub.",
   },
   {
     slug: "recover",
@@ -353,7 +363,7 @@ export default function ClubPage() {
           }}
         >
           England Athletics licensed coaching.<br />
-          <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>From first 5k to elite racing.</span>
+          <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>Whatever your pursuit.</span>
         </p>
         <p
           style={{
