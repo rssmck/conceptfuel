@@ -3,14 +3,16 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
+import UserMenu from "./UserMenu";
 
 export default function Nav() {
   const pathname = usePathname();
 
   const primaryLinks = [
-    { href: "/",     label: "club" },
-    { href: "/plan", label: "fuel" },
-    { href: "/form", label: "form" },
+    { href: "/",        label: "club" },
+    { href: "/plan",    label: "fuel" },
+    { href: "/form",    label: "form" },
+    { href: "/profile", label: "profile" },
   ];
 
   const secondaryLinks = [
@@ -95,6 +97,9 @@ export default function Nav() {
         >
           ig
         </a>
+        <div style={{ borderLeft: "1px solid var(--border)", paddingLeft: "16px" }}>
+          <UserMenu />
+        </div>
       </div>
     </nav>
   );

@@ -4,6 +4,8 @@ import "./globals.css";
 import Nav from "@/components/Nav";
 import SiteGate from "@/components/SiteGate";
 import SwRegistrar from "@/components/SwRegistrar";
+import { AuthProvider } from "@/contexts/AuthContext";
+import AuthModal from "@/components/AuthModal";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -95,10 +97,13 @@ export default function RootLayout({
       </head>
       <body className={`${geistMono.variable}`}>
         <SwRegistrar />
-        <SiteGate>
-          <Nav />
-          <main>{children}</main>
-        </SiteGate>
+        <AuthProvider>
+          <AuthModal />
+          <SiteGate>
+            <Nav />
+            <main>{children}</main>
+          </SiteGate>
+        </AuthProvider>
         <footer
           style={{
             borderTop: "1px solid var(--border)",
