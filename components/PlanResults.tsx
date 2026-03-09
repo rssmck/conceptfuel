@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import type { FuelPlanOutput, ScheduleItem } from "@/lib/fuelEngine";
+import { addFuelPlanToCalendar } from "@/lib/calendar";
+import { parseDurationToMinutes } from "@/lib/fuelEngine";
 
 interface PlanResultsProps {
   result: FuelPlanOutput;
@@ -546,6 +548,18 @@ function ShareSection({
     }
   };
 
+  const handleAddToCalendar = () => {
+    const eventName = planValues?.race_name ?? planValues?.session_name ?? "Training session";
+    const durationMinutes = planValues?.duration ? parseDurationToMinutes(planValues.duration) : 60;
+    addFuelPlanToCalendar({
+      eventName,
+      durationMinutes,
+      carbGPerHr:    result.carb_target_g_per_hr,
+      fluidMlPerHr:  result.fluid_ml_per_hr,
+      intakeSchedule: result.schedule,
+    });
+  };
+
   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText)}`;
   const twitterUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
 
@@ -589,6 +603,9 @@ function ShareSection({
           }}
         >
           {copied ? "✓ Copied!" : "Copy text"}
+        </button>
+        <button onClick={handleAddToCalendar} style={btnStyle()}>
+          + Add to calendar
         </button>
       </div>
 

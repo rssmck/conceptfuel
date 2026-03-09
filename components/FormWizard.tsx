@@ -11,6 +11,7 @@ import {
 } from "@/lib/formEngine";
 import { useAuth } from "@/contexts/AuthContext";
 import { createClient } from "@/lib/supabase/client";
+import { addFormSessionToCalendar } from "@/lib/calendar";
 
 // ─── Option maps ──────────────────────────────────────────────────────────────
 
@@ -1433,6 +1434,20 @@ function FormShareSection({
     }
   };
 
+  const handleAddToCalendar = () => {
+    const types = Array.isArray(input?.session_type)
+      ? input.session_type.map(t => t.replace(/_/g, " ")).join(" & ")
+      : (input?.session_type ?? "").replace(/_/g, " ");
+    const primaryBlock = plan.session_structure.find(b => b.phase === "Primary lifts");
+    addFormSessionToCalendar({
+      protocolName:    plan.protocol_name,
+      durationMinutes: input?.duration_minutes ?? 60,
+      sessionType:     types,
+      goal:            input?.goal ?? "",
+      primaryLifts:    primaryBlock?.items,
+    });
+  };
+
   const handleNativeShare = async () => {
     try {
       const canvas = buildFormShareCanvas(plan, input, name);
@@ -1567,6 +1582,9 @@ function FormShareSection({
           }}
         >
           {copied ? "✓ Copied!" : "Copy text"}
+        </button>
+        <button onClick={handleAddToCalendar} style={btnStyle()}>
+          + Add to calendar
         </button>
       </div>
 

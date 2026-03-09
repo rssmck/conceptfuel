@@ -16,6 +16,7 @@ export default function Nav() {
   ];
 
   const secondaryLinks = [
+    { href: "/method",  label: "method" },
     { href: "/about",   label: "about" },
     { href: "/contact", label: "contact" },
     { href: "/pricing", label: "pricing" },
