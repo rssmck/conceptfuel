@@ -157,8 +157,10 @@ function buildShareCanvas(
   result: FuelPlanOutput,
   planValues: PlanResultsProps["planValues"]
 ): HTMLCanvasElement {
-  const W = 1200;
-  const H = 630;
+  // Instagram Story dimensions
+  const W = 1080;
+  const H = 1920;
+  const M = 90; // margin
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
@@ -166,184 +168,209 @@ function buildShareCanvas(
   const T = getCanvasTheme();
   const FONT = "'ui-monospace', 'Cascadia Code', 'Fira Mono', monospace";
 
-  // Background
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+
+  function rule(y: number, alpha = 1) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = T.border;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(M, y); ctx.lineTo(W - M, y); ctx.stroke();
+    ctx.restore();
+  }
+
+  function igIcon(x: number, y: number, size: number) {
+    const r2 = size * 0.22; const s2 = size;
+    ctx.fillStyle = T.muted;
+    ctx.beginPath();
+    ctx.moveTo(x + r2, y); ctx.lineTo(x + s2 - r2, y);
+    ctx.quadraticCurveTo(x + s2, y, x + s2, y + r2);
+    ctx.lineTo(x + s2, y + s2 - r2);
+    ctx.quadraticCurveTo(x + s2, y + s2, x + s2 - r2, y + s2);
+    ctx.lineTo(x + r2, y + s2);
+    ctx.quadraticCurveTo(x, y + s2, x, y + s2 - r2);
+    ctx.lineTo(x, y + r2);
+    ctx.quadraticCurveTo(x, y, x + r2, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = T.bg;
+    ctx.beginPath(); ctx.arc(x + s2 / 2, y + s2 / 2, s2 * 0.27, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = T.muted;
+    ctx.beginPath(); ctx.arc(x + s2 - s2 * 0.22, y + s2 * 0.22, s2 * 0.1, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = T.bg;
+    ctx.lineWidth = s2 * 0.08;
+    ctx.beginPath(); ctx.arc(x + s2 / 2, y + s2 / 2, s2 * 0.27 + s2 * 0.06, 0, Math.PI * 2); ctx.stroke();
+  }
+
+  // ── Background ───────────────────────────────────────────────────────────────
   ctx.fillStyle = T.bg;
   ctx.fillRect(0, 0, W, H);
 
   // Subtle grid
   ctx.strokeStyle = T.grid;
   ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-  for (let y = 0; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  for (let x = 0; x < W; x += 90) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 90) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
 
-  // Brand mark
-  ctx.font = `bold 22px ${FONT}`;
+  // ── Brand mark ───────────────────────────────────────────────────────────────
+  ctx.font = `bold 20px ${FONT}`;
   ctx.fillStyle = T.text;
-  ctx.fillText("concept", 60, 68);
+  ctx.fillText("concept", M, 82);
   ctx.fillStyle = T.muted;
-  ctx.fillText("//", 60 + ctx.measureText("concept").width, 68);
+  ctx.fillText("//", M + ctx.measureText("concept").width, 82);
   ctx.fillStyle = T.text;
-  ctx.fillText("fuel", 60 + ctx.measureText("concept//").width, 68);
+  ctx.fillText("fuel", M + ctx.measureText("concept//").width, 82);
 
-  // Context pill
+  // Sport / effort tag top-right
   if (planValues) {
-    const sportLabel: Record<string, string> = {
-      running: "Running", trail_running: "Trail Running", cycling: "Cycling", hyrox: "Hyrox",
-    };
-    let ctxParts: string[] = [];
-    if (planValues.plan_type === "race") {
-      if (planValues.race_name) ctxParts.push(planValues.race_name);
-      if (planValues.subtitle) ctxParts.push(planValues.subtitle);
-      ctxParts.push("Fuel for race");
-    } else {
-      if (planValues.session_name) ctxParts.push(planValues.session_name);
-      ctxParts.push(sportLabel[planValues.sport] ?? planValues.sport);
-      if (planValues.subtitle) ctxParts.push(planValues.subtitle);
-    }
-    const ctxText = ctxParts.join(" · ");
+    const sportLabel: Record<string, string> = { running: "Running", trail_running: "Trail", cycling: "Cycling", hyrox: "Hyrox" };
+    const effortLabel: Record<string, string> = { easy: "Easy", steady: "Steady", hard: "Hard", race: "Race effort" };
+    const tag = [sportLabel[planValues.sport] ?? planValues.sport, effortLabel[planValues.effort] ?? ""].filter(Boolean).join(" · ");
     ctx.font = `13px ${FONT}`;
     ctx.fillStyle = T.dimmed;
     ctx.textAlign = "right";
-    ctx.fillText(ctxText, W - 60, 68);
+    ctx.fillText(tag, W - M, 82);
     ctx.textAlign = "left";
   }
 
-  // Divider
-  ctx.strokeStyle = T.border;
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(60, 90); ctx.lineTo(W - 60, 90); ctx.stroke();
+  rule(110);
 
-  // Big carb target
-  ctx.font = `bold 100px ${FONT}`;
-  ctx.fillStyle = T.text;
-  ctx.fillText(`${result.carb_target_g_per_hr}`, 60, 230);
-  ctx.font = `bold 32px ${FONT}`;
-  ctx.fillStyle = T.muted;
-  ctx.fillText("g/hr carbohydrate", 60, 272);
-
-  // Secondary metrics row
-  const metrics = [
-    { label: "TOTAL CARBS", value: `${result.total_carbs_g}g` },
-    { label: "FLUID TARGET", value: `${result.fluid_ml_per_hr}ml/hr` },
-    { label: "SODIUM", value: `${result.sodium_mg_per_hr}mg/hr` },
-  ];
-  const metricY = 330;
-  const metricW = 220;
-  metrics.forEach((m, i) => {
-    const x = 60 + i * (metricW + 20);
-    ctx.fillStyle = T.surface2;
-    ctx.fillRect(x, metricY, metricW, 80);
-    ctx.strokeStyle = T.border;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x, metricY, metricW, 80);
-    ctx.font = `10px ${FONT}`;
-    ctx.fillStyle = T.muted;
-    ctx.fillText(m.label, x + 14, metricY + 22);
-    ctx.font = `bold 24px ${FONT}`;
-    ctx.fillStyle = T.text;
-    ctx.fillText(m.value, x + 14, metricY + 57);
-  });
-
-  // Schedule items (up to 4)
-  const schedItems = result.schedule.slice(0, 4);
-  if (schedItems.length > 0) {
-    const schedX = 720;
-    const schedY = 115;
-    ctx.font = `11px ${FONT}`;
-    ctx.fillStyle = T.dimmed;
-    ctx.fillText("INTAKE SCHEDULE", schedX, schedY);
-
-    ctx.strokeStyle = T.border;
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(schedX, schedY + 8); ctx.lineTo(W - 60, schedY + 8); ctx.stroke();
-
-    schedItems.forEach((item, i) => {
-      const iy = schedY + 32 + i * 52;
-      ctx.fillStyle = i % 2 === 0 ? T.rowA : T.rowB;
-      ctx.fillRect(schedX, iy - 18, W - 60 - schedX, 46);
-
-      const label = item.minute_offset === 0 ? "Pre-start" : `${item.minute_offset} min`;
-      ctx.font = `bold 13px ${FONT}`;
-      ctx.fillStyle = T.text;
-      ctx.fillText(label, schedX + 12, iy + 6);
-
-      ctx.font = `11px ${FONT}`;
-      ctx.fillStyle = T.muted;
-      const sugg = item.suggestion.length > 32 ? item.suggestion.slice(0, 30) + "…" : item.suggestion;
-      ctx.fillText(sugg, schedX + 12, iy + 22);
-
-      ctx.font = `bold 12px ${FONT}`;
-      ctx.fillStyle = T.muted;
-      ctx.textAlign = "right";
-      ctx.fillText(`${item.carbs_g}g`, W - 72, iy + 6);
-      ctx.textAlign = "left";
-    });
-
-    if (result.schedule.length > 4) {
-      ctx.font = `11px ${FONT}`;
-      ctx.fillStyle = T.dimmed;
-      ctx.fillText(`+ ${result.schedule.length - 4} more intakes`, schedX + 12, schedY + 32 + 4 * 52 + 10);
+  // ── Hero: race/session name ───────────────────────────────────────────────────
+  let heroName = "";
+  let heroSub = "";
+  if (planValues) {
+    if (planValues.plan_type === "race") {
+      heroName = planValues.race_name || "Fuel plan";
+      heroSub = planValues.subtitle ? `${planValues.subtitle} · race day` : "race day";
+    } else {
+      heroName = planValues.session_name || "Training session";
+      heroSub = [planValues.subtitle, planValues.sport !== "running" ? planValues.sport : ""].filter(Boolean).join(" · ");
     }
   }
 
-  // Bottom bar
-  ctx.fillStyle = T.surface;
-  ctx.fillRect(0, H - 60, W, 60);
-  ctx.strokeStyle = T.border;
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, H - 60); ctx.lineTo(W, H - 60); ctx.stroke();
+  // Hero name — large, wrap if needed
+  ctx.font = `bold 80px ${FONT}`;
+  ctx.fillStyle = T.text;
+  const heroWords = heroName.split(" ");
+  let heroLine = "";
+  let heroY = 210;
+  for (const word of heroWords) {
+    const test = heroLine ? heroLine + " " + word : word;
+    if (ctx.measureText(test).width > W - M * 2 && heroLine) {
+      ctx.fillText(heroLine, M, heroY);
+      heroLine = word;
+      heroY += 92;
+    } else { heroLine = test; }
+  }
+  ctx.fillText(heroLine, M, heroY);
+  heroY += 56;
 
-  ctx.font = `13px ${FONT}`;
+  // Subtitle
+  if (heroSub) {
+    ctx.font = `22px ${FONT}`;
+    ctx.fillStyle = T.muted;
+    ctx.fillText(heroSub, M, heroY);
+    heroY += 44;
+  }
+
+  const postHeroY = heroY + 32;
+  rule(postHeroY);
+
+  // ── Carbohydrate target ───────────────────────────────────────────────────────
+  const carbSectionY = postHeroY + 60;
+  ctx.font = `11px ${FONT}`;
   ctx.fillStyle = T.dimmed;
-  ctx.fillText("Generate your fuel plan →", 60, H - 22);
+  ctx.letterSpacing = "0.14em";
+  ctx.fillText("CARBOHYDRATE TARGET", M, carbSectionY);
+  ctx.letterSpacing = "0px";
 
-  // Instagram handle with icon (right-aligned, subtle)
+  ctx.font = `bold 160px ${FONT}`;
+  ctx.fillStyle = T.text;
+  ctx.fillText(`${result.carb_target_g_per_hr}`, M, carbSectionY + 168);
+
+  ctx.font = `bold 30px ${FONT}`;
+  ctx.fillStyle = T.muted;
+  ctx.fillText("g / hr", M, carbSectionY + 216);
+
+  const postCarbY = carbSectionY + 260;
+  rule(postCarbY);
+
+  // ── 2×2 metric grid ──────────────────────────────────────────────────────────
+  const gridTop = postCarbY + 50;
+  const cellW = (W - M * 2 - 12) / 2;
+  const cellH = 160;
+  const metrics = [
+    { label: "TOTAL CARBS",   value: `${result.total_carbs_g}g` },
+    { label: "FLUID",         value: `${result.fluid_ml_per_hr}ml/hr` },
+    { label: "SODIUM",        value: `${result.sodium_mg_per_hr}mg/hr` },
+    { label: "DURATION",      value: planValues?.duration ?? "—" },
+  ];
+  metrics.forEach((m, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const cx = M + col * (cellW + 12);
+    const cy = gridTop + row * (cellH + 12);
+    ctx.fillStyle = T.surface;
+    ctx.strokeStyle = T.border;
+    ctx.lineWidth = 1;
+    ctx.fillRect(cx, cy, cellW, cellH);
+    ctx.strokeRect(cx, cy, cellW, cellH);
+    ctx.font = `11px ${FONT}`;
+    ctx.fillStyle = T.dimmed;
+    ctx.fillText(m.label, cx + 20, cy + 30);
+    ctx.font = `bold 36px ${FONT}`;
+    ctx.fillStyle = T.text;
+    ctx.fillText(m.value, cx + 20, cy + 110);
+  });
+
+  const postGridY = gridTop + 2 * cellH + 12 + 50;
+  rule(postGridY);
+
+  // ── Caffeine (if present) ─────────────────────────────────────────────────────
+  let postCafY = postGridY + 50;
+  if (result.caffeine_guidance) {
+    ctx.font = `11px ${FONT}`;
+    ctx.fillStyle = T.dimmed;
+    ctx.fillText("CAFFEINE", M, postCafY);
+    ctx.font = `bold 28px ${FONT}`;
+    ctx.fillStyle = T.text;
+    ctx.fillText(
+      `${result.caffeine_guidance.range_mg[0]}–${result.caffeine_guidance.range_mg[1]} mg`,
+      M, postCafY + 40
+    );
+    ctx.font = `16px ${FONT}`;
+    ctx.fillStyle = T.muted;
+    ctx.fillText(result.caffeine_guidance.timing_text, M, postCafY + 74);
+    postCafY += 110;
+    rule(postCafY);
+    postCafY += 50;
+  }
+
+  // ── Protocol label ────────────────────────────────────────────────────────────
+  ctx.font = `11px ${FONT}`;
+  ctx.fillStyle = T.dimmed;
+  ctx.fillText("PROTOCOL", M, postCafY);
+  ctx.font = `20px ${FONT}`;
+  ctx.fillStyle = T.muted;
+  ctx.fillText(result.protocol_name, M, postCafY + 34);
+
+  // ── Footer ────────────────────────────────────────────────────────────────────
+  const footerY = H - 90;
+  rule(footerY);
+
+  ctx.font = `14px ${FONT}`;
+  ctx.fillStyle = T.dimmed;
+  ctx.fillText("conceptclub.co.uk/plan", M, H - 42);
+
+  // IG icon + handle
+  const igSize = 18;
   const igLabel = "@conceptathletic";
-  ctx.font = `13px ${FONT}`;
+  ctx.font = `14px ${FONT}`;
   const igLabelW = ctx.measureText(igLabel).width;
-  const igIconSize = 14;
-  const igGap = 6;
-  const igTotalW = igIconSize + igGap + igLabelW;
-  const igX = W - 60 - igTotalW;
-  const igY = H - 29;
-
-  // Draw Instagram icon (rounded square + circle + dot)
+  const igX = W - M - igSize - 8 - igLabelW;
+  igIcon(igX, H - 42 - igSize + 4, igSize);
   ctx.fillStyle = T.muted;
-  const r = 3; const s = igIconSize;
-  ctx.beginPath();
-  ctx.moveTo(igX + r, igY); ctx.lineTo(igX + s - r, igY);
-  ctx.quadraticCurveTo(igX + s, igY, igX + s, igY + r);
-  ctx.lineTo(igX + s, igY + s - r);
-  ctx.quadraticCurveTo(igX + s, igY + s, igX + s - r, igY + s);
-  ctx.lineTo(igX + r, igY + s);
-  ctx.quadraticCurveTo(igX, igY + s, igX, igY + s - r);
-  ctx.lineTo(igX, igY + r);
-  ctx.quadraticCurveTo(igX, igY, igX + r, igY);
-  ctx.closePath();
-  ctx.fill();
-  // Inner circle (cutout via destination-out or just bg colour ring)
-  ctx.fillStyle = T.surface;
-  ctx.beginPath();
-  ctx.arc(igX + s / 2, igY + s / 2, s * 0.27, 0, Math.PI * 2);
-  ctx.fill();
-  // Dot top-right
-  ctx.fillStyle = T.muted;
-  ctx.beginPath();
-  ctx.arc(igX + s - 3.5, igY + 3.5, 1.5, 0, Math.PI * 2);
-  ctx.fill();
-  // Outer ring outline
-  ctx.strokeStyle = T.surface;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(igX + s / 2, igY + s / 2, s * 0.27 + 1, 0, Math.PI * 2);
-  ctx.stroke();
-
-  // Handle text
-  ctx.fillStyle = T.muted;
-  ctx.font = `13px ${FONT}`;
-  ctx.textAlign = "left";
-  ctx.fillText(igLabel, igX + igIconSize + igGap, H - 22);
-  ctx.textAlign = "left";
+  ctx.fillText(igLabel, igX + igSize + 8, H - 42);
 
   return canvas;
 }

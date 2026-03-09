@@ -8,7 +8,7 @@ export type CardioLevel   = 'none' | 'short' | 'moderate' | 'endurance'
 export type TrainingGoal  = 'strength' | 'hypertrophy' | 'athletic' | 'general' | 'aesthetic'
 
 export interface FormInput {
-  session_type:    SessionType
+  session_type:    SessionType | SessionType[]
   training_style:  TrainingStyle
   cardio:          CardioLevel
   goal:            TrainingGoal
@@ -55,6 +55,21 @@ export interface FormPlanOutput {
   warm_up_mobility:   MobilityItem[]
   cool_down_mobility: MobilityItem[]
   notes:              string[]
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+
+function resolveTypes(session_type: SessionType | SessionType[]): SessionType[] {
+  return Array.isArray(session_type) ? session_type : [session_type]
+}
+
+function primaryType(session_type: SessionType | SessionType[]): SessionType {
+  return Array.isArray(session_type) ? session_type[0] : session_type
+}
+
+function dedupeByName<T extends { name: string }>(items: T[]): T[] {
+  const seen = new Set<string>()
+  return items.filter(item => seen.has(item.name) ? false : (seen.add(item.name), true))
 }
 
 // ─── DATA TABLES ──────────────────────────────────────────────────────────────
@@ -277,13 +292,17 @@ const COOL_DOWN_MOBILITY: Record<SessionType, MobilityItem[]> = {
 
 // ─── ENGINE FUNCTIONS ─────────────────────────────────────────────────────────
 
-function getProtocolName(goal: TrainingGoal, session_type: SessionType, cardio: CardioLevel): { name: string; desc: string } {
-  if (session_type === 'hybrid' || (cardio === 'endurance' || cardio === 'moderate')) {
+function getProtocolName(goal: TrainingGoal, session_type: SessionType | SessionType[], cardio: CardioLevel): { name: string; desc: string } {
+  const types = resolveTypes(session_type)
+  const primary = types[0]
+
+  if (primary === 'hybrid' || (cardio === 'endurance' || cardio === 'moderate')) {
     return {
       name: 'conditioning block',
       desc: 'Combined strength and cardiovascular work. Elevated caloric demand — prioritise carbohydrate availability and recovery nutrition.',
     }
   }
+
   const map: Record<TrainingGoal, { name: string; desc: string }> = {
     strength: {
       name: 'strength block',
@@ -306,11 +325,23 @@ function getProtocolName(goal: TrainingGoal, session_type: SessionType, cardio: 
       desc: 'High-volume, pump-focused work targeting specific muscle groups. Mind-muscle connection and full range of motion are key.',
     },
   }
+
+  if (types.length > 1) {
+    const groupNames = types.map(t => t.replace(/_/g, ' ')).join(' & ')
+    const goalSuffix: Record<TrainingGoal, string> = {
+      strength: 'strength', hypertrophy: 'volume', athletic: 'power', general: 'training', aesthetic: 'session',
+    }
+    return {
+      name: `${groupNames} ${goalSuffix[goal]}`,
+      desc: `Combined ${groupNames} session. ${map[goal].desc}`,
+    }
+  }
+
   return map[goal]
 }
 
 function getIntensityLevel(
-  session_type: SessionType,
+  session_type: SessionType | SessionType[],
   goal: TrainingGoal,
   cardio: CardioLevel
 ): 'high' | 'moderate' | 'low' {
@@ -324,14 +355,18 @@ function getIntensityLevel(
   const cardioScore: Record<CardioLevel, number> = {
     none: 0, short: 1, moderate: 2, endurance: 3,
   }
-  const score = groupScore[session_type] + goalScore[goal] + cardioScore[cardio]
+  const types = resolveTypes(session_type)
+  const maxGroupScore = Math.max(...types.map(t => groupScore[t]))
+  const score = maxGroupScore + goalScore[goal] + cardioScore[cardio]
   if (score >= 9) return 'high'
   if (score >= 5) return 'moderate'
   return 'low'
 }
 
 function buildSessionStructure(input: FormInput): SessionBlock[] {
-  const { session_type, training_style, goal, cardio, duration_minutes } = input
+  const { training_style, goal, cardio, duration_minutes } = input
+  const types = resolveTypes(input.session_type)
+  const session_type = types[0]
   const blocks: SessionBlock[] = []
 
   // Time allocation
@@ -350,9 +385,18 @@ function buildSessionStructure(input: FormInput): SessionBlock[] {
   ]
   blocks.push({ phase: 'Warm-up', duration_min: warmUpMin, items: warmUpItems })
 
-  // Primary lifts (top 3–4 from list)
+  // Primary lifts — distribute across all selected types
   const primaryCount = duration_minutes >= 60 ? 4 : 3
-  const primaryExercises = PRIMARY_EXERCISES[session_type][training_style].slice(0, primaryCount)
+  let primaryExercises: string[]
+  if (types.length === 1) {
+    primaryExercises = PRIMARY_EXERCISES[session_type][training_style].slice(0, primaryCount)
+  } else {
+    const perType = Math.max(1, Math.floor(primaryCount / types.length))
+    const extra = primaryCount - perType * types.length
+    primaryExercises = types.flatMap((t, i) =>
+      PRIMARY_EXERCISES[t][training_style].slice(0, perType + (i < extra ? 1 : 0))
+    )
+  }
   blocks.push({
     phase: 'Primary lifts',
     duration_min: primaryMin,
@@ -360,9 +404,16 @@ function buildSessionStructure(input: FormInput): SessionBlock[] {
     note: REP_SCHEMES[goal],
   })
 
-  // Accessory
+  // Accessory — distribute across all selected types
   if (accessoryMin >= 8) {
-    const accessories = ACCESSORY_EXERCISES[session_type].slice(0, duration_minutes >= 60 ? 3 : 2)
+    const totalAcc = duration_minutes >= 60 ? 3 : 2
+    let accessories: string[]
+    if (types.length === 1) {
+      accessories = ACCESSORY_EXERCISES[session_type].slice(0, totalAcc)
+    } else {
+      const perType = Math.max(1, Math.ceil(totalAcc / types.length))
+      accessories = types.flatMap(t => ACCESSORY_EXERCISES[t].slice(0, perType)).slice(0, totalAcc + types.length - 1)
+    }
     blocks.push({
       phase: 'Accessory work',
       duration_min: accessoryMin,
@@ -398,8 +449,8 @@ function buildSessionStructure(input: FormInput): SessionBlock[] {
     })
   }
 
-  // Core (only if not a core session and there's time)
-  if (session_type !== 'core' && session_type !== 'arms' && duration_minutes >= 60 && cardio === 'none') {
+  // Core (only for single-type sessions that don't already target core or arms)
+  if (types.length === 1 && session_type !== 'core' && session_type !== 'arms' && duration_minutes >= 60 && cardio === 'none') {
     blocks.push({
       phase: 'Core',
       duration_min: 5,
@@ -505,8 +556,16 @@ export function generateFormPlan(input: FormInput): FormPlanOutput {
         ? 'Expect DOMS 24–48h post-session. Foam roll gently, stay active (walk, light mobility), prioritise sleep and protein intake.'
         : 'Light to moderate soreness is normal. Active recovery (walk, mobility session) outperforms complete rest.',
     },
-    warm_up_mobility:   WARM_UP_MOBILITY[input.session_type],
-    cool_down_mobility: COOL_DOWN_MOBILITY[input.session_type],
+    warm_up_mobility:   (() => {
+      const types = resolveTypes(input.session_type)
+      if (types.length === 1) return WARM_UP_MOBILITY[types[0]]
+      return dedupeByName(types.flatMap(t => WARM_UP_MOBILITY[t]))
+    })(),
+    cool_down_mobility: (() => {
+      const types = resolveTypes(input.session_type)
+      if (types.length === 1) return COOL_DOWN_MOBILITY[types[0]]
+      return dedupeByName(types.flatMap(t => COOL_DOWN_MOBILITY[t]))
+    })(),
     notes,
   }
 }

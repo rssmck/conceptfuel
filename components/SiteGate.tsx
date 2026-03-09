@@ -54,6 +54,7 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
 
   // Theme step
   const [selectedTheme, setSelectedTheme] = useState("dark");
+  const [memberName,    setMemberName]    = useState("");
 
   useEffect(() => {
     setMounted(true);
@@ -73,6 +74,10 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem("cf_theme");
     const attr  = document.documentElement.getAttribute("data-theme");
     setSelectedTheme(saved ?? attr ?? "light");
+
+    // Pre-fill name if already saved
+    const savedName = localStorage.getItem("cf_name");
+    if (savedName) setMemberName(savedName);
   }, []);
 
   const handleThemeSelect = (theme: string) => {
@@ -82,6 +87,8 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
   };
 
   const handleThemeContinue = () => {
+    const trimmedName = memberName.trim();
+    if (trimmedName) localStorage.setItem("cf_name", trimmedName);
     localStorage.setItem("cf_theme_chosen", "true");
     setUnlocked(true);
   };
@@ -278,7 +285,7 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
                   style={{
                     fontSize: "10px",
                     color: "var(--text-muted)",
-                    marginTop: "24px",
+                    marginTop: "20px",
                     opacity: 0.45,
                     lineHeight: 1.6,
                   }}
@@ -299,6 +306,10 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
                   >
                     continue
                   </button>
+                  {" "}·{" "}
+                  <a href="/privacy" style={{ color: "var(--text-muted)", textDecoration: "underline" }}>
+                    privacy policy
+                  </a>
                 </p>
               </>
             )}
@@ -307,11 +318,34 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
             {step === "theme" && (
               <>
                 <p style={labelStyle}>
-                  concept<span style={{ color: "var(--text-muted)" }}>//</span>athleticclub · environment
+                  concept<span style={{ color: "var(--text-muted)" }}>//</span>athleticclub · welcome
                 </p>
-                <h2 style={headingStyle}>Choose your palette</h2>
-                <p style={bodyStyle}>
-                  Select how you&apos;d like the platform to look. You can change this anytime.
+                <h2 style={headingStyle}>Welcome to the club.</h2>
+
+                {/* Name field */}
+                <div style={{ marginBottom: "28px", textAlign: "left" }}>
+                  <label
+                    htmlFor="gate-name"
+                    style={{ fontSize: "11px", color: "var(--text-muted)", display: "block", marginBottom: "8px", letterSpacing: "0.1em", textTransform: "uppercase" }}
+                  >
+                    What should we call you? <span style={{ opacity: 0.5 }}>optional</span>
+                  </label>
+                  <input
+                    id="gate-name"
+                    type="text"
+                    placeholder="first name"
+                    value={memberName}
+                    onChange={(e) => setMemberName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
+                    style={{ width: "100%", fontSize: "14px", boxSizing: "border-box" }}
+                    autoFocus
+                    autoComplete="given-name"
+                  />
+                </div>
+
+                {/* Divider */}
+                <p style={{ fontSize: "11px", color: "var(--text-muted)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "12px", textAlign: "left" }}>
+                  Choose your environment
                 </p>
 
                 <div
@@ -345,7 +379,6 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
                           boxShadow: isSelected ? `0 0 0 1px ${theme.accent}` : "none",
                         }}
                       >
-                        {/* Colour swatches */}
                         <div style={{ display: "flex", gap: "5px" }}>
                           <div style={{ width: "18px", height: "18px", borderRadius: "50%", background: theme.accent }} />
                           <div style={{ width: "18px", height: "18px", borderRadius: "50%", background: theme.muted }} />
@@ -356,8 +389,8 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
                             {theme.label}
                           </p>
                           {isSelected && (
-                            <p style={{ fontSize: "10px", color: theme.muted, margin: "2px 0 0", letterSpacing: "0.05em" }}>
-                              selected ✓
+                            <p style={{ fontSize: "13px", color: theme.accent, margin: "3px 0 0", lineHeight: 1 }}>
+                              ✓
                             </p>
                           )}
                         </div>
@@ -367,8 +400,13 @@ export default function SiteGate({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <button type="button" style={btnStyle} onClick={handleThemeContinue}>
-                  Enter the club →
+                  {memberName.trim() ? `Enter the club, ${memberName.trim().split(" ")[0]} →` : "Enter the club →"}
                 </button>
+
+                <p style={{ fontSize: "10px", color: "var(--text-muted)", marginTop: "20px", opacity: 0.5, lineHeight: 1.6 }}>
+                  Your name and theme preference are saved locally on this device.{" "}
+                  <a href="/privacy" style={{ color: "var(--text-muted)", textDecoration: "underline" }}>Privacy policy</a>.
+                </p>
               </>
             )}
 

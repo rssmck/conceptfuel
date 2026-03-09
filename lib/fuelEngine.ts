@@ -560,9 +560,12 @@ export function generateFuelPlan(
 
   // B) Schedule (computed before total so we can sum actual delivered carbs)
   // Interval sessions: no in-session schedule — fuel pre-session only.
-  // Rest intervals make deterministic gel timing impractical and unnecessary.
-  const isIntervalSession = plan_type === 'session' && session_subtype === 'intervals'
-  const includePreStart = plan_type === 'race' && duration_minutes >= 90
+  // Exception: race-effort interval sessions (race simulation) may run long enough
+  // to require in-session fuelling, so we generate a schedule for those.
+  // Rest intervals make deterministic gel timing impractical and unnecessary for
+  // standard training sessions, but not for race simulations.
+  const isIntervalSession = plan_type === 'session' && session_subtype === 'intervals' && effort !== 'race'
+  const includePreStart = (plan_type === 'race' || (session_subtype === 'intervals' && effort === 'race')) && duration_minutes >= 90
   const schedule = isIntervalSession
     ? []
     : generateSchedule(carb_target_g_per_hr, duration_minutes, plan.gel_product, includePreStart)
@@ -635,6 +638,12 @@ export function generateFuelPlan(
     )
     notes.push(
       'Session duration is variable — 16×400m with 100m jog recovery plus warm-up and cool-down might run 55 min to 90 min depending on pace. Set your duration as an estimate; your carb target per-hour remains valid regardless of total session length.'
+    )
+  }
+
+  if (session_subtype === 'intervals' && effort === 'race') {
+    notes.push(
+      'Race-simulation interval session: pre-session fuelling is critical. Aim for 60–90g carbs in the 2–3 hours before you start, plus a gel or carb drink 20–30 min before your warm-up. For sessions over 90 min, follow the intake schedule above — your gut still needs practise processing carbs at race pace.'
     )
   }
 

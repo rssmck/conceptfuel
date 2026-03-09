@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   generateFormPlan,
   type FormInput,
@@ -47,6 +47,11 @@ const TRAINING_GOALS: { value: TrainingGoal; label: string; desc: string }[] = [
 ];
 
 const DURATIONS = [30, 45, 60, 75, 90];
+
+function formatSessionType(st: SessionType | SessionType[]): string {
+  if (Array.isArray(st)) return st.map(t => t.replace(/_/g, " ")).join(" & ")
+  return st.replace(/_/g, " ")
+}
 
 // ─── Exercise glossary ────────────────────────────────────────────────────────
 // Brief description of each lift for display in the main workout section.
@@ -227,7 +232,12 @@ function ConfigureStep({
 }) {
   const [name, setName]                     = useState<string>("");
   const [sex, setSex]                       = useState<string>("");
-  const [sessionType, setSessionType]       = useState<SessionType | null>(null);
+
+  useEffect(() => {
+    const saved = typeof localStorage !== "undefined" ? localStorage.getItem("cf_name") : null;
+    if (saved) setName(saved);
+  }, []);
+  const [sessionTypes, setSessionTypes]     = useState<SessionType[]>([]);
   const [trainingStyle, setTrainingStyle]   = useState<TrainingStyle | null>(null);
   const [cardio, setCardio]                 = useState<CardioLevel>("none");
   const [goal, setGoal]                     = useState<TrainingGoal | null>(null);
@@ -237,11 +247,12 @@ function ConfigureStep({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!sessionType) { setError("Select a session type"); return; }
+    if (sessionTypes.length === 0) { setError("Select at least one session type"); return; }
     if (!trainingStyle) { setError("Select a training style"); return; }
     if (!goal) { setError("Select your training goal"); return; }
     setError(null);
     const weightNum = weight ? parseFloat(weight) : undefined;
+    const sessionType = sessionTypes.length === 1 ? sessionTypes[0] : sessionTypes;
     onSubmit(
       {
         session_type:    sessionType,
@@ -303,19 +314,33 @@ function ConfigureStep({
           </div>
         </div>
 
-        {/* Session type */}
+        {/* Session type — multi-select */}
         <div>
-          <span style={labelStyle}>Session type</span>
+          <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginBottom: "10px" }}>
+            <span style={labelStyle}>Session type</span>
+            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>select up to 3</span>
+          </div>
           <div style={cardGridStyle}>
             {SESSION_TYPES.map((s) => (
               <OptionCard
                 key={s.value}
-                selected={sessionType === s.value}
-                onClick={() => setSessionType(s.value)}
+                selected={sessionTypes.includes(s.value)}
+                onClick={() => {
+                  setSessionTypes(prev =>
+                    prev.includes(s.value)
+                      ? prev.filter(t => t !== s.value)
+                      : prev.length < 3 ? [...prev, s.value] : prev
+                  );
+                }}
                 label={s.label}
               />
             ))}
           </div>
+          {sessionTypes.length > 1 && (
+            <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "8px" }}>
+              Combined: {sessionTypes.map(t => t.replace(/_/g, " ")).join(" + ")}
+            </p>
+          )}
         </div>
 
         {/* Training style */}
@@ -816,8 +841,9 @@ function buildFormShareCanvas(
   input: FormInput | null,
   name?: string
 ): HTMLCanvasElement {
-  const W = 1200;
-  const H = 630;
+  const W = 1080;
+  const H = 1920;
+  const M = 90;
   const canvas = document.createElement("canvas");
   canvas.width  = W;
   canvas.height = H;
@@ -825,177 +851,441 @@ function buildFormShareCanvas(
   const FONT = "'ui-monospace', 'Cascadia Code', 'Fira Mono', monospace";
   const T = getFormCanvasTheme();
 
-  // Background
+  // ── helpers ──────────────────────────────────────────────────────────────────
+
+  const rule = (y: number) => {
+    ctx.strokeStyle = T.border;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(M, y); ctx.lineTo(W - M, y); ctx.stroke();
+  };
+
+  const igIcon = (x: number, y: number, size: number) => {
+    const r = size * 0.22;
+    ctx.fillStyle = T.muted;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.lineTo(x + size - r, y);
+    ctx.quadraticCurveTo(x + size, y, x + size, y + r);
+    ctx.lineTo(x + size, y + size - r);
+    ctx.quadraticCurveTo(x + size, y + size, x + size - r, y + size);
+    ctx.lineTo(x + r, y + size);
+    ctx.quadraticCurveTo(x, y + size, x, y + size - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = T.bg;
+    ctx.beginPath(); ctx.arc(x + size / 2, y + size / 2, size * 0.27, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = T.muted;
+    ctx.beginPath(); ctx.arc(x + size - size * 0.22, y + size * 0.22, size * 0.09, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = T.bg;
+    ctx.lineWidth = size * 0.09;
+    ctx.beginPath(); ctx.arc(x + size / 2, y + size / 2, size * 0.27 + size * 0.06, 0, Math.PI * 2); ctx.stroke();
+  };
+
+  // ── background ───────────────────────────────────────────────────────────────
+
   ctx.fillStyle = T.bg;
   ctx.fillRect(0, 0, W, H);
 
-  // Subtle grid
   ctx.strokeStyle = T.grid;
   ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 80) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-  for (let y = 0; y < H; y += 80) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  for (let gx = 0; gx < W; gx += 90) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+  for (let gy = 0; gy < H; gy += 90) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
 
-  // Brand mark
-  ctx.font = `bold 22px ${FONT}`;
+  // ── brand header ─────────────────────────────────────────────────────────────
+
+  let y = 82;
+  ctx.font = `bold 26px ${FONT}`;
   ctx.fillStyle = T.text;
-  ctx.fillText("concept", 60, 68);
+  ctx.fillText("concept", M, y);
   ctx.fillStyle = T.muted;
-  ctx.fillText("//", 60 + ctx.measureText("concept").width, 68);
+  ctx.fillText("//", M + ctx.measureText("concept").width, y);
   ctx.fillStyle = T.text;
-  ctx.fillText("form", 60 + ctx.measureText("concept//").width, 68);
+  ctx.fillText("form", M + ctx.measureText("concept//").width, y);
 
-  // Context
   if (input) {
-    const ctxText = [
-      input.session_type.replace("_", " "),
-      input.goal,
-      `${input.duration_minutes} min`,
-    ].join(" · ");
-    ctx.font = `13px ${FONT}`;
+    const tag = [formatSessionType(input.session_type), input.goal, `${input.duration_minutes} min`].join(" · ");
+    ctx.font = `14px ${FONT}`;
     ctx.fillStyle = T.dimmed;
     ctx.textAlign = "right";
-    ctx.fillText(ctxText, W - 60, 68);
+    ctx.fillText(tag, W - M, y);
     ctx.textAlign = "left";
   }
 
-  // Divider
-  ctx.strokeStyle = T.border;
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(60, 90); ctx.lineTo(W - 60, 90); ctx.stroke();
+  y = 110; rule(y);
 
-  // Greeting or label
-  if (name) {
-    ctx.font = `16px ${FONT}`;
-    ctx.fillStyle = T.dimmed;
-    ctx.fillText(`${name}'s session plan`, 60, 140);
-  } else {
-    ctx.font = `11px ${FONT}`;
-    ctx.fillStyle = T.dimmed;
-    ctx.fillText("SESSION PLAN", 60, 140);
-  }
+  // ── name label ───────────────────────────────────────────────────────────────
 
-  // Protocol name (large)
-  ctx.font = `bold 56px ${FONT}`;
+  y = 165;
+  ctx.font = `16px ${FONT}`;
+  ctx.fillStyle = T.dimmed;
+  ctx.fillText(name ? `${name.toUpperCase()}'S SESSION` : "SESSION PLAN", M, y);
+
+  // ── protocol name (HERO) ─────────────────────────────────────────────────────
+
+  y = 240;
+  ctx.font = `bold 68px ${FONT}`;
   ctx.fillStyle = T.text;
-  ctx.fillText(plan.protocol_name, 60, 215);
+  const heroWords = plan.protocol_name.split(" ");
+  let heroLine = "";
+  for (const word of heroWords) {
+    const test = heroLine ? heroLine + " " + word : word;
+    if (ctx.measureText(test).width > W - M * 2) {
+      ctx.fillText(heroLine, M, y);
+      y += 80;
+      heroLine = word;
+    } else {
+      heroLine = test;
+    }
+  }
+  if (heroLine) { ctx.fillText(heroLine, M, y); y += 80; }
 
-  ctx.font = `18px ${FONT}`;
+  // protocol desc
+  ctx.font = `20px ${FONT}`;
   ctx.fillStyle = T.muted;
-  const descTrunc = plan.protocol_desc.length > 72 ? plan.protocol_desc.slice(0, 70) + "…" : plan.protocol_desc;
-  ctx.fillText(descTrunc, 60, 255);
+  const descWords = plan.protocol_desc.split(" ");
+  let descLine = "";
+  let descLines = 0;
+  for (const word of descWords) {
+    const test = descLine ? descLine + " " + word : word;
+    if (ctx.measureText(test).width > W - M * 2) {
+      ctx.fillText(descLine, M, y);
+      y += 30; descLine = word; descLines++;
+      if (descLines >= 2) break;
+    } else {
+      descLine = test;
+    }
+  }
+  if (descLine && descLines < 2) { ctx.fillText(descLine, M, y); y += 30; }
 
-  // Session structure blocks (left column)
-  const blocksY = 295;
+  y += 30; rule(y);
+
+  // ── main workout ─────────────────────────────────────────────────────────────
+
+  const primaryBlock = plan.session_structure.find(b => b.phase === "Primary lifts");
+
+  y += 42;
   ctx.font = `11px ${FONT}`;
   ctx.fillStyle = T.dimmed;
-  ctx.fillText("STRUCTURE", 60, blocksY);
-  ctx.strokeStyle = T.border;
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(60, blocksY + 8); ctx.lineTo(520, blocksY + 8); ctx.stroke();
-
-  plan.session_structure.slice(0, 5).forEach((block, i) => {
-    const by = blocksY + 28 + i * 42;
-    ctx.fillStyle = i % 2 === 0 ? T.rowA : T.rowB;
-    ctx.fillRect(60, by - 14, 460, 36);
-    ctx.strokeStyle = T.border;
-    ctx.strokeRect(60, by - 14, 460, 36);
-
-    ctx.font = `bold 12px ${FONT}`;
-    ctx.fillStyle = T.text;
-    ctx.fillText(block.phase, 74, by + 6);
-
-    ctx.font = `11px ${FONT}`;
-    ctx.fillStyle = T.muted;
+  ctx.fillText("MAIN WORKOUT", M, y);
+  if (primaryBlock) {
     ctx.textAlign = "right";
-    ctx.fillText(`${block.duration_min} min`, 510, by + 6);
+    ctx.fillText(`${primaryBlock.duration_min} min`, W - M, y);
     ctx.textAlign = "left";
+  }
+
+  y += 16; rule(y); y += 32;
+
+  const muscleHints: Record<string, string> = {
+    squat: "Quads · Glutes", deadlift: "Posterior chain", press: "Chest · Triceps",
+    row: "Back · Biceps", curl: "Biceps", lunge: "Quads · Glutes",
+    thrust: "Glutes", pull: "Lats · Biceps", pushdown: "Triceps",
+    "hip thrust": "Glutes", "lat pulldown": "Lats", "leg press": "Quads",
+    "leg curl": "Hamstrings", "leg extension": "Quads", "calf": "Calves",
+    "shoulder": "Shoulders", "lateral raise": "Side delts", "fly": "Chest",
+    "dip": "Triceps · Chest", "crunch": "Abs", "plank": "Core",
+  };
+
+  const lifts = primaryBlock?.items ?? [];
+  const liftRowH = 80;
+  lifts.slice(0, 5).forEach((lift, i) => {
+    const ly = y + i * liftRowH;
+    // row bg
+    ctx.fillStyle = T.surface;
+    ctx.fillRect(M, ly - 2, W - M * 2, liftRowH - 8);
+    // lift number
+    ctx.font = `bold 13px ${FONT}`;
+    ctx.fillStyle = T.dimmed;
+    ctx.fillText(String(i + 1).padStart(2, "0"), M + 16, ly + 24);
+    // lift name
+    ctx.font = `bold 20px ${FONT}`;
+    ctx.fillStyle = T.text;
+    ctx.fillText(lift, M + 52, ly + 24);
+    // muscle hint
+    const hint = Object.entries(muscleHints).find(([k]) => lift.toLowerCase().includes(k))?.[1] ?? "";
+    if (hint) {
+      ctx.font = `14px ${FONT}`;
+      ctx.fillStyle = T.muted;
+      ctx.fillText(hint, M + 52, ly + 46);
+    }
   });
 
-  // Nutrition panel (right column)
-  const nutX = 620;
-  const nutY = 295;
+  y += lifts.slice(0, 5).length * liftRowH + 8;
+
+  // rep scheme note
+  if (primaryBlock?.note) {
+    ctx.font = `13px ${FONT}`;
+    ctx.fillStyle = T.dimmed;
+    ctx.fillText(primaryBlock.note, M, y);
+    y += 26;
+  }
+
+  y += 20; rule(y);
+
+  // ── session structure ─────────────────────────────────────────────────────────
+
+  y += 42;
   ctx.font = `11px ${FONT}`;
   ctx.fillStyle = T.dimmed;
-  ctx.fillText("NUTRITION", nutX, nutY);
-  ctx.strokeStyle = T.border;
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(nutX, nutY + 8); ctx.lineTo(W - 60, nutY + 8); ctx.stroke();
+  ctx.fillText("STRUCTURE", M, y);
+  y += 16; rule(y); y += 28;
+
+  plan.session_structure.slice(0, 5).forEach((block) => {
+    ctx.font = `bold 16px ${FONT}`;
+    ctx.fillStyle = T.text;
+    ctx.fillText(block.phase, M, y);
+    ctx.font = `14px ${FONT}`;
+    ctx.fillStyle = T.muted;
+    ctx.textAlign = "right";
+    ctx.fillText(`${block.duration_min} min`, W - M, y);
+    ctx.textAlign = "left";
+    y += 30;
+  });
+
+  y += 12; rule(y);
+
+  // ── nutrition ─────────────────────────────────────────────────────────────────
+
+  y += 42;
+  ctx.font = `11px ${FONT}`;
+  ctx.fillStyle = T.dimmed;
+  ctx.fillText("NUTRITION", M, y);
+  y += 16; rule(y); y += 32;
 
   const nutItems: { label: string; value: string }[] = [];
   if (plan.macros.protein_range) nutItems.push({ label: "PROTEIN", value: plan.macros.protein_range });
-  nutItems.push({ label: "CARBS", value: plan.macros.carb_level.toUpperCase() + " priority" });
   nutItems.push({ label: "PRE-SESSION", value: plan.macros.pre_session_timing });
   nutItems.push({ label: "POST-SESSION", value: plan.macros.post_session_timing });
 
-  nutItems.slice(0, 4).forEach((item, i) => {
-    const ny = nutY + 28 + i * 52;
+  nutItems.slice(0, 3).forEach((item) => {
     ctx.fillStyle = T.surface;
-    ctx.fillRect(nutX, ny - 14, W - 60 - nutX, 44);
-    ctx.strokeStyle = T.border;
-    ctx.strokeRect(nutX, ny - 14, W - 60 - nutX, 44);
+    ctx.fillRect(M, y - 4, W - M * 2, 60);
     ctx.font = `10px ${FONT}`;
     ctx.fillStyle = T.dimmed;
-    ctx.fillText(item.label, nutX + 14, ny + 2);
-    ctx.font = `bold 14px ${FONT}`;
+    ctx.fillText(item.label, M + 16, y + 14);
+    ctx.font = `bold 16px ${FONT}`;
     ctx.fillStyle = T.text;
-    ctx.fillText(item.value, nutX + 14, ny + 22);
+    ctx.fillText(item.value, M + 16, y + 36);
+    y += 70;
   });
 
-  // Bottom bar
-  ctx.fillStyle = T.surface;
-  ctx.fillRect(0, H - 60, W, 60);
-  ctx.strokeStyle = T.border;
-  ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(0, H - 60); ctx.lineTo(W, H - 60); ctx.stroke();
+  // ── footer ────────────────────────────────────────────────────────────────────
 
-  ctx.font = `13px ${FONT}`;
+  const footerY = H - 90;
+  rule(footerY);
+
+  ctx.font = `14px ${FONT}`;
   ctx.fillStyle = T.dimmed;
-  ctx.fillText("Build your session plan →", 60, H - 22);
+  ctx.fillText("conceptclub.co.uk/form", M, H - 48);
 
-  // Instagram handle with icon (right-aligned, subtle)
   const igLabel = "@conceptathletic";
-  ctx.font = `13px ${FONT}`;
+  const igSize = 22;
+  const igGap = 8;
+  ctx.font = `14px ${FONT}`;
   const igLabelW = ctx.measureText(igLabel).width;
-  const igIconSize = 14;
-  const igGap = 6;
-  const igTotalW = igIconSize + igGap + igLabelW;
-  const igX = W - 60 - igTotalW;
-  const igY = H - 29;
-
+  const igX = W - M - igLabelW - igGap - igSize;
+  igIcon(igX, H - 48 - igSize + 4, igSize);
   ctx.fillStyle = T.muted;
-  const r = 3; const s = igIconSize;
-  ctx.beginPath();
-  ctx.moveTo(igX + r, igY); ctx.lineTo(igX + s - r, igY);
-  ctx.quadraticCurveTo(igX + s, igY, igX + s, igY + r);
-  ctx.lineTo(igX + s, igY + s - r);
-  ctx.quadraticCurveTo(igX + s, igY + s, igX + s - r, igY + s);
-  ctx.lineTo(igX + r, igY + s);
-  ctx.quadraticCurveTo(igX, igY + s, igX, igY + s - r);
-  ctx.lineTo(igX, igY + r);
-  ctx.quadraticCurveTo(igX, igY, igX + r, igY);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = T.surface;
-  ctx.beginPath();
-  ctx.arc(igX + s / 2, igY + s / 2, s * 0.27, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = T.muted;
-  ctx.beginPath();
-  ctx.arc(igX + s - 3.5, igY + 3.5, 1.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.strokeStyle = T.surface;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(igX + s / 2, igY + s / 2, s * 0.27 + 1, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.fillStyle = T.muted;
-  ctx.font = `13px ${FONT}`;
-  ctx.textAlign = "left";
-  ctx.fillText(igLabel, igX + igIconSize + igGap, H - 22);
-  ctx.textAlign = "left";
+  ctx.fillText(igLabel, igX + igSize + igGap, H - 48);
 
   return canvas;
+}
+
+// ─── Workout save card ────────────────────────────────────────────────────────
+
+function buildWorkoutCardCanvas(
+  plan: FormPlanOutput,
+  input: FormInput | null,
+  name?: string
+): HTMLCanvasElement {
+  const W = 1080;
+  const M = 72;
+  const CONTENT_W = W - M * 2;
+  const FONT = "'ui-monospace', 'Cascadia Code', 'Fira Mono', monospace";
+  const T = getFormCanvasTheme();
+  const MAX_H = 5000;
+
+  const offscreen = document.createElement("canvas");
+  offscreen.width = W;
+  offscreen.height = MAX_H;
+  const ctx = offscreen.getContext("2d")!;
+
+  function wrapLines(text: string, font: string, maxW: number): string[] {
+    ctx.font = font;
+    const words = text.split(" ");
+    const lines: string[] = [];
+    let line = "";
+    for (const word of words) {
+      const test = line ? line + " " + word : word;
+      if (ctx.measureText(test).width > maxW) { if (line) lines.push(line); line = word; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  const rule = (y: number) => {
+    ctx.strokeStyle = T.border; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(M, y); ctx.lineTo(W - M, y); ctx.stroke();
+  };
+
+  const sectionLabel = (text: string, y: number) => {
+    ctx.font = `bold 11px ${FONT}`; ctx.fillStyle = T.dimmed;
+    ctx.fillText(text, M, y);
+  };
+
+  // ── background ──────────────────────────────────────────────────────────────
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, MAX_H);
+  ctx.strokeStyle = T.grid; ctx.lineWidth = 1;
+  for (let gx = 0; gx < W; gx += 90) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, MAX_H); ctx.stroke(); }
+  for (let gy = 0; gy < MAX_H; gy += 90) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+
+  let y = 82;
+
+  // ── brand ───────────────────────────────────────────────────────────────────
+  ctx.font = `bold 26px ${FONT}`;
+  ctx.fillStyle = T.text; ctx.fillText("concept", M, y);
+  ctx.fillStyle = T.muted; ctx.fillText("//", M + ctx.measureText("concept").width, y);
+  ctx.fillStyle = T.text; ctx.fillText("form", M + ctx.measureText("concept//").width, y);
+
+  if (input) {
+    const tag = `${formatSessionType(input.session_type)} · ${input.duration_minutes} min`;
+    ctx.font = `14px ${FONT}`; ctx.fillStyle = T.dimmed;
+    ctx.textAlign = "right"; ctx.fillText(tag, W - M, y); ctx.textAlign = "left";
+  }
+
+  y = 110; rule(y); y += 52;
+
+  // ── identity ─────────────────────────────────────────────────────────────────
+  ctx.font = `13px ${FONT}`; ctx.fillStyle = T.dimmed;
+  ctx.fillText(name ? `${name.toUpperCase()}'S WORKOUT` : "WORKOUT PLAN", M, y);
+  y += 52;
+
+  ctx.fillStyle = T.text;
+  const heroLines = wrapLines(plan.protocol_name, `bold 52px ${FONT}`, CONTENT_W);
+  ctx.font = `bold 52px ${FONT}`;
+  for (const line of heroLines) { ctx.fillText(line, M, y); y += 64; }
+  y += 4;
+
+  const descLines = wrapLines(plan.protocol_desc, `18px ${FONT}`, CONTENT_W);
+  ctx.font = `18px ${FONT}`; ctx.fillStyle = T.muted;
+  for (const line of descLines) { ctx.fillText(line, M, y); y += 28; }
+
+  y += 44; rule(y); y += 48;
+
+  // ── session structure ─────────────────────────────────────────────────────────
+  sectionLabel("SESSION STRUCTURE", y);
+  y += 18; rule(y); y += 20;
+
+  plan.session_structure.forEach((block) => {
+    ctx.fillStyle = T.surface2;
+    ctx.fillRect(M, y, CONTENT_W, 46);
+    ctx.font = `bold 15px ${FONT}`; ctx.fillStyle = T.text;
+    ctx.fillText(block.phase.toUpperCase(), M + 16, y + 29);
+    ctx.font = `13px ${FONT}`; ctx.fillStyle = T.muted;
+    ctx.textAlign = "right"; ctx.fillText(`${block.duration_min} min`, W - M - 16, y + 29);
+    ctx.textAlign = "left";
+    y += 52;
+
+    block.items.forEach((item) => {
+      const itemLines = wrapLines(`· ${item}`, `14px ${FONT}`, CONTENT_W - 24);
+      ctx.font = `14px ${FONT}`; ctx.fillStyle = T.text;
+      itemLines.forEach((l, i) => { ctx.fillText(i === 0 ? l : `  ${l.slice(2)}`, M + 20, y); y += 32; });
+    });
+
+    if (block.note) {
+      const noteLines = wrapLines(block.note, `12px ${FONT}`, CONTENT_W - 24);
+      ctx.font = `12px ${FONT}`; ctx.fillStyle = T.muted;
+      noteLines.forEach((l) => { ctx.fillText(l, M + 20, y); y += 22; });
+    }
+    y += 20;
+  });
+
+  y += 16; rule(y); y += 48;
+
+  // ── warm-up mobility detail ───────────────────────────────────────────────────
+  sectionLabel("WARM-UP MOBILITY", y);
+  y += 18; rule(y); y += 12;
+
+  plan.warm_up_mobility.forEach((item, i) => {
+    const rowH = 70;
+    ctx.fillStyle = i % 2 === 0 ? T.surface : "transparent";
+    ctx.fillRect(M, y, CONTENT_W, rowH);
+    ctx.font = `bold 15px ${FONT}`; ctx.fillStyle = T.text;
+    ctx.fillText(item.name, M + 16, y + 22);
+    ctx.font = `12px ${FONT}`; ctx.fillStyle = T.muted;
+    ctx.fillText(item.cue, M + 16, y + 44);
+    ctx.font = `bold 13px ${FONT}`; ctx.fillStyle = T.dimmed;
+    ctx.textAlign = "right"; ctx.fillText(item.hold, W - M - 16, y + 38); ctx.textAlign = "left";
+    y += rowH + 2;
+  });
+
+  y += 32; rule(y); y += 48;
+
+  // ── cool-down mobility detail ─────────────────────────────────────────────────
+  sectionLabel("COOL-DOWN MOBILITY", y);
+  y += 18; rule(y); y += 12;
+
+  plan.cool_down_mobility.forEach((item, i) => {
+    const rowH = 70;
+    ctx.fillStyle = i % 2 === 0 ? T.surface : "transparent";
+    ctx.fillRect(M, y, CONTENT_W, rowH);
+    ctx.font = `bold 15px ${FONT}`; ctx.fillStyle = T.text;
+    ctx.fillText(item.name, M + 16, y + 22);
+    ctx.font = `12px ${FONT}`; ctx.fillStyle = T.muted;
+    ctx.fillText(item.cue, M + 16, y + 44);
+    ctx.font = `bold 13px ${FONT}`; ctx.fillStyle = T.dimmed;
+    ctx.textAlign = "right"; ctx.fillText(item.hold, W - M - 16, y + 38); ctx.textAlign = "left";
+    y += rowH + 2;
+  });
+
+  y += 32; rule(y); y += 48;
+
+  // ── nutrition ─────────────────────────────────────────────────────────────────
+  sectionLabel("NUTRITION", y);
+  y += 18; rule(y); y += 20;
+
+  type NutSection = { label: string; timing: string; detail: string };
+  const nutSections: NutSection[] = [];
+  if (plan.macros.protein_range) {
+    nutSections.push({ label: "PROTEIN TARGET", timing: plan.macros.protein_range, detail: plan.macros.protein_note });
+  }
+  nutSections.push({ label: "PRE-SESSION", timing: plan.macros.pre_session_timing, detail: plan.macros.pre_session_foods });
+  nutSections.push({ label: "POST-SESSION", timing: plan.macros.post_session_timing, detail: plan.macros.post_session_foods });
+  nutSections.push({ label: "CARBOHYDRATE PRIORITY", timing: plan.macros.carb_level.toUpperCase(), detail: plan.macros.carb_guidance });
+
+  nutSections.forEach((item, i) => {
+    const detailLines = wrapLines(item.detail, `12px ${FONT}`, CONTENT_W - 32);
+    const rowH = 20 + 26 + detailLines.length * 20 + 24;
+    ctx.fillStyle = i % 2 === 0 ? T.surface : "transparent";
+    ctx.fillRect(M, y, CONTENT_W, rowH);
+    ctx.font = `10px ${FONT}`; ctx.fillStyle = T.dimmed;
+    ctx.fillText(item.label, M + 16, y + 18);
+    ctx.font = `bold 17px ${FONT}`; ctx.fillStyle = T.text;
+    ctx.fillText(item.timing, M + 16, y + 38);
+    ctx.font = `12px ${FONT}`; ctx.fillStyle = T.muted;
+    let dy = y + 58;
+    detailLines.forEach((l) => { ctx.fillText(l, M + 16, dy); dy += 20; });
+    y += rowH + 4;
+  });
+
+  y += 36;
+
+  // ── footer ────────────────────────────────────────────────────────────────────
+  rule(y); y += 36;
+  ctx.font = `13px ${FONT}`; ctx.fillStyle = T.dimmed;
+  ctx.fillText("conceptclub.co.uk/form", M, y);
+  ctx.textAlign = "right"; ctx.fillText("concept//form", W - M, y);
+  ctx.textAlign = "left";
+  y += 56;
+
+  // crop to content
+  const finalH = y;
+  const out = document.createElement("canvas");
+  out.width = W; out.height = finalH;
+  out.getContext("2d")!.drawImage(offscreen, 0, 0);
+  return out;
 }
 
 // ─── Share copy text ──────────────────────────────────────────────────────────
@@ -1033,9 +1323,10 @@ function FormShareSection({
   input: FormInput | null;
   name?: string;
 }) {
-  const [copied, setCopied]         = useState(false);
+  const [copied, setCopied]           = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [canShare]                  = useState(() => typeof navigator !== "undefined" && !!navigator.share);
+  const [savingWorkout, setSavingWorkout] = useState(false);
+  const [canShare]                    = useState(() => typeof navigator !== "undefined" && !!navigator.share);
 
   const shareText = `My ${plan.protocol_name} session plan from concept//form.\n\nconceptathletic.com/form`;
 
@@ -1065,6 +1356,19 @@ function FormShareSection({
       link.click();
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleSaveWorkout = async () => {
+    setSavingWorkout(true);
+    try {
+      const canvas = buildWorkoutCardCanvas(plan, input, name);
+      const link = document.createElement("a");
+      link.download = "concept-form-workout.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } finally {
+      setSavingWorkout(false);
     }
   };
 
@@ -1119,6 +1423,37 @@ function FormShareSection({
         background: "var(--surface)",
       }}
     >
+      {/* Save workout to device */}
+      <div style={{ marginBottom: "20px" }}>
+        <p
+          style={{
+            fontSize: "11px",
+            color: "var(--text-muted)",
+            letterSpacing: "0.12em",
+            textTransform: "uppercase",
+            marginBottom: "10px",
+          }}
+        >
+          Gym reference
+        </p>
+        <button
+          onClick={handleSaveWorkout}
+          disabled={savingWorkout}
+          style={{
+            ...btnStyle(true),
+            width: "100%",
+            justifyContent: "center",
+            padding: "13px 18px",
+            fontSize: "14px",
+          }}
+        >
+          {savingWorkout ? "Building…" : "↓ Save full workout to device"}
+        </button>
+        <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "8px", lineHeight: 1.6 }}>
+          Full workout card — structure, exercises, mobility, nutrition. Save to your camera roll and open in the gym.
+        </p>
+      </div>
+
       <p
         style={{
           fontSize: "11px",
@@ -1278,7 +1613,7 @@ export default function FormWizard() {
           >
             <div>
               <p style={{ fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "4px" }}>
-                {input?.session_type?.replace("_", " ")} · {input?.goal} · {input?.duration_minutes} min
+                {input?.session_type ? formatSessionType(input.session_type) : ""} · {input?.goal} · {input?.duration_minutes} min
               </p>
               <p style={{ fontSize: "18px", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)", margin: 0 }}>
                 {plan.protocol_name}
