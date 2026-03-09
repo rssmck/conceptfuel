@@ -88,8 +88,8 @@ const PHILOSOPHY = [
     body: "Ranges and maybes are useless in the moment. We give you a number to hit, a time to hit it, and the reason why. One plan. Commit to it.",
   },
   {
-    heading: "Built for individual athletes.",
-    body: "Not teams. Not beginners chasing weight loss. Athletes who train seriously, race seriously, and want tools that match that seriousness.",
+    heading: "Calm, deliberate, intentional.",
+    body: "Not reactive. Not ego-driven. Training as an informed practice. We build tools for athletes who think carefully about what they do and why.",
   },
 ];
 
@@ -374,9 +374,7 @@ export default function ClubPage() {
             maxWidth: "560px",
           }}
         >
-          Sprinting, endurance, Hyrox, trail and mountain running, performance
-          cycling. Coaches who compete at the level they coach. concept//athleticclub
-          is the digital arm — tools built from the same evidence base.
+          Sprinting, endurance, Hyrox, trail and mountain running. Developed by coaches who compete at the level they coach. concept//athleticclub is built from the same evidence base.
         </p>
         <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "center" }}>
           <Link
