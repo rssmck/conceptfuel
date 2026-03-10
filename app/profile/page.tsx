@@ -1,8 +1,10 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Metadata } from "next";
+import type { PlanSession } from "@/lib/weeklyPlanEngine";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -33,6 +35,42 @@ interface SavedFuelPlan {
   event_name: string | null;
 }
 
+interface TrainingPlan {
+  id:             string;
+  name:           string;
+  goal:           string;
+  training_style: string;
+  days_per_week:  number;
+  block_weeks:    number;
+  starts_on:      string;
+  active:         boolean;
+  sessions:       WeekPhaseRow[];
+}
+
+interface WeekPhaseRow {
+  week_number: number;
+  phase_name:  string;
+  phase_note:  string;
+  sessions:    PlanSession[];
+}
+
+interface PlanCompletion {
+  week_number:   number;
+  session_index: number;
+}
+
+// ── Goal labels ───────────────────────────────────────────────────────────────
+
+const GOAL_LABELS: Record<string, string> = {
+  strength:    "Strength",
+  hypertrophy: "Build muscle",
+  power:       "Power",
+  endurance_sc: "Endurance S&C",
+  plyo:        "Plyometrics",
+  aesthetic:   "Lean and strong",
+  general:     "General fitness",
+};
+
 // ── Shared styles ─────────────────────────────────────────────────────────────
 
 const sectionLabel: React.CSSProperties = {
@@ -57,6 +95,8 @@ export default function ProfilePage() {
   const [uploading,    setUploading]    = useState(false);
   const [saveMsg,      setSaveMsg]      = useState<string | null>(null);
   const [draft,        setDraft]        = useState<Partial<Profile>>({});
+  const [activePlan,   setActivePlan]   = useState<TrainingPlan | null>(null);
+  const [completions,  setCompletions]  = useState<PlanCompletion[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -80,6 +120,26 @@ export default function ProfilePage() {
       .select("id, created_at, event_name")
       .eq("user_id", user.id).order("created_at", { ascending: false }).limit(20)
       .then(({ data }) => { if (data) setFuelPlans(data); });
+
+    // Load active training plan
+    supabase.from("training_plans")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setActivePlan(data as TrainingPlan);
+          supabase.from("plan_completions")
+            .select("week_number, session_index")
+            .eq("plan_id", data.id)
+            .then(({ data: completionData }) => {
+              if (completionData) setCompletions(completionData);
+            });
+        }
+      });
   }, [user]);
 
   // ── Avatar upload ────────────────────────────────────────────────────────────
@@ -141,6 +201,43 @@ export default function ProfilePage() {
     const supabase = createClient();
     await supabase.from("saved_fuel_plans").delete().eq("id", id);
     setFuelPlans(f => f.filter(x => x.id !== id));
+  };
+
+  // ── Training plan helpers ────────────────────────────────────────────────────
+
+  function getCurrentWeek(startsOn: string): number {
+    const start = new Date(startsOn);
+    const today = new Date();
+    const diffMs = today.getTime() - start.getTime();
+    const diffWeeks = Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000));
+    return Math.min(Math.max(diffWeeks + 1, 1), activePlan?.block_weeks ?? 1);
+  }
+
+  const handleCompleteSession = async (weekNumber: number, sessionIndex: number) => {
+    if (!activePlan || !user) return;
+    const supabase = createClient();
+    const isComplete = completions.some(
+      c => c.week_number === weekNumber && c.session_index === sessionIndex
+    );
+    if (isComplete) {
+      await supabase.from("plan_completions")
+        .delete()
+        .eq("plan_id", activePlan.id)
+        .eq("week_number", weekNumber)
+        .eq("session_index", sessionIndex);
+      setCompletions(prev =>
+        prev.filter(c => !(c.week_number === weekNumber && c.session_index === sessionIndex))
+      );
+    } else {
+      await supabase.from("plan_completions")
+        .upsert({
+          plan_id: activePlan.id,
+          user_id: user.id,
+          week_number: weekNumber,
+          session_index: sessionIndex,
+        });
+      setCompletions(prev => [...prev, { week_number: weekNumber, session_index: sessionIndex }]);
+    }
   };
 
   // ── Render: not signed in ────────────────────────────────────────────────────
@@ -345,6 +442,103 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* ── Training plan ───────────────────────────────────────────────────── */}
+      <div style={{ marginBottom: "40px" }}>
+        <p style={sectionLabel}>Training plan</p>
+        {!activePlan ? (
+          <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+            No active plan.{" "}
+            <Link href="/form/plan" style={{ color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}>
+              Build a plan →
+            </Link>
+          </p>
+        ) : (() => {
+          const currentWeek = getCurrentWeek(activePlan.starts_on);
+          const weekData = activePlan.sessions.find(w => w.week_number === currentWeek);
+          const totalSessions = activePlan.days_per_week * activePlan.block_weeks;
+          const completedCount = completions.length;
+          const progressPct = Math.round((completedCount / totalSessions) * 100);
+          return (
+            <div>
+              <div style={{ marginBottom: "14px" }}>
+                <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--text)", marginBottom: "4px", letterSpacing: "-0.02em" }}>
+                  {activePlan.name}
+                </p>
+                <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "10px" }}>
+                  {GOAL_LABELS[activePlan.goal] ?? activePlan.goal} · Week {currentWeek} of {activePlan.block_weeks}
+                </p>
+                {/* Progress bar */}
+                <div style={{ height: "4px", background: "var(--border)", borderRadius: "2px", overflow: "hidden", marginBottom: "4px" }}>
+                  <div style={{ height: "100%", width: `${progressPct}%`, background: "var(--accent)", borderRadius: "2px", transition: "width 0.3s" }} />
+                </div>
+                <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>{completedCount} of {totalSessions} sessions complete</p>
+              </div>
+
+              {weekData && (
+                <div>
+                  <p style={{ fontSize: "11px", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "10px" }}>
+                    Week {currentWeek} · {weekData.phase_name}
+                  </p>
+                  <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden" }}>
+                    {weekData.sessions.map((s, i) => {
+                      const done = completions.some(c => c.week_number === currentWeek && c.session_index === i);
+                      return (
+                        <div
+                          key={i}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            padding: "11px 16px",
+                            background: "var(--surface)",
+                            borderBottom: i < weekData.sessions.length - 1 ? "1px solid var(--border)" : undefined,
+                            opacity: done ? 0.6 : 1,
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                            <button
+                              type="button"
+                              onClick={() => handleCompleteSession(currentWeek, i)}
+                              style={{
+                                width: "18px",
+                                height: "18px",
+                                borderRadius: "50%",
+                                border: done ? "none" : "1.5px solid var(--border)",
+                                background: done ? "var(--accent)" : "transparent",
+                                cursor: "pointer",
+                                flexShrink: 0,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "var(--bg)",
+                                fontSize: "10px",
+                                fontWeight: 700,
+                              }}
+                              title={done ? "Mark incomplete" : "Mark complete"}
+                            >
+                              {done ? "✓" : ""}
+                            </button>
+                            <div>
+                              <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--text)", textDecoration: done ? "line-through" : "none" }}>
+                                {s.label}
+                              </p>
+                              <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)" }}>{s.duration_minutes} min</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "8px", lineHeight: 1.5 }}>
+                    {weekData.phase_note}
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── Saved workouts ──────────────────────────────────────────────────── */}

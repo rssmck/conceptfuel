@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import FormWizard from "./FormWizard";
 
 export default function FormEntry() {
@@ -77,7 +78,7 @@ export default function FormEntry() {
               fontWeight: 600,
             }}
           >
-            Ad hoc
+            Single session
           </p>
           <p
             style={{
@@ -106,8 +107,9 @@ export default function FormEntry() {
           </span>
         </button>
 
-        {/* Build a plan — coming soon */}
-        <div
+        {/* Build a plan */}
+        <Link
+          href="/form/plan"
           style={{
             padding: "32px 28px",
             background: "var(--surface)",
@@ -115,36 +117,24 @@ export default function FormEntry() {
             display: "flex",
             flexDirection: "column",
             gap: "10px",
-            opacity: 0.55,
+            textDecoration: "none",
+            transition: "background 0.15s",
           }}
+          onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = "var(--surface-hover, var(--bg))")}
+          onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = "var(--surface)")}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <p
-              style={{
-                fontSize: "11px",
-                color: "var(--text-muted)",
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                margin: 0,
-                fontWeight: 600,
-              }}
-            >
-              Structured block
-            </p>
-            <span
-              style={{
-                fontSize: "9px",
-                fontWeight: 700,
-                letterSpacing: "0.12em",
-                color: "var(--text-muted)",
-                border: "1px solid var(--border)",
-                padding: "1px 6px",
-                borderRadius: "20px",
-              }}
-            >
-              COMING SOON
-            </span>
-          </div>
+          <p
+            style={{
+              fontSize: "11px",
+              color: "var(--accent-dim)",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              margin: 0,
+              fontWeight: 600,
+            }}
+          >
+            Structured block
+          </p>
           <p
             style={{
               fontSize: "18px",
@@ -160,7 +150,17 @@ export default function FormEntry() {
           <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0, lineHeight: 1.65 }}>
             Set your goal, days per week, and block length. Get a full 4, 6 or 8 week programme with progressive weekly sessions saved to your profile.
           </p>
-        </div>
+          <span
+            style={{
+              marginTop: "8px",
+              fontSize: "13px",
+              color: "var(--accent)",
+              fontWeight: 600,
+            }}
+          >
+            Build a plan →
+          </span>
+        </Link>
       </div>
     </div>
   );
