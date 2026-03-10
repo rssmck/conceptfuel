@@ -67,7 +67,7 @@ const GOAL_LABELS: Record<string, string> = {
   power:       "Power",
   endurance_sc: "Endurance S&C",
   plyo:        "Plyometrics",
-  aesthetic:   "Lean and strong",
+  aesthetic:   "Aesthetic & strong",
   general:     "General fitness",
 };
 

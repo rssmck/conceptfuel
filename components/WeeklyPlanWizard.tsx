@@ -14,7 +14,7 @@ const TRAINING_GOALS: { value: TrainingGoal; label: string; desc: string }[] = [
   { value: "power",        label: "Power",           desc: "Explosive output. Sprinting, athletics, dynamic sports." },
   { value: "endurance_sc", label: "Endurance S&C",   desc: "Stabilising, functional, injury prevention. For runners, cyclists and endurance athletes." },
   { value: "plyo",         label: "Plyometrics",     desc: "Jump training. Reactive, ground contact, power endurance." },
-  { value: "aesthetic",    label: "Lean and strong",  desc: "Shape, tone, functional composition. Definition, proportion, full range of motion." },
+  { value: "aesthetic",    label: "Aesthetic & strong",  desc: "Shape, lean definition, functional composition. Proportion, tone, full range of motion." },
   { value: "general",      label: "General fitness",  desc: "Balanced sessions, no single focus. Build a foundation and feel good moving." },
 ];
 
@@ -35,7 +35,7 @@ const GOAL_LABELS: Record<string, string> = {
   power: "Power",
   endurance_sc: "Endurance S&C",
   plyo: "Plyometrics",
-  aesthetic: "Lean and strong",
+  aesthetic: "Aesthetic & strong",
   general: "General fitness",
 };
 
