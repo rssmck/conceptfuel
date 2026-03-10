@@ -47,7 +47,7 @@ const TRAINING_GOALS: { value: TrainingGoal; label: string; desc: string }[] = [
   { value: "power",        label: "Power",          desc: "Explosive output. Sprinting, athletics, dynamic sports. Generates a complete power session." },
   { value: "endurance_sc", label: "Endurance S&C",  desc: "Stabilising, functional, injury prevention. For runners, cyclists and endurance athletes. Generates a complete endurance strength session." },
   { value: "plyo",         label: "Plyometrics",    desc: "Jump training. Reactive, ground contact, power endurance. Generates a complete plyometric session." },
-  { value: "aesthetic",    label: "Lean and strong", desc: "Shape, tone, functional composition. Glute development, muscle definition, full range of motion." },
+  { value: "aesthetic",    label: "Lean and strong", desc: "Shape, tone, functional composition. Definition, proportion, full range of motion." },
   { value: "general",      label: "General fitness", desc: "Balanced sessions, no single focus. Build a foundation and feel good moving." },
 ];
 
