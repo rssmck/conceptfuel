@@ -310,7 +310,7 @@ export default function WeeklyPlanWizard() {
       {step === 1 && (
         <div>
           <p style={labelStyle}>How many days per week?</p>
-          <div style={{ display: "flex", gap: "8px", marginBottom: "24px" }}>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "24px", flexWrap: "wrap" }}>
             {DAYS.map((d) => (
               <button
                 key={d}
@@ -387,7 +387,7 @@ export default function WeeklyPlanWizard() {
       {step === 3 && (
         <div>
           <p style={labelStyle}>Block length</p>
-          <div style={{ display: "flex", gap: "8px", marginBottom: "28px" }}>
+          <div style={{ display: "flex", gap: "8px", marginBottom: "28px", flexWrap: "wrap" }}>
             {BLOCK_WEEKS.map((w) => (
               <button
                 key={w}
@@ -446,6 +446,8 @@ export default function WeeklyPlanWizard() {
                 background: "var(--surface)",
                 color: "var(--text)",
                 fontFamily: "inherit",
+                width: "100%",
+                boxSizing: "border-box",
               }}
             />
           </div>
@@ -471,7 +473,8 @@ export default function WeeklyPlanWizard() {
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
-                  alignItems: "center",
+                  alignItems: "baseline",
+                  gap: "12px",
                   padding: "11px 16px",
                   background: "var(--surface)",
                   borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : undefined,

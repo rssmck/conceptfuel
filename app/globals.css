@@ -105,6 +105,7 @@ body {
 /* Form elements */
 input[type="number"],
 input[type="text"],
+input[type="date"],
 select {
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -123,6 +124,7 @@ select {
 @media (min-width: 601px) {
   input[type="number"],
   input[type="text"],
+  input[type="date"],
   select {
     font-size: 14px;
   }
@@ -130,6 +132,7 @@ select {
 
 input[type="number"]:focus,
 input[type="text"]:focus,
+input[type="date"]:focus,
 select:focus {
   border-color: var(--accent);
 }
