@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import FormWizard from "@/components/FormWizard";
+import FormEntry from "@/components/FormEntry";
 
 export const metadata: Metadata = {
   title: "Gym session planner — concept//form",
@@ -24,5 +24,5 @@ export const metadata: Metadata = {
 };
 
 export default function FormPage() {
-  return <FormWizard />;
+  return <FormEntry />;
 }

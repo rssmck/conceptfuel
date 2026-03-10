@@ -6,7 +6,7 @@ export type SessionType =
 
 export type TrainingStyle = 'free_weights' | 'machines' | 'bodyweight' | 'mixed'
 export type CardioLevel   = 'none' | 'short' | 'moderate' | 'endurance'
-export type TrainingGoal  = 'strength' | 'hypertrophy' | 'athletic' | 'general' | 'aesthetic'
+export type TrainingGoal  = 'strength' | 'hypertrophy' | 'power' | 'endurance_sc' | 'plyo' | 'general' | 'aesthetic'
 
 export interface FormInput {
   session_type:    SessionType | SessionType[]
@@ -167,11 +167,13 @@ const ACCESSORY_EXERCISES: Record<SessionType, string[]> = {
 }
 
 const REP_SCHEMES: Record<TrainingGoal, string> = {
-  strength:    '3–5 sets × 3–5 reps · 80–90% 1RM · 3–5 min rest between sets',
-  hypertrophy: '3–4 sets × 8–12 reps · 65–75% 1RM · 60–90s rest between sets',
-  athletic:    '3–4 sets × 5–8 reps · 75–85% 1RM · explosive intent, 2–3 min rest',
-  general:     '3 sets × 10–15 reps · 55–65% 1RM · ~60s rest between sets',
-  aesthetic:   '4 sets × 10–15 reps · superset-friendly · 45–60s rest',
+  strength:     '3–5 sets × 3–5 reps · 80–90% 1RM · 3–5 min rest between sets',
+  hypertrophy:  '3–4 sets × 8–12 reps · 65–75% 1RM · 60–90s rest between sets',
+  power:        '3–5 sets × 3–6 reps · 80–90% 1RM · full recovery between sets · explosive intent on every rep',
+  endurance_sc: '3 sets × 12–20 reps · 50–65% 1RM · 45–60s rest · controlled tempo throughout',
+  plyo:         '4–6 sets × 5–8 reps · max explosive intent · 2–3 min full recovery between sets',
+  general:      '3 sets × 10–15 reps · 55–65% 1RM · ~60s rest between sets',
+  aesthetic:    '4 sets × 10–15 reps · superset-friendly · 45–60s rest',
 }
 
 const WARM_UP_MOBILITY: Record<SessionType, MobilityItem[]> = {
@@ -360,9 +362,37 @@ const COOL_DOWN_MOBILITY: Record<SessionType, MobilityItem[]> = {
 
 // ─── ENGINE FUNCTIONS ─────────────────────────────────────────────────────────
 
+// For goal-driven sessions (power, endurance_sc, plyo), override the session type
+// so the right exercises and mobility are used regardless of what the user picked.
+function getEffectiveSessionType(goal: TrainingGoal, session_type: SessionType): SessionType {
+  if (goal === 'power')        return 'sprint_power'
+  if (goal === 'endurance_sc') return 'runner_strength'
+  if (goal === 'plyo')         return 'plyo'
+  return session_type
+}
+
 function getProtocolName(goal: TrainingGoal, session_type: SessionType | SessionType[], cardio: CardioLevel): { name: string; desc: string } {
   const types = resolveTypes(session_type)
   const primary = types[0]
+
+  if (goal === 'power') {
+    return {
+      name: 'power block',
+      desc: 'Explosive compound movements targeting rate of force development. Quality of effort matters more than volume. Full recovery between sets.',
+    }
+  }
+  if (goal === 'endurance_sc') {
+    return {
+      name: 'endurance S&C',
+      desc: 'Functional strength, stabilisation and injury prevention for endurance athletes. Lower load, higher rep, single-leg and posterior chain focused.',
+    }
+  }
+  if (goal === 'plyo') {
+    return {
+      name: 'plyometric block',
+      desc: 'Jump and reactive training targeting ground contact time and lower limb stiffness. Land well, reset fully, prioritise intent over fatigue.',
+    }
+  }
 
   if (primary === 'runner_strength') {
     return {
@@ -392,30 +422,38 @@ function getProtocolName(goal: TrainingGoal, session_type: SessionType | Session
   const map: Record<TrainingGoal, { name: string; desc: string }> = {
     strength: {
       name: 'strength block',
-      desc: 'Heavy compound lifting with full recovery between sets. CNS-demanding — prioritise sleep and adequate protein.',
+      desc: 'Heavy compound lifting with full recovery between sets. CNS-demanding. Prioritise sleep and adequate protein.',
     },
     hypertrophy: {
       name: 'volume block',
-      desc: 'Moderate load, higher volume to maximise muscle protein synthesis. Anabolic window matters — fuel the session and recover well.',
+      desc: 'Moderate load, higher volume to maximise muscle protein synthesis. Anabolic window matters. Fuel the session and recover well.',
     },
-    athletic: {
-      name: 'athletic power',
-      desc: 'Strength-speed training targeting neuromuscular output. Quality over quantity — reset fully between sets.',
+    power: {
+      name: 'power block',
+      desc: 'Explosive compound movements targeting rate of force development. Quality of effort matters more than volume. Full recovery between sets.',
+    },
+    endurance_sc: {
+      name: 'endurance S&C',
+      desc: 'Functional strength, stabilisation and injury prevention for endurance athletes. Lower load, higher rep, single-leg and posterior chain focused.',
+    },
+    plyo: {
+      name: 'plyometric block',
+      desc: 'Jump and reactive training targeting ground contact time and lower limb stiffness. Land well, reset fully, prioritise intent over fatigue.',
     },
     general: {
       name: 'general training',
-      desc: 'Balanced session across intensity and volume. Accessible and repeatable — consistency is the goal.',
+      desc: 'Balanced session across intensity and volume. Accessible and repeatable. Consistency is the goal.',
     },
     aesthetic: {
       name: 'aesthetic session',
-      desc: 'High-volume, pump-focused work targeting specific muscle groups. Mind-muscle connection and full range of motion are key.',
+      desc: 'Shape, tone and functional composition. High-volume, pump-focused work with full range of motion. Mind-muscle connection is key.',
     },
   }
 
   if (types.length > 1) {
     const groupNames = types.map(t => t.replace(/_/g, ' ')).join(' & ')
     const goalSuffix: Record<TrainingGoal, string> = {
-      strength: 'strength', hypertrophy: 'volume', athletic: 'power', general: 'training', aesthetic: 'session',
+      strength: 'strength', hypertrophy: 'volume', power: 'power', endurance_sc: 'S&C', plyo: 'plyo', general: 'training', aesthetic: 'session',
     }
     return {
       name: `${groupNames} ${goalSuffix[goal]}`,
@@ -437,7 +475,7 @@ function getIntensityLevel(
     runner_strength: 4, sprint_power: 5, plyo: 5,
   }
   const goalScore: Record<TrainingGoal, number> = {
-    strength: 4, athletic: 4, hypertrophy: 3, general: 2, aesthetic: 2,
+    strength: 4, power: 4, plyo: 4, hypertrophy: 3, endurance_sc: 3, general: 2, aesthetic: 2,
   }
   const cardioScore: Record<CardioLevel, number> = {
     none: 0, short: 1, moderate: 2, endurance: 3,
@@ -453,7 +491,8 @@ function getIntensityLevel(
 function buildSessionStructure(input: FormInput): SessionBlock[] {
   const { training_style, goal, cardio, duration_minutes } = input
   const types = resolveTypes(input.session_type)
-  const session_type = types[0]
+  // For goal-driven sessions, override exercise and mobility selection
+  const session_type = getEffectiveSessionType(goal, types[0])
   const blocks: SessionBlock[] = []
   const withWarmUp = input.include_warmup !== false
 
@@ -475,10 +514,11 @@ function buildSessionStructure(input: FormInput): SessionBlock[] {
     blocks.push({ phase: 'Warm-up', duration_min: warmUpMin, items: warmUpItems })
   }
 
-  // Primary lifts — distribute across all selected types
+  // Primary lifts — goal-driven sessions use the effective type; body-area sessions distribute across selected types
+  const isGoalDriven = goal === 'power' || goal === 'endurance_sc' || goal === 'plyo'
   const primaryCount = duration_minutes >= 60 ? 4 : 3
   let primaryExercises: string[]
-  if (types.length === 1) {
+  if (isGoalDriven || types.length === 1) {
     primaryExercises = PRIMARY_EXERCISES[session_type][training_style].slice(0, primaryCount)
   } else {
     const perType = Math.max(1, Math.floor(primaryCount / types.length))
@@ -494,11 +534,11 @@ function buildSessionStructure(input: FormInput): SessionBlock[] {
     note: REP_SCHEMES[goal],
   })
 
-  // Accessory — distribute across all selected types
+  // Accessory — goal-driven sessions use effective type; body-area sessions distribute
   if (accessoryMin >= 8) {
     const totalAcc = duration_minutes >= 60 ? 3 : 2
     let accessories: string[]
-    if (types.length === 1) {
+    if (isGoalDriven || types.length === 1) {
       accessories = ACCESSORY_EXERCISES[session_type].slice(0, totalAcc)
     } else {
       const perType = Math.max(1, Math.ceil(totalAcc / types.length))
@@ -508,7 +548,7 @@ function buildSessionStructure(input: FormInput): SessionBlock[] {
       phase: 'Accessory work',
       duration_min: accessoryMin,
       items: accessories,
-      note: goal === 'strength' ? '2–3 sets × 8–15 reps · lighter — focus on quality' : '3 sets × 12–15 reps',
+      note: goal === 'strength' || goal === 'power' ? '2–3 sets × 8–15 reps · lighter — focus on quality' : '3 sets × 12–15 reps',
     })
   }
 
@@ -533,14 +573,14 @@ function buildSessionStructure(input: FormInput): SessionBlock[] {
       ],
     }
     blocks.push({
-      phase: session_type === 'hybrid' ? 'Conditioning' : 'Cardio',
+      phase: (session_type === 'hybrid' || session_type === 'plyo' || session_type === 'sprint_power') ? 'Conditioning' : 'Cardio',
       duration_min: cardioTime,
       items: cardioItems[cardio],
     })
   }
 
-  // Core (only for single-type sessions that don't already target core or arms)
-  if (types.length === 1 && session_type !== 'core' && session_type !== 'arms' && duration_minutes >= 60 && cardio === 'none') {
+  // Core (skip for goal-driven and sessions that already target core or arms)
+  if (!isGoalDriven && types.length === 1 && session_type !== 'core' && session_type !== 'arms' && duration_minutes >= 60 && cardio === 'none') {
     blocks.push({
       phase: 'Core',
       duration_min: 5,
@@ -564,7 +604,7 @@ function buildMacros(input: FormInput): MacroTargets {
   const { session_type, goal, cardio, weight_kg } = input
   const intensity = getIntensityLevel(session_type, goal, cardio)
 
-  const proteinPerKg = goal === 'strength' || goal === 'athletic' ? 2.0
+  const proteinPerKg = goal === 'strength' || goal === 'power' || goal === 'plyo' ? 2.0
     : goal === 'hypertrophy' || goal === 'aesthetic' ? 1.8
     : 1.6
 
@@ -622,6 +662,12 @@ export function generateFormPlan(input: FormInput): FormPlanOutput {
   if (input.goal === 'strength') {
     notes.push('Strength sessions are CNS-intensive. Sleep quality the night before significantly affects performance.')
   }
+  if (input.goal === 'power') {
+    notes.push('Power sessions require full neural readiness. Avoid training power when significantly fatigued — quality degrades rapidly.')
+  }
+  if (input.goal === 'plyo') {
+    notes.push('Plyometric training is high-impact. Land softly, reset completely between reps, and do not train plyo on fatigued legs.')
+  }
   if (input.cardio === 'endurance' || input.cardio === 'moderate') {
     notes.push('When combining strength and cardio, place strength work first unless training for a specific endurance event.')
   }
@@ -649,11 +695,15 @@ export function generateFormPlan(input: FormInput): FormPlanOutput {
     warm_up_mobility:   (() => {
       if (input.include_warmup === false) return []
       const types = resolveTypes(input.session_type)
+      const isGoalDriven = input.goal === 'power' || input.goal === 'endurance_sc' || input.goal === 'plyo'
+      if (isGoalDriven) return WARM_UP_MOBILITY[getEffectiveSessionType(input.goal, types[0])]
       if (types.length === 1) return WARM_UP_MOBILITY[types[0]]
       return dedupeByName(types.flatMap(t => WARM_UP_MOBILITY[t]))
     })(),
     cool_down_mobility: (() => {
       const types = resolveTypes(input.session_type)
+      const isGoalDriven = input.goal === 'power' || input.goal === 'endurance_sc' || input.goal === 'plyo'
+      if (isGoalDriven) return COOL_DOWN_MOBILITY[getEffectiveSessionType(input.goal, types[0])]
       if (types.length === 1) return COOL_DOWN_MOBILITY[types[0]]
       return dedupeByName(types.flatMap(t => COOL_DOWN_MOBILITY[t]))
     })(),

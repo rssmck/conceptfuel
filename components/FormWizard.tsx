@@ -24,10 +24,7 @@ const SESSION_TYPES: { value: SessionType; label: string }[] = [
   { value: "arms",             label: "Arms" },
   { value: "core",             label: "Core" },
   { value: "full_body",        label: "Full body" },
-  { value: "hybrid",           label: "Hybrid" },
-  { value: "runner_strength",  label: "Runner strength" },
-  { value: "sprint_power",     label: "Sprint / Power" },
-  { value: "plyo",             label: "Plyometrics" },
+  { value: "hybrid",    label: "Hybrid" },
 ];
 
 const TRAINING_STYLES: { value: TrainingStyle; label: string; desc: string }[] = [
@@ -45,11 +42,13 @@ const CARDIO_LEVELS: { value: CardioLevel; label: string; desc: string }[] = [
 ];
 
 const TRAINING_GOALS: { value: TrainingGoal; label: string; desc: string }[] = [
-  { value: "strength",    label: "Strength",    desc: "Heavy loads, low reps, max output" },
-  { value: "hypertrophy", label: "Hypertrophy", desc: "Muscle size, volume-focused" },
-  { value: "athletic",    label: "Athletic",    desc: "Power, speed, sport carryover" },
-  { value: "aesthetic",   label: "Aesthetic",   desc: "Shape, tone, body composition" },
-  { value: "general",     label: "General",     desc: "Health, fitness, no single focus" },
+  { value: "strength",     label: "Strength",       desc: "Heavy lifting. Low reps, high load, maximum force output." },
+  { value: "hypertrophy",  label: "Build muscle",   desc: "Moderate load, higher volume. Size, fullness, progressive overload." },
+  { value: "power",        label: "Power",          desc: "Explosive output. Sprinting, athletics, dynamic sports. Generates a complete power session." },
+  { value: "endurance_sc", label: "Endurance S&C",  desc: "Stabilising, functional, injury prevention. For runners, cyclists and endurance athletes. Generates a complete endurance strength session." },
+  { value: "plyo",         label: "Plyometrics",    desc: "Jump training. Reactive, ground contact, power endurance. Generates a complete plyometric session." },
+  { value: "aesthetic",    label: "Lean and strong", desc: "Shape, tone, functional composition. Glute development, muscle definition, full range of motion." },
+  { value: "general",      label: "General fitness", desc: "Balanced sessions, no single focus. Build a foundation and feel good moving." },
 ];
 
 const DURATIONS = [30, 45, 60, 75, 90];
@@ -267,14 +266,19 @@ function ConfigureStep({
   const [includeWarmup, setIncludeWarmup]   = useState<boolean>(true);
   const [error, setError]                   = useState<string | null>(null);
 
+  const isGoalDriven = goal === "power" || goal === "endurance_sc" || goal === "plyo";
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (sessionTypes.length === 0) { setError("Select at least one session type"); return; }
+    if (!isGoalDriven && sessionTypes.length === 0) { setError("Select at least one session type"); return; }
     if (!trainingStyle) { setError("Select a training style"); return; }
     if (!goal) { setError("Select your training goal"); return; }
     setError(null);
     const weightNum = weight ? parseFloat(weight) : undefined;
-    const sessionType = sessionTypes.length === 1 ? sessionTypes[0] : sessionTypes;
+    // Goal-driven sessions don't need a user-selected type; pass full_body as the carrier (engine overrides it)
+    const sessionType = isGoalDriven
+      ? "full_body"
+      : sessionTypes.length === 1 ? sessionTypes[0] : sessionTypes;
     onSubmit(
       {
         session_type:    sessionType,
@@ -337,34 +341,36 @@ function ConfigureStep({
           </div>
         </div>
 
-        {/* Session type — multi-select */}
-        <div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginBottom: "10px" }}>
-            <span style={labelStyle}>Session type</span>
-            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>select up to 3</span>
+        {/* Session type — hidden for goal-driven sessions (power, endurance S&C, plyo) */}
+        {goal !== "power" && goal !== "endurance_sc" && goal !== "plyo" && (
+          <div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginBottom: "10px" }}>
+              <span style={labelStyle}>Session type</span>
+              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>select up to 3</span>
+            </div>
+            <div style={cardGridStyle}>
+              {SESSION_TYPES.map((s) => (
+                <OptionCard
+                  key={s.value}
+                  selected={sessionTypes.includes(s.value)}
+                  onClick={() => {
+                    setSessionTypes(prev =>
+                      prev.includes(s.value)
+                        ? prev.filter(t => t !== s.value)
+                        : prev.length < 3 ? [...prev, s.value] : prev
+                    );
+                  }}
+                  label={s.label}
+                />
+              ))}
+            </div>
+            {sessionTypes.length > 1 && (
+              <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "8px" }}>
+                Combined: {sessionTypes.map(t => t.replace(/_/g, " ")).join(" + ")}
+              </p>
+            )}
           </div>
-          <div style={cardGridStyle}>
-            {SESSION_TYPES.map((s) => (
-              <OptionCard
-                key={s.value}
-                selected={sessionTypes.includes(s.value)}
-                onClick={() => {
-                  setSessionTypes(prev =>
-                    prev.includes(s.value)
-                      ? prev.filter(t => t !== s.value)
-                      : prev.length < 3 ? [...prev, s.value] : prev
-                  );
-                }}
-                label={s.label}
-              />
-            ))}
-          </div>
-          {sessionTypes.length > 1 && (
-            <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "8px" }}>
-              Combined: {sessionTypes.map(t => t.replace(/_/g, " ")).join(" + ")}
-            </p>
-          )}
-        </div>
+        )}
 
         {/* Training style */}
         <div>
