@@ -141,6 +141,97 @@ export default function ClubPage() {
       />
     <div className="cf-page">
 
+      {/* ── Hero image ──────────────────────────────────────────────────── */}
+      <section
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "clamp(260px, 40vw, 480px)",
+          borderRadius: "6px",
+          overflow: "hidden",
+          marginBottom: "56px",
+          background: "#111",
+        }}
+      >
+        {/* Replace /hero.jpg with your image */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/hero.jpg"
+          alt="Athletes running"
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center 30%",
+            filter: "grayscale(30%) contrast(1.1) brightness(0.75) sepia(15%)",
+            display: "block",
+          }}
+        />
+        {/* Grain overlay */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
+            opacity: 0.18,
+            mixBlendMode: "overlay",
+            pointerEvents: "none",
+          }}
+        />
+        {/* Vignette */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.55) 100%)",
+            pointerEvents: "none",
+          }}
+        />
+        {/* Bottom fade */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0, left: 0, right: 0,
+            height: "50%",
+            background: "linear-gradient(to bottom, transparent, var(--bg))",
+            pointerEvents: "none",
+          }}
+        />
+        {/* Overlay text */}
+        <div
+          style={{
+            position: "absolute",
+            bottom: "32px",
+            left: "32px",
+            right: "32px",
+          }}
+        >
+          <p
+            style={{
+              fontSize: "11px",
+              color: "rgba(255,255,255,0.5)",
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              marginBottom: "6px",
+            }}
+          >
+            concept//athleticclub · early access
+          </p>
+          <p
+            style={{
+              fontSize: "clamp(18px, 3vw, 28px)",
+              fontWeight: 700,
+              color: "#fff",
+              letterSpacing: "-0.02em",
+              lineHeight: 1.2,
+              textShadow: "0 2px 12px rgba(0,0,0,0.4)",
+            }}
+          >
+            Performance tools for serious athletes.
+          </p>
+        </div>
+      </section>
+
       {/* ── Hero ─────────────────────────────────────────────────────────── */}
       <section style={{ marginBottom: "64px" }}>
         <p

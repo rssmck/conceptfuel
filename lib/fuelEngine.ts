@@ -248,7 +248,7 @@ function computeCarbTarget(
   target = applyGICap(target, band, gi_tolerance, duration_minutes)
 
   // Elevation boost for trail running and cycling
-  if (elevation_gain_m && elevation_gain_m > 0 && (sport === 'trail_running' || sport === 'cycling')) {
+  if (elevation_gain_m && elevation_gain_m > 0 && (sport === 'running' || sport === 'trail_running' || sport === 'cycling')) {
     const boost = computeElevationBoost(elevation_gain_m, duration_minutes)
     target = roundToNearest5(target + boost)
     // Re-apply GI cap after elevation boost
@@ -611,7 +611,7 @@ export function generateFuelPlan(
     )
   }
 
-  if (plan.elevation_gain_m && plan.elevation_gain_m > 0 && (sport === 'trail_running' || sport === 'cycling')) {
+  if (plan.elevation_gain_m && plan.elevation_gain_m > 0 && (sport === 'running' || sport === 'trail_running' || sport === 'cycling')) {
     const boost = computeElevationBoost(plan.elevation_gain_m, duration_minutes)
     if (boost > 0) {
       notes.push(

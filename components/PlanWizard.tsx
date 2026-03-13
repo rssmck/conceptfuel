@@ -843,7 +843,7 @@ function PlanSetupStep({
       </div>
 
       {/* Elevation gain (trail running / cycling) */}
-      {(sport === "trail_running" || sport === "cycling") && (
+      {(sport === "running" || sport === "trail_running" || sport === "cycling") && (
         <div style={{ marginBottom: "24px" }}>
           <FieldLabel htmlFor="elevation_gain_m">Elevation gain (m) — optional</FieldLabel>
           <input
@@ -856,7 +856,7 @@ function PlanSetupStep({
             style={{ maxWidth: "160px" }}
           />
           <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "4px" }}>
-            Total climbing for the event or session. Boosts carb target based on climbing rate.
+            Total elevation gain for the event or session. Boosts carb target based on climbing rate. Important for hilly road races and trail runs.
           </p>
           <FieldError message={errors.elevation_gain_m?.message} />
         </div>

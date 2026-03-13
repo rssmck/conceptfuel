@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Nav from "@/components/Nav";
-import SiteGate from "@/components/SiteGate";
 import SwRegistrar from "@/components/SwRegistrar";
 import { AuthProvider } from "@/contexts/AuthContext";
 import AuthModal from "@/components/AuthModal";
+import ThemeInit from "@/components/ThemeInit";
+import EarlyAccessBanner from "@/components/EarlyAccessBanner";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -98,11 +99,11 @@ export default function RootLayout({
       <body className={`${geistMono.variable}`}>
         <SwRegistrar />
         <AuthProvider>
+          <ThemeInit />
           <AuthModal />
-          <SiteGate>
-            <Nav />
-            <main>{children}</main>
-          </SiteGate>
+          <EarlyAccessBanner />
+          <Nav />
+          <main>{children}</main>
         </AuthProvider>
         <footer
           style={{

@@ -377,6 +377,204 @@ function buildShareCanvas(
   return canvas;
 }
 
+function buildDetailedPlanCanvas(
+  result: FuelPlanOutput,
+  planValues: PlanResultsProps["planValues"] | null
+): HTMLCanvasElement {
+  const W = 1080;
+  const M = 72;
+  const CONTENT_W = W - M * 2;
+  const FONT = "'ui-monospace', 'Cascadia Code', 'Fira Mono', monospace";
+  const T = getCanvasTheme();
+  const MAX_H = 6000;
+
+  const offscreen = document.createElement("canvas");
+  offscreen.width = W;
+  offscreen.height = MAX_H;
+  const ctx = offscreen.getContext("2d")!;
+
+  function wrapLines(text: string, font: string, maxW: number): string[] {
+    ctx.font = font;
+    const words = text.split(" ");
+    const lines: string[] = [];
+    let line = "";
+    for (const word of words) {
+      const test = line ? line + " " + word : word;
+      if (ctx.measureText(test).width > maxW) { if (line) lines.push(line); line = word; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  const rule = (y: number) => {
+    ctx.strokeStyle = T.border; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(M, y); ctx.lineTo(W - M, y); ctx.stroke();
+  };
+
+  const sectionLabel = (text: string, y: number) => {
+    ctx.font = `bold 11px ${FONT}`; ctx.fillStyle = T.dimmed;
+    ctx.letterSpacing = "0.12em";
+    ctx.fillText(text, M, y);
+    ctx.letterSpacing = "0px";
+  };
+
+  // Background + grid
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, MAX_H);
+  ctx.strokeStyle = T.grid; ctx.lineWidth = 1;
+  for (let gx = 0; gx < W; gx += 90) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, MAX_H); ctx.stroke(); }
+  for (let gy = 0; gy < MAX_H; gy += 90) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+
+  let y = 82;
+
+  // Brand
+  ctx.font = `bold 26px ${FONT}`;
+  ctx.fillStyle = T.text; ctx.fillText("concept", M, y);
+  ctx.fillStyle = T.muted; ctx.fillText("//", M + ctx.measureText("concept").width, y);
+  ctx.fillStyle = T.text; ctx.fillText("fuel", M + ctx.measureText("concept//").width, y);
+
+  if (planValues) {
+    const sportLabel: Record<string, string> = { running: "Running", trail_running: "Trail", cycling: "Cycling", hyrox: "Hyrox" };
+    const effortLabel: Record<string, string> = { easy: "Easy", steady: "Steady", hard: "Hard", race: "Race" };
+    const tag = `${sportLabel[planValues.sport] ?? planValues.sport} · ${effortLabel[planValues.effort] ?? ""} · ${planValues.duration}`;
+    ctx.font = `13px ${FONT}`; ctx.fillStyle = T.dimmed;
+    ctx.textAlign = "right"; ctx.fillText(tag, W - M, y); ctx.textAlign = "left";
+  }
+
+  y = 110; rule(y); y += 52;
+
+  // Hero name
+  const heroName = planValues?.race_name ?? planValues?.session_name ?? "Fuel plan";
+  ctx.font = `bold 52px ${FONT}`; ctx.fillStyle = T.text;
+  const heroLines = wrapLines(heroName, `bold 52px ${FONT}`, CONTENT_W);
+  for (const line of heroLines) { ctx.fillText(line, M, y); y += 64; }
+  y += 12;
+
+  rule(y); y += 48;
+
+  // Key metrics 2x2
+  sectionLabel("KEY METRICS", y); y += 18; rule(y); y += 20;
+
+  const metrics = [
+    { label: "CARB TARGET",  value: `${result.carb_target_g_per_hr} g/hr` },
+    { label: "TOTAL CARBS",  value: `${result.total_carbs_g} g` },
+    { label: "FLUID TARGET", value: `${result.fluid_ml_per_hr} ml/hr` },
+    { label: "SODIUM",       value: `${result.sodium_mg_per_hr} mg/hr` },
+  ];
+  const colW = (CONTENT_W - 8) / 2;
+  metrics.forEach((m, i) => {
+    const col = i % 2;
+    const cx = M + col * (colW + 8);
+    if (col === 0) {
+      ctx.fillStyle = T.surface;
+      ctx.fillRect(M, y, CONTENT_W, 80);
+    }
+    ctx.font = `10px ${FONT}`; ctx.fillStyle = T.dimmed;
+    ctx.fillText(m.label, cx + 16, y + 22);
+    ctx.font = `bold 28px ${FONT}`; ctx.fillStyle = T.text;
+    ctx.fillText(m.value, cx + 16, y + 60);
+    if (col === 1) y += 84;
+  });
+
+  y += 28; rule(y); y += 48;
+
+  // Intake schedule
+  if (result.schedule && result.schedule.length > 0) {
+    sectionLabel("INTAKE SCHEDULE", y); y += 18; rule(y); y += 12;
+
+    result.schedule.forEach((item: ScheduleItem, i: number) => {
+      const rowH = 64;
+      ctx.fillStyle = i % 2 === 0 ? T.surface : "transparent";
+      ctx.fillRect(M, y, CONTENT_W, rowH);
+
+      const timeLabel = item.minute_offset === 0 ? "Pre-start" : `+${item.minute_offset} min`;
+      ctx.font = `bold 13px ${FONT}`; ctx.fillStyle = T.dimmed;
+      ctx.fillText(timeLabel, M + 16, y + 28);
+
+      const suggLines = wrapLines(item.suggestion, `14px ${FONT}`, CONTENT_W - 180);
+      ctx.font = `14px ${FONT}`; ctx.fillStyle = T.text;
+      ctx.fillText(suggLines[0] ?? "", M + 140, y + 28);
+      if (suggLines[1]) { ctx.font = `12px ${FONT}`; ctx.fillStyle = T.muted; ctx.fillText(suggLines[1], M + 140, y + 48); }
+
+      ctx.font = `bold 13px ${FONT}`; ctx.fillStyle = T.dimmed;
+      ctx.textAlign = "right";
+      ctx.fillText(`${item.carbs_g}g`, W - M - 16, y + 28);
+      ctx.textAlign = "left";
+
+      y += rowH + 2;
+    });
+
+    y += 28; rule(y); y += 48;
+  }
+
+  // Caffeine
+  if (result.caffeine_guidance) {
+    const caf = result.caffeine_guidance;
+    sectionLabel("CAFFEINE", y); y += 18; rule(y); y += 20;
+
+    ctx.fillStyle = T.surface; ctx.fillRect(M, y, CONTENT_W, 100);
+    ctx.font = `bold 32px ${FONT}`; ctx.fillStyle = T.text;
+    ctx.fillText(`${caf.range_mg[0]}–${caf.range_mg[1]} mg`, M + 16, y + 44);
+    ctx.font = `14px ${FONT}`; ctx.fillStyle = T.muted;
+    ctx.fillText(caf.timing_text, M + 16, y + 74);
+    y += 108;
+
+    if (caf.notes && caf.notes.length > 0) {
+      const noteLines = wrapLines(caf.notes.join(" · "), `12px ${FONT}`, CONTENT_W - 24);
+      ctx.font = `12px ${FONT}`; ctx.fillStyle = T.muted;
+      noteLines.forEach((l) => { ctx.fillText(l, M + 8, y); y += 22; });
+    }
+    y += 28; rule(y); y += 48;
+  }
+
+  // Bicarb
+  if (result.bicarb_protocol) {
+    const bic = result.bicarb_protocol;
+    sectionLabel("BICARB PROTOCOL", y); y += 18; rule(y); y += 20;
+
+    const doseStr = bic.dose_g !== undefined ? `${bic.dose_g}g` : "";
+    ctx.fillStyle = T.surface; ctx.fillRect(M, y, CONTENT_W, 54);
+    ctx.font = `bold 17px ${FONT}`; ctx.fillStyle = T.text;
+    ctx.fillText(`${bic.brand}${doseStr ? ` · ${doseStr}` : ""}`, M + 16, y + 34);
+    y += 62;
+
+    ctx.font = `13px ${FONT}`; ctx.fillStyle = T.muted;
+    ctx.fillText(bic.timing_text, M, y); y += 24;
+    if (bic.cautions && bic.cautions.length > 0) {
+      const cautLines = wrapLines(bic.cautions.join(" · "), `12px ${FONT}`, CONTENT_W);
+      ctx.font = `12px ${FONT}`; ctx.fillStyle = T.dimmed;
+      cautLines.forEach((l) => { ctx.fillText(l, M, y); y += 22; });
+    }
+    y += 28; rule(y); y += 48;
+  }
+
+  // Notes
+  if (result.notes && result.notes.length > 0) {
+    sectionLabel("NOTES", y); y += 18; rule(y); y += 20;
+    result.notes.forEach((note: string) => {
+      const lines = wrapLines(`· ${note}`, `13px ${FONT}`, CONTENT_W - 16);
+      ctx.font = `13px ${FONT}`; ctx.fillStyle = T.muted;
+      lines.forEach((l, i) => { ctx.fillText(i === 0 ? l : `  ${l.slice(2)}`, M + 8, y); y += 24; });
+      y += 8;
+    });
+    y += 12; rule(y); y += 36;
+  }
+
+  // Footer
+  ctx.font = `13px ${FONT}`; ctx.fillStyle = T.dimmed;
+  ctx.fillText("conceptclub.co.uk/plan", M, y);
+  ctx.textAlign = "right"; ctx.fillText("concept//fuel", W - M, y);
+  ctx.textAlign = "left";
+  y += 56;
+
+  // Crop to content
+  const out = document.createElement("canvas");
+  out.width = W; out.height = y;
+  out.getContext("2d")!.drawImage(offscreen, 0, 0);
+  return out;
+}
+
 // ─── NETLIFY FORM SUBMIT ──────────────────────────────────────────────────────
 
 async function submitNetlifyForm(formName: string, data: Record<string, string>) {
@@ -492,6 +690,7 @@ function ShareSection({
 }) {
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadingPlan, setDownloadingPlan] = useState(false);
   const [canShare] = useState(() => typeof navigator !== "undefined" && !!navigator.share);
 
   const shareText = `My race fuel plan from concept//fuel:\n\n${result.carb_target_g_per_hr}g/hr carbs · ${result.total_carbs_g}g total · ${result.fluid_ml_per_hr}ml/hr fluid\n\nGenerate yours → conceptathletic.com/fuel`;
@@ -522,6 +721,19 @@ function ShareSection({
       link.click();
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleDownloadPlan = async () => {
+    setDownloadingPlan(true);
+    try {
+      const canvas = buildDetailedPlanCanvas(result, planValues);
+      const link = document.createElement("a");
+      link.download = "concept-fuel-plan.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    } finally {
+      setDownloadingPlan(false);
     }
   };
 
@@ -590,8 +802,11 @@ function ShareSection({
             ↑ Share (Instagram / WhatsApp / TikTok…)
           </button>
         )}
+        <button onClick={handleDownloadPlan} disabled={downloadingPlan} style={btnStyle(true)}>
+          {downloadingPlan ? "Generating…" : "↓ Download plan"}
+        </button>
         <button onClick={handleDownload} disabled={downloading} style={btnStyle()}>
-          {downloading ? "Generating…" : "↓ Download card"}
+          {downloading ? "Generating…" : "↓ Share card"}
         </button>
         <button
           onClick={handleCopy}
