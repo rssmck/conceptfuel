@@ -59,6 +59,16 @@ interface PlanCompletion {
   session_index: number;
 }
 
+interface AllPlan {
+  id:         string;
+  name:       string;
+  goal:       string;
+  block_weeks: number;
+  starts_on:  string;
+  active:     boolean;
+  created_at: string;
+}
+
 // ── Goal labels ───────────────────────────────────────────────────────────────
 
 const GOAL_LABELS: Record<string, string> = {
@@ -69,6 +79,17 @@ const GOAL_LABELS: Record<string, string> = {
   plyo:        "Plyometrics",
   aesthetic:   "Aesthetic & strong",
   general:     "General fitness",
+};
+
+const FUEL_NOTES: Record<string, { preSession: string; inSession: string; postSession: string; raceDay?: string; notes?: string }> = {
+  strength:    { preSession: "2–3 hrs before: 40–60g carbs + 25–35g protein.", inSession: "Water only under 75 min. Longer: 20–30g carbs/hr.", postSession: "Within 30 min: 30–40g protein + 40–60g fast carbs." },
+  hypertrophy: { preSession: "2 hrs before: 40–70g carbs + 20–30g protein.", inSession: "Sip water. Over 90 min: 20–30g carbs/hr.", postSession: "Within 30 min: 40g protein + 60–80g carbs." },
+  endurance_sc: { preSession: "2–3 hrs before: 60–80g carbs, moderate protein.", inSession: "60g carbs/hr over 60 min. Every 20 min: 1 gel or 500ml sports drink.", postSession: "Within 30 min: 30–40g protein + 60–80g carbs + electrolytes.", raceDay: "3 hrs pre-race: 80–120g carbs, low fibre. 30 min pre: 25g fast carbs. On course: 60–90g carbs/hr every 20 min." },
+  power:       { preSession: "2 hrs before: 50–60g carbs, low fibre.", inSession: "Water + electrolytes. Over 60 min: 20–30g carbs.", postSession: "Within 30 min: 35–50g protein + 40–60g fast carbs." },
+  plyo:        { preSession: "2–3 hrs before: 50–70g carbs, low fibre, well hydrated.", inSession: "Water only — sessions are typically short.", postSession: "Within 30 min: 30–40g protein + 50g carbs." },
+  aesthetic:   { preSession: "1.5–2 hrs before: 30–50g carbs + 20–25g protein.", inSession: "Water. No in-session fuel needed under 75 min.", postSession: "Immediately: 30–40g protein. Carbs based on deficit." },
+  general:     { preSession: "1.5–2 hrs before: 30–50g carbs + 20g protein.", inSession: "Water. Over 60 min: 20–30g carbs optional.", postSession: "Within 60 min: 25–35g protein + 40–60g carbs." },
+  mobility:    { preSession: "1–2 hrs before: light snack, 20–30g carbs. Avoid training on full stomach.", inSession: "Water throughout. No additional fuel needed.", postSession: "20–30g protein after to support tissue repair." },
 };
 
 // ── Shared styles ─────────────────────────────────────────────────────────────
@@ -97,6 +118,8 @@ export default function ProfilePage() {
   const [draft,        setDraft]        = useState<Partial<Profile>>({});
   const [activePlan,   setActivePlan]   = useState<TrainingPlan | null>(null);
   const [completions,  setCompletions]  = useState<PlanCompletion[]>([]);
+  const [allPlans,     setAllPlans]     = useState<AllPlan[]>([]);
+  const [expandedWeek, setExpandedWeek] = useState<number>(0);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -140,6 +163,14 @@ export default function ProfilePage() {
             });
         }
       });
+
+    // Load all training plans
+    supabase.from("training_plans")
+      .select("id, name, goal, block_weeks, starts_on, active, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .then(({ data }) => { if (data) setAllPlans(data as AllPlan[]); });
   }, [user]);
 
   // ── Avatar upload ────────────────────────────────────────────────────────────
@@ -460,6 +491,7 @@ export default function ProfilePage() {
           const totalSessions = activePlan.days_per_week * activePlan.block_weeks;
           const completedCount = completions.length;
           const progressPct = Math.round((completedCount / totalSessions) * 100);
+          const fuel = FUEL_NOTES[activePlan.goal];
           return (
             <div>
               <div style={{ marginBottom: "14px" }}>
@@ -469,15 +501,15 @@ export default function ProfilePage() {
                 <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "10px" }}>
                   {GOAL_LABELS[activePlan.goal] ?? activePlan.goal} · Week {currentWeek} of {activePlan.block_weeks}
                 </p>
-                {/* Progress bar */}
                 <div style={{ height: "4px", background: "var(--border)", borderRadius: "2px", overflow: "hidden", marginBottom: "4px" }}>
                   <div style={{ height: "100%", width: `${progressPct}%`, background: "var(--accent)", borderRadius: "2px", transition: "width 0.3s" }} />
                 </div>
                 <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>{completedCount} of {totalSessions} sessions complete</p>
               </div>
 
+              {/* Current week sessions */}
               {weekData && (
-                <div>
+                <div style={{ marginBottom: "20px" }}>
                   <p style={{ fontSize: "11px", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "10px" }}>
                     Week {currentWeek} · {weekData.phase_name}
                   </p>
@@ -488,11 +520,8 @@ export default function ProfilePage() {
                         <div
                           key={i}
                           style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            padding: "11px 16px",
-                            background: "var(--surface)",
+                            display: "flex", alignItems: "center", justifyContent: "space-between",
+                            padding: "11px 16px", background: "var(--surface)",
                             borderBottom: i < weekData.sessions.length - 1 ? "1px solid var(--border)" : undefined,
                             opacity: done ? 0.6 : 1,
                           }}
@@ -502,19 +531,12 @@ export default function ProfilePage() {
                               type="button"
                               onClick={() => handleCompleteSession(currentWeek, i)}
                               style={{
-                                width: "18px",
-                                height: "18px",
-                                borderRadius: "50%",
+                                width: "18px", height: "18px", borderRadius: "50%",
                                 border: done ? "none" : "1.5px solid var(--border)",
                                 background: done ? "var(--accent)" : "transparent",
-                                cursor: "pointer",
-                                flexShrink: 0,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                color: "var(--bg)",
-                                fontSize: "10px",
-                                fontWeight: 700,
+                                cursor: "pointer", flexShrink: 0, display: "flex",
+                                alignItems: "center", justifyContent: "center",
+                                color: "var(--bg)", fontSize: "10px", fontWeight: 700,
                               }}
                               title={done ? "Mark incomplete" : "Mark complete"}
                             >
@@ -536,9 +558,139 @@ export default function ProfilePage() {
                   </p>
                 </div>
               )}
+
+              {/* All weeks accordion */}
+              <div style={{ marginBottom: "20px" }}>
+                <p style={{ fontSize: "11px", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "10px" }}>
+                  Full programme
+                </p>
+                <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden" }}>
+                  {activePlan.sessions.map((week) => {
+                    const isOpen = expandedWeek === week.week_number;
+                    return (
+                      <div key={week.week_number} style={{ borderBottom: "1px solid var(--border)" }}>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedWeek(isOpen ? 0 : week.week_number)}
+                          style={{
+                            width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+                            padding: "11px 16px", background: "var(--surface)", border: "none",
+                            cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--text)" }}>
+                              Week {week.week_number}
+                            </p>
+                            {week.week_number === currentWeek && (
+                              <span style={{ fontSize: "10px", color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase" }}>current</span>
+                            )}
+                            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{week.phase_name}</span>
+                          </div>
+                          <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>{isOpen ? "▲" : "▼"}</span>
+                        </button>
+                        {isOpen && (
+                          <div style={{ borderTop: "1px solid var(--border)" }}>
+                            {week.sessions.map((s, i) => (
+                              <div
+                                key={i}
+                                style={{
+                                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                                  padding: "9px 16px", background: "var(--bg)",
+                                  borderBottom: i < week.sessions.length - 1 ? "1px solid var(--border)" : undefined,
+                                }}
+                              >
+                                <p style={{ margin: 0, fontSize: "12px", color: "var(--text)" }}>{s.label}</p>
+                                <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)" }}>{s.duration_minutes} min</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Fuel notes */}
+              {fuel && (
+                <div>
+                  <p style={{ fontSize: "11px", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "10px" }}>
+                    Fuel protocol
+                  </p>
+                  <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden" }}>
+                    {[
+                      { label: "Pre-session", text: fuel.preSession },
+                      { label: "In-session", text: fuel.inSession },
+                      { label: "Post-session", text: fuel.postSession },
+                      ...(fuel.raceDay ? [{ label: "Race day", text: fuel.raceDay }] : []),
+                    ].map((row, i, arr) => (
+                      <div
+                        key={row.label}
+                        style={{
+                          padding: "12px 16px", background: "var(--surface)",
+                          borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : undefined,
+                        }}
+                      >
+                        <p style={{ margin: "0 0 3px", fontSize: "10px", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)" }}>
+                          {row.label}
+                        </p>
+                        <p style={{ margin: 0, fontSize: "12px", color: "var(--text)", lineHeight: 1.6 }}>
+                          {row.text}
+                        </p>
+                      </div>
+                    ))}
+                    {fuel.notes && (
+                      <div style={{ padding: "10px 16px", background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+                        <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.6, fontStyle: "italic" }}>
+                          {fuel.notes}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
+      </div>
+
+      {/* ── All training plans ──────────────────────────────────────────────── */}
+      <div style={{ marginBottom: "40px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+          <p style={sectionLabel}>Training plans ({allPlans.length})</p>
+          <Link href="/form/plan" style={{ fontSize: "12px", color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}>
+            + New plan
+          </Link>
+        </div>
+        {allPlans.length === 0 ? (
+          <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>No training plans yet.</p>
+        ) : (
+          <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden" }}>
+            {allPlans.map((p, i) => (
+              <div
+                key={p.id}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "12px 16px", background: "var(--surface)",
+                  borderBottom: i < allPlans.length - 1 ? "1px solid var(--border)" : undefined,
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "2px" }}>
+                    <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--text)", margin: 0 }}>{p.name}</p>
+                    {p.active && (
+                      <span style={{ fontSize: "10px", color: "var(--accent)", letterSpacing: "0.08em", textTransform: "uppercase" }}>active</span>
+                    )}
+                  </div>
+                  <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: 0 }}>
+                    {GOAL_LABELS[p.goal] ?? p.goal} · {p.block_weeks} weeks · {new Date(p.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Saved workouts ──────────────────────────────────────────────────── */}

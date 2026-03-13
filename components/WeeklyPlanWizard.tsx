@@ -114,6 +114,223 @@ function OptionCard({
   );
 }
 
+// ─── Fuel notes ───────────────────────────────────────────────────────────────
+
+const FUEL_NOTES: Record<string, { preSession: string; inSession: string; postSession: string; raceDay?: string; notes?: string }> = {
+  strength: {
+    preSession: "2–3 hrs before: 40–60g carbs + 25–35g protein. Oats with milk, chicken and rice, or Greek yoghurt with fruit.",
+    inSession: "Water only for sessions under 75 min. Longer sessions: 20–30g carbs/hr via fruit, dates or intra-workout drink.",
+    postSession: "Within 30 min: 30–40g protein + 40–60g fast carbs. Shake with banana, or chicken, rice and veg.",
+  },
+  hypertrophy: {
+    preSession: "2 hrs before: 40–70g carbs + 20–30g protein. Sufficient glycogen is essential for volume training.",
+    inSession: "Sip water throughout. Sessions over 90 min: 20–30g carbs/hr to maintain output.",
+    postSession: "Within 30 min: 40g protein + 60–80g carbs. Prioritise leucine-rich sources: whey, eggs, meat.",
+  },
+  endurance_sc: {
+    preSession: "2–3 hrs before: 60–80g carbs, moderate protein. For sessions over 90 min, load glycogen the night before too.",
+    inSession: "60g carbs/hr for sessions over 60 min. Every 20 min: 1 gel or 500ml sports drink. Practise gut tolerance in training.",
+    postSession: "Within 30 min: 30–40g protein + 60–80g carbs. Electrolytes if sweating heavily.",
+    raceDay: "3 hrs pre-race: 80–120g carbs, low fibre. 30–45 min pre: 25g fast carbs (gel or banana). On course: 60–90g carbs/hr from the gun — every 20 min, consistent intake from early on.",
+    notes: "Start practising race-day fuelling in training. Your gut adapts to taking on carbs while running — this takes weeks of consistent practice.",
+  },
+  power: {
+    preSession: "2 hrs before: 50–60g carbs, low fibre. If using creatine, take with your pre-session meal.",
+    inSession: "Water and electrolytes. Sessions over 60 min: 20–30g carbs to sustain explosive output.",
+    postSession: "Within 30 min: 35–50g protein + 40–60g fast carbs. Creatine post-session is optimal timing if supplementing.",
+  },
+  plyo: {
+    preSession: "2–3 hrs before: 50–70g carbs, moderate protein, low fibre. Hydration is critical for reactive ability.",
+    inSession: "Water. Plyometric sessions are typically short — no in-session fuelling needed.",
+    postSession: "Within 30 min: 30–40g protein + 50g carbs. Include anti-inflammatory foods: berries, oily fish.",
+  },
+  aesthetic: {
+    preSession: "1.5–2 hrs before: 30–50g carbs + 20–25g protein. Moderate deficit is fine — avoid training fully fasted.",
+    inSession: "Water. Sessions under 75 min need no in-session fuel. Electrolytes if sweating.",
+    postSession: "Immediately after: 30–40g protein. Carb intake depends on deficit — 30–50g in moderate deficit.",
+  },
+  general: {
+    preSession: "1.5–2 hrs before: 30–50g carbs + 20g protein. Don't train hungry — it impacts output and recovery.",
+    inSession: "Water throughout. For sessions over 60 min: 20–30g carbs optional.",
+    postSession: "Within 60 min: 25–35g protein + 40–60g carbs. Any balanced meal works well.",
+  },
+  mobility: {
+    preSession: "1–2 hrs before: light snack, 20–30g carbs + 10–15g protein. Don't practise on a full stomach.",
+    inSession: "Water throughout. No additional fuel needed for mobility and yoga sessions.",
+    postSession: "1–2 hrs after: 20–30g protein to support tissue repair. Consistent hydration supports joint mobility.",
+    notes: "Consistent hydration across the day supports joint mobility and tissue elasticity.",
+  },
+};
+
+// ─── Plan card canvas ─────────────────────────────────────────────────────────
+
+function getPlanCanvasTheme() {
+  const t = typeof localStorage !== "undefined" ? (localStorage.getItem("cf_theme") ?? "dark") : "dark";
+  const themes = {
+    dark:  { bg: "#0a0a0a", surface: "#111111", surface2: "#1a1a1a", border: "#2a2a2a", text: "#f0f0f0", muted: "#888888", dimmed: "#555555", grid: "rgba(255,255,255,0.04)", accent: "#c8ff00" },
+    light: { bg: "#f5f2ed", surface: "#ede9e3", surface2: "#e5e0d9", border: "#ccc8c0", text: "#1a1714", muted: "#7a7570", dimmed: "#999999", grid: "rgba(0,0,0,0.03)", accent: "#4a7c00" },
+    sage:  { bg: "#edf0eb", surface: "#e3e7de", surface2: "#d7dcd1", border: "#b4bcac", text: "#1c2418", muted: "#627060", dimmed: "#8a9e88", grid: "rgba(0,0,0,0.03)", accent: "#3d6b34" },
+    mocha: { bg: "#f2ede6", surface: "#e8e0d5", surface2: "#ddd4c5", border: "#c2b4a0", text: "#2c1f14", muted: "#7d6858", dimmed: "#a09080", grid: "rgba(0,0,0,0.03)", accent: "#7c4a1e" },
+  };
+  return themes[t as keyof typeof themes] ?? themes.dark;
+}
+
+function buildPlanCardCanvas(
+  plan: import("@/lib/weeklyPlanEngine").TrainingPlanTemplate,
+  goalLabel: string
+): HTMLCanvasElement {
+  const W = 1080;
+  const H = 1920;
+  const M = 80;
+  const CONTENT_W = W - M * 2;
+  const FONT = "'ui-monospace', 'Cascadia Code', 'Fira Mono', monospace";
+  const T = getPlanCanvasTheme();
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+
+  function wrapLines(text: string, font: string, maxW: number): string[] {
+    ctx.font = font;
+    const words = text.split(" ");
+    const lines: string[] = [];
+    let line = "";
+    for (const word of words) {
+      const test = line ? line + " " + word : word;
+      if (ctx.measureText(test).width > maxW) { if (line) lines.push(line); line = word; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  // Background
+  ctx.fillStyle = T.bg;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = T.grid; ctx.lineWidth = 1;
+  for (let gx = 0; gx < W; gx += 90) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); ctx.stroke(); }
+  for (let gy = 0; gy < H; gy += 90) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke(); }
+
+  const rule = (y: number) => {
+    ctx.strokeStyle = T.border; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(M, y); ctx.lineTo(W - M, y); ctx.stroke();
+  };
+
+  let y = 100;
+
+  // Brand
+  ctx.font = `bold 28px ${FONT}`;
+  ctx.fillStyle = T.text; ctx.fillText("concept", M, y);
+  ctx.fillStyle = T.muted; ctx.fillText("//", M + ctx.measureText("concept").width, y);
+  ctx.fillStyle = T.text; ctx.fillText("form", M + ctx.measureText("concept//").width, y);
+  const tag = `TRAINING PLAN · ${plan.block_weeks} WEEKS`;
+  ctx.font = `12px ${FONT}`; ctx.fillStyle = T.dimmed;
+  ctx.textAlign = "right"; ctx.fillText(tag, W - M, y); ctx.textAlign = "left";
+
+  y += 30; rule(y); y += 70;
+
+  // Plan name hero
+  ctx.font = `14px ${FONT}`; ctx.fillStyle = T.dimmed;
+  ctx.fillText("TRAINING BLOCK", M, y); y += 52;
+
+  const heroLines = wrapLines(plan.name, `bold 60px ${FONT}`, CONTENT_W);
+  ctx.font = `bold 60px ${FONT}`; ctx.fillStyle = T.text;
+  for (const line of heroLines) { ctx.fillText(line, M, y); y += 72; }
+  y += 8;
+
+  ctx.font = `20px ${FONT}`; ctx.fillStyle = T.muted;
+  ctx.fillText(goalLabel, M, y); y += 56;
+
+  rule(y); y += 48;
+
+  // Plan details grid
+  const detailRows = [
+    { label: "GOAL", value: goalLabel },
+    { label: "TRAINING STYLE", value: plan.training_style.replace("_", " ") },
+    { label: "DAYS PER WEEK", value: `${plan.days_per_week} days` },
+    { label: "BLOCK LENGTH", value: `${plan.block_weeks} weeks` },
+  ];
+  ctx.font = `bold 11px ${FONT}`; ctx.fillStyle = T.dimmed;
+  ctx.fillText("PLAN OVERVIEW", M, y); y += 16; rule(y); y += 28;
+
+  detailRows.forEach((row, i) => {
+    ctx.fillStyle = i % 2 === 0 ? T.surface : "transparent";
+    ctx.fillRect(M, y - 6, CONTENT_W, 46);
+    ctx.font = `11px ${FONT}`; ctx.fillStyle = T.dimmed;
+    ctx.fillText(row.label, M + 16, y + 12);
+    ctx.font = `bold 16px ${FONT}`; ctx.fillStyle = T.text;
+    ctx.textAlign = "right"; ctx.fillText(row.value.toUpperCase(), W - M - 16, y + 16);
+    ctx.textAlign = "left"; y += 50;
+  });
+
+  y += 20; rule(y); y += 48;
+
+  // Week 1 sessions
+  const week1 = plan.weeks[0];
+  if (week1) {
+    ctx.font = `bold 11px ${FONT}`; ctx.fillStyle = T.dimmed;
+    ctx.fillText(`WEEK 1 · ${week1.phase_name.toUpperCase()}`, M, y); y += 16; rule(y); y += 20;
+
+    week1.sessions.forEach((s, i) => {
+      ctx.fillStyle = i % 2 === 0 ? T.surface : "transparent";
+      ctx.fillRect(M, y, CONTENT_W, 52);
+      ctx.font = `bold 15px ${FONT}`; ctx.fillStyle = T.text;
+      ctx.fillText(s.label, M + 16, y + 32);
+      ctx.font = `13px ${FONT}`; ctx.fillStyle = T.muted;
+      ctx.textAlign = "right"; ctx.fillText(`${s.duration_minutes} min`, W - M - 16, y + 32);
+      ctx.textAlign = "left"; y += 56;
+    });
+
+    // Phase note
+    if (week1.phase_note) {
+      y += 12;
+      const noteLines = wrapLines(week1.phase_note, `13px ${FONT}`, CONTENT_W - 24);
+      ctx.font = `13px ${FONT}`; ctx.fillStyle = T.muted;
+      noteLines.forEach(l => { ctx.fillText(l, M + 8, y); y += 24; });
+    }
+  }
+
+  y += 28; rule(y); y += 48;
+
+  // Fuel notes
+  const fuel = FUEL_NOTES[plan.goal];
+  if (fuel) {
+    ctx.font = `bold 11px ${FONT}`; ctx.fillStyle = T.dimmed;
+    ctx.fillText("FUEL PROTOCOL", M, y); y += 16; rule(y); y += 20;
+
+    const fuelRows = [
+      { label: "PRE-SESSION", text: fuel.preSession },
+      { label: "IN-SESSION", text: fuel.inSession },
+      { label: "POST-SESSION", text: fuel.postSession },
+      ...(fuel.raceDay ? [{ label: "RACE DAY", text: fuel.raceDay }] : []),
+    ];
+
+    fuelRows.forEach((row, i) => {
+      const textLines = wrapLines(row.text, `13px ${FONT}`, CONTENT_W - 32);
+      const rowH = 28 + textLines.length * 22 + 20;
+      ctx.fillStyle = i % 2 === 0 ? T.surface : "transparent";
+      ctx.fillRect(M, y, CONTENT_W, rowH);
+      ctx.font = `10px ${FONT}`; ctx.fillStyle = T.dimmed;
+      ctx.fillText(row.label, M + 16, y + 18);
+      ctx.font = `13px ${FONT}`; ctx.fillStyle = T.muted;
+      let ty = y + 36;
+      textLines.forEach(l => { ctx.fillText(l, M + 16, ty); ty += 22; });
+      y += rowH + 4;
+    });
+  }
+
+  // Footer
+  const footerY = H - 80;
+  rule(footerY);
+  ctx.font = `13px ${FONT}`; ctx.fillStyle = T.dimmed;
+  ctx.fillText("conceptclub.co.uk/form", M, footerY + 36);
+  ctx.textAlign = "right"; ctx.fillText("concept//form", W - M, footerY + 36);
+  ctx.textAlign = "left";
+
+  return canvas;
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function WeeklyPlanWizard() {
@@ -130,6 +347,9 @@ export default function WeeklyPlanWizard() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedPlan, setSavedPlan] = useState<import("@/lib/weeklyPlanEngine").TrainingPlanTemplate | null>(null);
+  const [expandedWeek, setExpandedWeek] = useState<number>(1);
+  const [downloadingCard, setDownloadingCard] = useState(false);
 
   const goalLabel = goal ? (GOAL_LABELS[goal] ?? goal) : "";
   const effectiveName = planName.trim() || (goal ? `${goalLabel} block` : "");
@@ -162,6 +382,8 @@ export default function WeeklyPlanWizard() {
       name: effectiveName,
     });
 
+    setSavedPlan(plan);
+
     const supabase = createClient();
     const { error } = await supabase.from("training_plans").insert({
       user_id: user.id,
@@ -177,6 +399,7 @@ export default function WeeklyPlanWizard() {
 
     if (error) {
       setSaveError("Something went wrong. Please try again.");
+      setSavedPlan(null);
     } else {
       setSaved(true);
     }
@@ -185,29 +408,160 @@ export default function WeeklyPlanWizard() {
 
   // ── Success state ──────────────────────────────────────────────────────────
 
-  if (saved) {
+  if (saved && savedPlan) {
+    const fuel = FUEL_NOTES[savedPlan.goal];
+
+    const handleDownloadCard = async () => {
+      setDownloadingCard(true);
+      try {
+        const canvas = buildPlanCardCanvas(savedPlan, goalLabel);
+        const link = document.createElement("a");
+        link.download = "concept-form-training-plan.png";
+        link.href = canvas.toDataURL("image/png");
+        link.click();
+      } finally {
+        setDownloadingCard(false);
+      }
+    };
+
+    return (
+      <div style={{ maxWidth: "640px" }}>
+        <p style={labelStyle}>concept<span style={{ color: "var(--text-muted)" }}>//</span>form · training plan</p>
+
+        <h1 style={{ fontSize: "clamp(24px, 4vw, 36px)", fontWeight: 700, letterSpacing: "-0.04em", marginBottom: "6px" }}>
+          {savedPlan.name}
+        </h1>
+        <p style={{ fontSize: "14px", color: "var(--text-muted)", marginBottom: "28px" }}>
+          {goalLabel} · {savedPlan.training_style.replace("_", " ")} · {savedPlan.block_weeks} weeks · {savedPlan.days_per_week} days/week
+        </p>
+
+        {/* Download card */}
+        <div style={{ display: "flex", gap: "10px", marginBottom: "36px", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            onClick={handleDownloadCard}
+            disabled={downloadingCard}
+            style={{
+              padding: "10px 20px", background: "var(--accent)", color: "var(--bg)",
+              border: "none", borderRadius: "4px", fontSize: "13px", fontWeight: 600,
+              cursor: "pointer", fontFamily: "inherit", opacity: downloadingCard ? 0.7 : 1,
+            }}
+          >
+            {downloadingCard ? "Generating…" : "Download plan card"}
+          </button>
+          <Link
+            href="/profile"
+            style={{
+              padding: "10px 20px", background: "none", border: "1px solid var(--border)",
+              borderRadius: "4px", fontSize: "13px", color: "var(--text-muted)",
+              textDecoration: "none", display: "inline-block",
+            }}
+          >
+            View on profile →
+          </Link>
+        </div>
+
+        {/* All weeks */}
+        <p style={{ ...labelStyle, marginBottom: "12px" }}>Full programme</p>
+        <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden", marginBottom: "36px" }}>
+          {savedPlan.weeks.map((week) => {
+            const isOpen = expandedWeek === week.week_number;
+            return (
+              <div key={week.week_number} style={{ borderBottom: "1px solid var(--border)" }}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedWeek(isOpen ? 0 : week.week_number)}
+                  style={{
+                    width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "13px 16px", background: "var(--surface)", border: "none",
+                    cursor: "pointer", fontFamily: "inherit", textAlign: "left",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "var(--text)" }}>
+                      Week {week.week_number}
+                    </p>
+                    <span style={{ fontSize: "11px", color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase" }}>
+                      {week.phase_name}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{isOpen ? "▲" : "▼"}</span>
+                </button>
+                {isOpen && (
+                  <div style={{ borderTop: "1px solid var(--border)" }}>
+                    {week.sessions.map((s, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex", justifyContent: "space-between", alignItems: "center",
+                          padding: "10px 16px", background: "var(--bg)",
+                          borderBottom: i < week.sessions.length - 1 ? "1px solid var(--border)" : undefined,
+                        }}
+                      >
+                        <p style={{ margin: 0, fontSize: "13px", color: "var(--text)" }}>{s.label}</p>
+                        <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)" }}>{s.duration_minutes} min</p>
+                      </div>
+                    ))}
+                    <div style={{ padding: "10px 16px", background: "var(--surface)" }}>
+                      <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.6 }}>
+                        {week.phase_note}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Fuel notes */}
+        {fuel && (
+          <div style={{ marginBottom: "36px" }}>
+            <p style={{ ...labelStyle, marginBottom: "12px" }}>Fuel protocol</p>
+            <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden" }}>
+              {[
+                { label: "Pre-session", text: fuel.preSession },
+                { label: "In-session", text: fuel.inSession },
+                { label: "Post-session", text: fuel.postSession },
+                ...(fuel.raceDay ? [{ label: "Race day", text: fuel.raceDay }] : []),
+              ].map((row, i, arr) => (
+                <div
+                  key={row.label}
+                  style={{
+                    padding: "14px 16px", background: "var(--surface)",
+                    borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : undefined,
+                  }}
+                >
+                  <p style={{ margin: "0 0 4px", fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)" }}>
+                    {row.label}
+                  </p>
+                  <p style={{ margin: 0, fontSize: "13px", color: "var(--text)", lineHeight: 1.6 }}>
+                    {row.text}
+                  </p>
+                </div>
+              ))}
+              {fuel.notes && (
+                <div style={{ padding: "12px 16px", background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+                  <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.6, fontStyle: "italic" }}>
+                    {fuel.notes}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (saved && !savedPlan) {
     return (
       <div style={{ maxWidth: "560px" }}>
         <p style={labelStyle}>concept<span style={{ color: "var(--text-muted)" }}>//</span>form · training plan</p>
         <h1 style={{ fontSize: "clamp(24px, 4vw, 36px)", fontWeight: 700, letterSpacing: "-0.04em", marginBottom: "14px" }}>
           Plan saved.
         </h1>
-        <p style={{ fontSize: "15px", color: "var(--text-muted)", lineHeight: 1.7, marginBottom: "28px" }}>
-          Your {blockWeeks}-week plan is ready. Head to your profile to see this week&apos;s sessions and track your progress.
-        </p>
-        <Link
-          href="/profile"
-          style={{
-            display: "inline-block",
-            padding: "12px 24px",
-            background: "var(--accent)",
-            color: "var(--bg)",
-            borderRadius: "4px",
-            fontSize: "14px",
-            fontWeight: 600,
-            textDecoration: "none",
-          }}
-        >
+        <Link href="/profile" style={{ display: "inline-block", padding: "12px 24px", background: "var(--accent)", color: "var(--bg)", borderRadius: "4px", fontSize: "14px", fontWeight: 600, textDecoration: "none" }}>
           View plan on profile →
         </Link>
       </div>
