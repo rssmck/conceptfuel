@@ -223,6 +223,36 @@ select option {
   }
 }
 
+/* ── Early access banner (responsive) ──────────────────────────────────────── */
+.cf-early-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--accent);
+  color: var(--bg);
+  padding: 9px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 540px) {
+  .cf-early-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 10px 16px;
+  }
+  .cf-early-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
 /* Loading screen */
 @keyframes cf-pulse {
   0%, 100% { opacity: 0.15; }

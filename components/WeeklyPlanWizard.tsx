@@ -162,6 +162,30 @@ const FUEL_NOTES: Record<string, { preSession: string; inSession: string; postSe
   },
 };
 
+// ─── Nutrition goal step ──────────────────────────────────────────────────────
+
+const NUTRITION_GOALS = [
+  { value: "build",    label: "Build & gain",  desc: "Calorie surplus. Support muscle growth and performance gains." },
+  { value: "maintain", label: "Maintain",      desc: "Match your output. Perform at your best, no composition change." },
+  { value: "lean",     label: "Lean out",      desc: "Modest deficit. Reduce body fat while preserving muscle." },
+] as const;
+
+type NutritionGoal = typeof NUTRITION_GOALS[number]["value"];
+
+function calcMacros(weightKg: number, nutritionGoal: NutritionGoal, daysPerWeek: number) {
+  const activityMult = daysPerWeek <= 2 ? 1.375 : daysPerWeek <= 3 ? 1.55 : 1.725;
+  const tdee = Math.round(weightKg * 22 * activityMult);
+  const adjust = nutritionGoal === "build" ? 350 : nutritionGoal === "lean" ? -350 : 0;
+  const calories = tdee + adjust;
+  const proteinPerKg = nutritionGoal === "lean" ? 2.4 : 2.0;
+  const protein = Math.round(weightKg * proteinPerKg);
+  const remaining = calories - protein * 4;
+  const carbRatio = nutritionGoal === "build" ? 0.55 : nutritionGoal === "lean" ? 0.35 : 0.45;
+  const carbs = Math.round((remaining * carbRatio) / 4);
+  const fat  = Math.round((remaining * (1 - carbRatio)) / 9);
+  return { calories, protein, carbs, fat };
+}
+
 // ─── Plan card canvas ─────────────────────────────────────────────────────────
 
 function getPlanCanvasTheme() {
@@ -350,6 +374,8 @@ export default function WeeklyPlanWizard() {
   const [savedPlan, setSavedPlan] = useState<import("@/lib/weeklyPlanEngine").TrainingPlanTemplate | null>(null);
   const [expandedWeek, setExpandedWeek] = useState<number>(1);
   const [downloadingCard, setDownloadingCard] = useState(false);
+  const [nutritionGoal, setNutritionGoal] = useState<NutritionGoal | null>(null);
+  const [bodyWeight, setBodyWeight]       = useState<number | null>(null);
 
   const goalLabel = goal ? (GOAL_LABELS[goal] ?? goal) : "";
   const effectiveName = planName.trim() || (goal ? `${goalLabel} block` : "");
@@ -550,6 +576,41 @@ export default function WeeklyPlanWizard() {
             </div>
           </div>
         )}
+
+        {/* Daily nutrition targets (if set) */}
+        {nutritionGoal && bodyWeight && bodyWeight >= 40 && (() => {
+          const m = calcMacros(bodyWeight, nutritionGoal, savedPlan.days_per_week);
+          return (
+            <div style={{ marginBottom: "36px" }}>
+              <p style={{ ...labelStyle, marginBottom: "12px" }}>Daily nutrition targets</p>
+              <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden" }}>
+                <div style={{ padding: "10px 16px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+                  <p style={{ margin: 0, fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)" }}>
+                    {NUTRITION_GOALS.find(g => g.value === nutritionGoal)?.label} · {nutritionGoal === "build" ? "+350 kcal surplus" : nutritionGoal === "lean" ? "−350 kcal deficit" : "maintenance"}
+                  </p>
+                </div>
+                {[
+                  { label: "Calories",     value: `${m.calories} kcal` },
+                  { label: "Protein",      value: `${m.protein} g` },
+                  { label: "Carbohydrate", value: `${m.carbs} g` },
+                  { label: "Fat",          value: `${m.fat} g` },
+                ].map((row, i, arr) => (
+                  <div
+                    key={row.label}
+                    style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "11px 16px", background: "var(--surface)",
+                      borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : undefined,
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>{row.label}</p>
+                    <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "var(--text)" }}>{row.value}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     );
   }
@@ -611,7 +672,7 @@ export default function WeeklyPlanWizard() {
 
   // ── Navigation ─────────────────────────────────────────────────────────────
 
-  const STEPS = ["Goal", "Days", "Style", "Block", "Review"];
+  const STEPS = ["Goal", "Days", "Style", "Block", "Nutrition", "Review"];
 
   return (
     <div style={{ maxWidth: "600px" }}>
@@ -808,8 +869,94 @@ export default function WeeklyPlanWizard() {
         </div>
       )}
 
-      {/* ── Step 4: Review & save ─────────────────────────────────────────────── */}
+      {/* ── Step 4: Nutrition (optional) ─────────────────────────────────────── */}
       {step === 4 && (
+        <div>
+          <p style={labelStyle}>Daily nutrition targets <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>· optional</span></p>
+          <p style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.7, marginBottom: "24px" }}>
+            Set a daily nutrition target that supports this training block. You can skip this step if you prefer.
+          </p>
+
+          <div style={cardGridStyle}>
+            {NUTRITION_GOALS.map((g) => (
+              <OptionCard
+                key={g.value}
+                selected={nutritionGoal === g.value}
+                onClick={() => setNutritionGoal(g.value)}
+                label={g.label}
+                desc={g.desc}
+              />
+            ))}
+          </div>
+
+          {nutritionGoal && (
+            <div style={{ marginTop: "20px", marginBottom: "4px" }}>
+              <label style={labelStyle}>Your weight (kg)</label>
+              <input
+                type="number"
+                min={40} max={200} step={0.5}
+                placeholder="e.g. 72"
+                value={bodyWeight ?? ""}
+                onChange={(e) => setBodyWeight(e.target.value ? parseFloat(e.target.value) : null)}
+                style={{
+                  width: "160px",
+                  fontSize: "16px",
+                  padding: "10px 12px",
+                  border: "1px solid var(--border)",
+                  borderRadius: "4px",
+                  background: "var(--surface)",
+                  color: "var(--text)",
+                  fontFamily: "inherit",
+                  display: "block",
+                  marginTop: "6px",
+                }}
+              />
+              <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "6px" }}>
+                Used only to estimate your daily targets.
+              </p>
+            </div>
+          )}
+
+          {nutritionGoal && bodyWeight && bodyWeight >= 40 && (() => {
+            const m = calcMacros(bodyWeight, nutritionGoal, daysPerWeek ?? 3);
+            return (
+              <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden", marginTop: "20px" }}>
+                <div style={{ padding: "10px 16px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+                  <p style={{ margin: 0, fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)" }}>
+                    Daily targets · {nutritionGoal === "build" ? "+350 kcal surplus" : nutritionGoal === "lean" ? "−350 kcal deficit" : "maintenance"}
+                  </p>
+                </div>
+                {[
+                  { label: "Calories",      value: `${m.calories} kcal` },
+                  { label: "Protein",       value: `${m.protein} g` },
+                  { label: "Carbohydrate",  value: `${m.carbs} g` },
+                  { label: "Fat",           value: `${m.fat} g` },
+                ].map((row, i, arr) => (
+                  <div
+                    key={row.label}
+                    style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "11px 16px", background: "var(--surface)",
+                      borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : undefined,
+                    }}
+                  >
+                    <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>{row.label}</p>
+                    <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "var(--text)" }}>{row.value}</p>
+                  </div>
+                ))}
+                <div style={{ padding: "10px 16px", background: "var(--bg)", borderTop: "1px solid var(--border)" }}>
+                  <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.6, fontStyle: "italic" }}>
+                    Starting-point estimates based on weight and training frequency. Adjust after 2–3 weeks based on energy and progress.
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* ── Step 5: Review & save ─────────────────────────────────────────────── */}
+      {step === 5 && (
         <div>
           <p style={labelStyle}>Review your plan</p>
 
@@ -897,7 +1044,7 @@ export default function WeeklyPlanWizard() {
       )}
 
       {/* ── Navigation ────────────────────────────────────────────────────────── */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: "36px", paddingTop: "20px", borderTop: "1px solid var(--border)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "36px", paddingTop: "20px", borderTop: "1px solid var(--border)" }}>
         {step > 0 ? (
           <button
             type="button"
@@ -918,27 +1065,47 @@ export default function WeeklyPlanWizard() {
         ) : (
           <div />
         )}
-        {step < STEPS.length - 1 && (
-          <button
-            type="button"
-            onClick={() => setStep((s) => s + 1)}
-            disabled={!canContinue()}
-            style={{
-              padding: "10px 24px",
-              background: canContinue() ? "var(--accent)" : "var(--surface)",
-              border: "none",
-              borderRadius: "4px",
-              fontSize: "13px",
-              fontWeight: 600,
-              color: canContinue() ? "var(--bg)" : "var(--text-muted)",
-              cursor: canContinue() ? "pointer" : "not-allowed",
-              fontFamily: "inherit",
-              transition: "background 0.15s",
-            }}
-          >
-            Continue →
-          </button>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          {step === 4 && (
+            <button
+              type="button"
+              onClick={() => setStep((s) => s + 1)}
+              style={{
+                background: "none",
+                border: "none",
+                fontSize: "13px",
+                color: "var(--text-muted)",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                textDecoration: "underline",
+                padding: "10px 0",
+              }}
+            >
+              Skip
+            </button>
+          )}
+          {step < STEPS.length - 1 && (
+            <button
+              type="button"
+              onClick={() => setStep((s) => s + 1)}
+              disabled={!canContinue()}
+              style={{
+                padding: "10px 24px",
+                background: canContinue() ? "var(--accent)" : "var(--surface)",
+                border: "none",
+                borderRadius: "4px",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: canContinue() ? "var(--bg)" : "var(--text-muted)",
+                cursor: canContinue() ? "pointer" : "not-allowed",
+                fontFamily: "inherit",
+                transition: "background 0.15s",
+              }}
+            >
+              Continue →
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

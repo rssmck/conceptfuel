@@ -275,7 +275,7 @@ export function generateTrainingPlan(params: {
     power: 'Power',
     endurance_sc: 'Endurance S&C',
     plyo: 'Plyometrics',
-    aesthetic: 'Lean and strong',
+    aesthetic: 'Aesthetic & strong',
     general: 'General fitness',
   }
 

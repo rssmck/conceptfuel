@@ -4,38 +4,22 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function EarlyAccessBanner() {
   const { user, openAuth } = useAuth();
-  const [dismissed, setDismissed] = useState(true); // start hidden, check localStorage
+  const [dismissed, setDismissed] = useState(true);
 
   useEffect(() => {
     const wasDismissed = localStorage.getItem("cf_banner_dismissed") === "true";
-    if (!wasDismissed && !user) {
-      setDismissed(false);
-    }
+    if (!wasDismissed && !user) setDismissed(false);
   }, [user]);
 
   if (dismissed) return null;
 
   return (
-    <div
-      style={{
-        background: "var(--accent)",
-        color: "var(--bg)",
-        padding: "10px 20px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: "12px",
-        fontSize: "12px",
-        fontWeight: 600,
-        letterSpacing: "0.04em",
-        flexWrap: "wrap",
-      }}
-    >
-      <span>
-        Early access · Performance tools for serious athletes ·{" "}
-        <span style={{ opacity: 0.7, fontWeight: 400 }}>Free to join</span>
+    <div className="cf-early-banner">
+      <span style={{ fontWeight: 400, opacity: 0.9 }}>
+        <strong>Early access</strong> · Performance tools built for you ·{" "}
+        <span style={{ opacity: 0.7 }}>free to join</span>
       </span>
-      <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+      <div className="cf-early-banner-actions">
         <button
           onClick={() => openAuth("signup")}
           style={{
@@ -43,11 +27,12 @@ export default function EarlyAccessBanner() {
             color: "var(--accent)",
             border: "none",
             borderRadius: "3px",
-            padding: "5px 14px",
+            padding: "5px 16px",
             fontSize: "12px",
             fontWeight: 700,
             cursor: "pointer",
             fontFamily: "inherit",
+            whiteSpace: "nowrap",
           }}
         >
           Join free →
@@ -61,10 +46,11 @@ export default function EarlyAccessBanner() {
             background: "none",
             border: "none",
             color: "var(--bg)",
-            opacity: 0.6,
+            opacity: 0.55,
             cursor: "pointer",
-            fontSize: "16px",
-            padding: "2px 6px",
+            fontSize: "18px",
+            lineHeight: 1,
+            padding: "2px 4px",
             fontFamily: "inherit",
           }}
           aria-label="Dismiss"

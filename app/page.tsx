@@ -153,20 +153,28 @@ export default function ClubPage() {
           background: "#111",
         }}
       >
-        {/* Replace /hero.jpg with your image */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/hero.jpg"
-          alt="Athletes running"
+        {/* CSS-only hero — swap this div for an <img> once you have a photo */}
+        <div
           style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            objectPosition: "center 30%",
-            filter: "grayscale(30%) contrast(1.1) brightness(0.75) sepia(15%)",
-            display: "block",
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(160deg, #070a07 0%, #0e1a0c 30%, #141c10 55%, #0a0e08 80%, #060806 100%)",
           }}
-        />
+        >
+          {/* Subtle diagonal lines — athletic feel */}
+          <svg
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.06 }}
+            preserveAspectRatio="xMidYMid slice"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              <pattern id="diag" width="60" height="60" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
+                <line x1="0" y1="0" x2="0" y2="60" stroke="#fff" strokeWidth="1" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#diag)" />
+          </svg>
+        </div>
         {/* Grain overlay */}
         <div
           style={{
