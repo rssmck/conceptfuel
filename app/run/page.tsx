@@ -16,10 +16,10 @@ import { createClient } from "@/lib/supabase/client";
 // ─── Option maps ──────────────────────────────────────────────────────────────
 
 const TIER_OPTIONS: { value: RunTier; label: string; desc: string }[] = [
-  { value: 1, label: "start",       desc: "First steps. Build the running habit and complete your first race. No numbers, just movement." },
+  { value: 1, label: "start",       desc: "First steps. Build the running habit and complete your goal. No numbers, just movement." },
   { value: 2, label: "build",       desc: "Structure your training. Build mileage, hit a goal time, nail your first or next race." },
   { value: 3, label: "club",        desc: "Competitive training. Race-specific sessions, time targets, structured quality work." },
-  { value: 4, label: "performance", desc: "Leading-edge methods. Double threshold, VO\u2082 work and the sessions coaches don't publish." },
+  { value: 4, label: "performance", desc: "Data-driven, structured and precise. Double threshold, VO\u2082 work, neuromuscular sessions and full periodisation." },
 ];
 
 const GOAL_RACE_OPTIONS: { value: GoalRace; label: string; desc: string }[] = [
