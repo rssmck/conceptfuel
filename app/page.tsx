@@ -18,13 +18,24 @@ export const metadata: Metadata = {
 
 const MODULES = [
   {
+    slug: "run",
+    href: "/run",
+    status: "live",
+    label: "concept//run",
+    tagline: "Running training planner",
+    desc:
+      "Four tiers from first steps to performance. VDOT-derived pace zones, structured quality sessions, club night integration, Norwegian double threshold and race-specific planning with fuelling built in.",
+    badge: "BETA",
+    cta: "Open run planner",
+  },
+  {
     slug: "form",
     href: "/form",
     status: "live",
     label: "concept//form",
     tagline: "Gym session planner",
     desc:
-      "Session structure, exercise selection, rep schemes, macros, mobility and recovery — matched to your training goal and style. Built for athletes who train intentionally.",
+      "Session structure, exercise selection, rep schemes, macros, mobility and recovery matched to your training goal and style. Built for athletes who train intentionally.",
     badge: "BETA",
     cta: "Open form planner",
   },
@@ -35,7 +46,7 @@ const MODULES = [
     label: "concept//fuel",
     tagline: "Race & session fuelling",
     desc:
-      "Precision carbohydrate targets, timed gel schedules, hydration and sodium — calibrated to your sport, event and effort level. Evidence-informed. One decisive plan.",
+      "Precision carbohydrate targets, timed gel schedules, hydration and sodium calibrated to your sport, event and effort level. Evidence-informed. One decisive plan.",
     badge: "BETA",
     cta: "Open fuel planner",
   },
@@ -48,15 +59,6 @@ const MODULES = [
     desc:
       "Transparent write-ups on how concept//fuel and concept//form work, and the research they are built on. No paywall. No watered-down summaries.",
     cta: "Read the method",
-  },
-  {
-    slug: "run",
-    href: null,
-    status: "soon",
-    label: "concept//run",
-    tagline: "Running performance",
-    desc:
-      "Pace strategy, effort zones, block periodisation and race-day planning. Coming to concept//athleticclub.",
   },
   {
     slug: "recover",
