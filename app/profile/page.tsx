@@ -57,6 +57,7 @@ interface WeekPhaseRow {
 interface PlanCompletion {
   week_number:   number;
   session_index: number;
+  completed_at:  string;
 }
 
 interface AllPlan {
@@ -156,7 +157,7 @@ export default function ProfilePage() {
         if (data) {
           setActivePlan(data as TrainingPlan);
           supabase.from("plan_completions")
-            .select("week_number, session_index")
+            .select("week_number, session_index, completed_at")
             .eq("plan_id", data.id)
             .then(({ data: completionData }) => {
               if (completionData) setCompletions(completionData);
@@ -267,9 +268,47 @@ export default function ProfilePage() {
           week_number: weekNumber,
           session_index: sessionIndex,
         });
-      setCompletions(prev => [...prev, { week_number: weekNumber, session_index: sessionIndex }]);
+      setCompletions(prev => [...prev, { week_number: weekNumber, session_index: sessionIndex, completed_at: new Date().toISOString() }]);
     }
   };
+
+  // ── Streak + stats ───────────────────────────────────────────────────────────
+
+  function calcStats(plan: TrainingPlan, comps: PlanCompletion[]) {
+    const startDate = new Date(plan.starts_on + "T00:00:00");
+
+    // Build a set of weeks that had at least one session completed
+    const weeksWithActivity = new Set(comps.map(c => c.week_number));
+
+    // Week streak: count backwards from the current week
+    const currentWeek = getCurrentWeek(plan.starts_on);
+    let streak = 0;
+    for (let w = currentWeek; w >= 1; w--) {
+      if (weeksWithActivity.has(w)) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    // This week's completions
+    const thisWeekDone  = comps.filter(c => c.week_number === currentWeek).length;
+    const thisWeekTotal = plan.days_per_week;
+
+    // Overall block progress
+    const totalSessions    = plan.days_per_week * plan.block_weeks;
+    const completedSessions = comps.length;
+    const progressPct = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+
+    // Days trained this week (unique days from completed_at)
+    const thisWeekDates = new Set(
+      comps
+        .filter(c => c.week_number === currentWeek)
+        .map(c => c.completed_at.slice(0, 10))
+    );
+
+    return { streak, thisWeekDone, thisWeekTotal, completedSessions, totalSessions, progressPct, currentWeek };
+  }
 
   // ── Render: not signed in ────────────────────────────────────────────────────
 
@@ -488,23 +527,49 @@ export default function ProfilePage() {
         ) : (() => {
           const currentWeek = getCurrentWeek(activePlan.starts_on);
           const weekData = activePlan.sessions.find(w => w.week_number === currentWeek);
-          const totalSessions = activePlan.days_per_week * activePlan.block_weeks;
-          const completedCount = completions.length;
-          const progressPct = Math.round((completedCount / totalSessions) * 100);
           const fuel = FUEL_NOTES[activePlan.goal];
+          const { streak, thisWeekDone, thisWeekTotal, completedSessions, totalSessions, progressPct } = calcStats(activePlan, completions);
           return (
             <div>
-              <div style={{ marginBottom: "14px" }}>
+              <div style={{ marginBottom: "20px" }}>
                 <p style={{ fontSize: "15px", fontWeight: 700, color: "var(--text)", marginBottom: "4px", letterSpacing: "-0.02em" }}>
                   {activePlan.name}
                 </p>
-                <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "10px" }}>
+                <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "14px" }}>
                   {GOAL_LABELS[activePlan.goal] ?? activePlan.goal} · Week {currentWeek} of {activePlan.block_weeks}
                 </p>
-                <div style={{ height: "4px", background: "var(--border)", borderRadius: "2px", overflow: "hidden", marginBottom: "4px" }}>
+
+                {/* Streak + stats row */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", marginBottom: "16px" }}>
+                  {[
+                    { label: "Week streak", value: streak > 0 ? `${streak}w` : "—", highlight: streak >= 2 },
+                    { label: "This week",   value: `${thisWeekDone}/${thisWeekTotal}`, highlight: thisWeekDone === thisWeekTotal && thisWeekTotal > 0 },
+                    { label: "Block",       value: `${progressPct}%`, highlight: false },
+                  ].map(stat => (
+                    <div
+                      key={stat.label}
+                      style={{
+                        padding: "12px 14px",
+                        background: "var(--surface)",
+                        border: `1px solid ${stat.highlight ? "var(--accent)" : "var(--border)"}`,
+                        borderRadius: "6px",
+                      }}
+                    >
+                      <p style={{ margin: "0 0 4px", fontSize: "10px", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)" }}>
+                        {stat.label}
+                      </p>
+                      <p style={{ margin: 0, fontSize: "20px", fontWeight: 700, color: stat.highlight ? "var(--accent)" : "var(--text)", letterSpacing: "-0.02em" }}>
+                        {stat.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Block progress bar */}
+                <div style={{ height: "3px", background: "var(--border)", borderRadius: "2px", overflow: "hidden", marginBottom: "4px" }}>
                   <div style={{ height: "100%", width: `${progressPct}%`, background: "var(--accent)", borderRadius: "2px", transition: "width 0.3s" }} />
                 </div>
-                <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>{completedCount} of {totalSessions} sessions complete</p>
+                <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>{completedSessions} of {totalSessions} sessions complete</p>
               </div>
 
               {/* Current week sessions */}
