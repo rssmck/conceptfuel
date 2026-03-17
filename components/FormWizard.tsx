@@ -48,6 +48,7 @@ const TRAINING_GOALS: { value: TrainingGoal; label: string; desc: string }[] = [
   { value: "endurance_sc", label: "Endurance S&C",  desc: "Stabilising, functional, injury prevention. For runners, cyclists and endurance athletes. Generates a complete endurance strength session." },
   { value: "plyo",         label: "Plyometrics",    desc: "Jump training. Reactive, ground contact, power endurance. Generates a complete plyometric session." },
   { value: "aesthetic",    label: "Aesthetic & strong", desc: "Shape, lean definition, functional composition. Proportion, tone, full range of motion." },
+  { value: "mobility",     label: "Mobility & yoga",  desc: "Yoga flows, pilates, mobility circuits. Flexibility, control, body awareness." },
   { value: "general",      label: "General fitness", desc: "Balanced sessions, no single focus. Build a foundation and feel good moving." },
 ];
 

@@ -6,7 +6,7 @@ export type SessionType =
 
 export type TrainingStyle = 'free_weights' | 'machines' | 'bodyweight' | 'mixed'
 export type CardioLevel   = 'none' | 'short' | 'moderate' | 'endurance'
-export type TrainingGoal  = 'strength' | 'hypertrophy' | 'power' | 'endurance_sc' | 'plyo' | 'general' | 'aesthetic'
+export type TrainingGoal  = 'strength' | 'hypertrophy' | 'power' | 'endurance_sc' | 'plyo' | 'general' | 'aesthetic' | 'mobility'
 
 export interface FormInput {
   session_type:    SessionType | SessionType[]
@@ -174,6 +174,7 @@ const REP_SCHEMES: Record<TrainingGoal, string> = {
   plyo:         '4–6 sets × 5–8 reps · max explosive intent · 2–3 min full recovery between sets',
   general:      '3 sets × 10–15 reps · 55–65% 1RM · ~60s rest between sets',
   aesthetic:    '4 sets × 10–15 reps · superset-friendly · 45–60s rest',
+  mobility:     'Hold positions for 30–90s. Move with breath — inhale to expand, exhale to deepen. Never force range.',
 }
 
 const WARM_UP_MOBILITY: Record<SessionType, MobilityItem[]> = {
@@ -368,6 +369,7 @@ function getEffectiveSessionType(goal: TrainingGoal, session_type: SessionType):
   if (goal === 'power')        return 'sprint_power'
   if (goal === 'endurance_sc') return 'runner_strength'
   if (goal === 'plyo')         return 'plyo'
+  if (goal === 'mobility') return 'core'
   return session_type
 }
 
@@ -448,12 +450,16 @@ function getProtocolName(goal: TrainingGoal, session_type: SessionType | Session
       name: 'aesthetic session',
       desc: 'Shape, tone and functional composition. High-volume, pump-focused work with full range of motion. Mind-muscle connection is key.',
     },
+    mobility: {
+      name: 'mobility & yoga',
+      desc: 'Yoga flows, pilates sequences and mobility circuits. Develops range of motion, body control and postural awareness. Complement to any training block.',
+    },
   }
 
   if (types.length > 1) {
     const groupNames = types.map(t => t.replace(/_/g, ' ')).join(' & ')
     const goalSuffix: Record<TrainingGoal, string> = {
-      strength: 'strength', hypertrophy: 'volume', power: 'power', endurance_sc: 'S&C', plyo: 'plyo', general: 'training', aesthetic: 'session',
+      strength: 'strength', hypertrophy: 'volume', power: 'power', endurance_sc: 'S&C', plyo: 'plyo', general: 'training', aesthetic: 'session', mobility: 'mobility',
     }
     return {
       name: `${groupNames} ${goalSuffix[goal]}`,
@@ -475,7 +481,7 @@ function getIntensityLevel(
     runner_strength: 4, sprint_power: 5, plyo: 5,
   }
   const goalScore: Record<TrainingGoal, number> = {
-    strength: 4, power: 4, plyo: 4, hypertrophy: 3, endurance_sc: 3, general: 2, aesthetic: 2,
+    strength: 4, power: 4, plyo: 4, hypertrophy: 3, endurance_sc: 3, general: 2, aesthetic: 2, mobility: 1,
   }
   const cardioScore: Record<CardioLevel, number> = {
     none: 0, short: 1, moderate: 2, endurance: 3,
@@ -495,6 +501,88 @@ function buildSessionStructure(input: FormInput): SessionBlock[] {
   const session_type = getEffectiveSessionType(goal, types[0])
   const blocks: SessionBlock[] = []
   const withWarmUp = input.include_warmup !== false
+
+  // ── Mobility / yoga / pilates session ────────────────────────────────────
+  if (goal === 'mobility') {
+    const total = duration_minutes
+    const breathMin   = Math.max(3, Math.round(total * 0.07))
+    const dynamicMin  = Math.round(total * 0.2)
+    const mainMin     = Math.round(total * 0.52)
+    const floorMin    = Math.round(total * 0.14)
+    const closeMin    = Math.max(3, total - breathMin - dynamicMin - mainMin - floorMin)
+    const isLong      = total >= 60
+
+    blocks.push({
+      phase: 'Breath & arrive',
+      duration_min: breathMin,
+      items: [
+        '3 × slow diaphragmatic breaths — long exhale, soften the shoulders',
+        'Body scan from feet to crown — notice where you are holding tension',
+        'Set your intention for the session',
+      ],
+    })
+
+    blocks.push({
+      phase: 'Dynamic warm-up flow',
+      duration_min: dynamicMin,
+      items: [
+        'Sun salutation A × 3 (slow, 5 breaths per position)',
+        'Cat-cow × 10 breaths — move spine through full range',
+        'Hip circle × 10 each direction',
+        '90/90 hip transition × 5 each side',
+        'Thoracic rotation (seated or side-lying) × 8 each side',
+        'Ankle circle and calf pulse × 10 each side',
+      ],
+    })
+
+    blocks.push({
+      phase: 'Main practice',
+      duration_min: mainMin,
+      items: isLong ? [
+        'Sun salutation B × 2 — build heat',
+        'Warrior I → Warrior II → Reverse warrior (5 breaths each)',
+        'Warrior III balance hold × 30–45s each side',
+        'Low lunge with thoracic rotation × 8 each side',
+        'Pigeon pose × 90s each side — use a block under hip if needed',
+        'Bridge pose × 10 reps then hold 30s',
+        'Seated forward fold — progressive deepening over 90s',
+        'Pilates dead bug × 10 each side — control the lower back',
+        'Pilates single-leg stretch × 12 reps',
+        'Side-lying clam × 15 each side',
+      ] : [
+        'Warrior I → Warrior II → Reverse warrior (5 breaths each)',
+        'Low lunge with thoracic rotation × 6 each side',
+        'Pigeon pose × 60–90s each side',
+        'Bridge hold × 30s',
+        'Dead bug × 8 each side',
+        'Seated forward fold × 90s',
+      ],
+      note: 'Move with breath. Inhale to create space, exhale to deepen. Never force range of motion — meet the edge and breathe.',
+    })
+
+    blocks.push({
+      phase: 'Floor work & holds',
+      duration_min: floorMin,
+      items: [
+        'Reclined pigeon (figure-four) × 90s each side',
+        'Supine spinal twist × 60s each side — arms out, let gravity work',
+        'Supported bridge or legs up the wall × 2 min',
+      ],
+      note: 'Parasympathetic mode. Long exhales, complete stillness. Let the body unwind.',
+    })
+
+    blocks.push({
+      phase: 'Savasana',
+      duration_min: closeMin,
+      items: [
+        'Full supine rest — no movement required',
+        'Natural breathing or 4-7-8 breath pattern',
+        'Allow the session to integrate — stay for the full time',
+      ],
+    })
+
+    return blocks
+  }
 
   // Time allocation
   const warmUpMin  = withWarmUp ? (duration_minutes <= 30 ? 5 : duration_minutes <= 60 ? 8 : 10) : 0
@@ -604,6 +692,27 @@ function buildMacros(input: FormInput): MacroTargets {
   const { session_type, goal, cardio, weight_kg } = input
   const intensity = getIntensityLevel(session_type, goal, cardio)
 
+  if (goal === 'mobility') {
+    let proteinRange: string | undefined
+    if (weight_kg) {
+      const low  = Math.round(weight_kg * 1.4)
+      const high = Math.round(weight_kg * 1.8)
+      proteinRange = `${low}–${high}g`
+    }
+    return {
+      protein_note:        'Moderate protein intake supports tissue repair and adaptation from mobility work.',
+      protein_range:       proteinRange ?? '1.4–1.8g per kg bodyweight',
+      carb_level:          'low' as const,
+      carb_guidance:       'Light carbohydrate intake is sufficient. No glycogen depletion during mobility sessions.',
+      fat_guidance:        'Anti-inflammatory fats (oily fish, nuts, olive oil) actively support joint health and tissue elasticity.',
+      pre_session_timing:  '1–2 hrs before',
+      pre_session_foods:   'Light snack only — yoghurt with fruit, or banana with nut butter. Avoid training on a full stomach.',
+      post_session_timing: 'Within 2 hrs',
+      post_session_foods:  '20–30g protein to support tissue repair. Collagen + vitamin C (e.g. bone broth or supplement) taken 30–60 min before session may support connective tissue adaptation.',
+      calorie_note:        'Mobility sessions have a relatively low caloric demand. Focus on nutrient quality over quantity.',
+    }
+  }
+
   const proteinPerKg = goal === 'strength' || goal === 'power' || goal === 'plyo' ? 2.0
     : goal === 'hypertrophy' || goal === 'aesthetic' ? 1.8
     : 1.6
@@ -668,6 +777,10 @@ export function generateFormPlan(input: FormInput): FormPlanOutput {
   if (input.goal === 'plyo') {
     notes.push('Plyometric training is high-impact. Land softly, reset completely between reps, and do not train plyo on fatigued legs.')
   }
+  if (input.goal === 'mobility') {
+    notes.push('Mobility sessions work best with consistency over intensity. A daily 20–30 min practice will outperform one long weekly session.')
+    notes.push('Avoid eating a large meal within 1–2 hours of a mobility session — a full stomach limits diaphragmatic breathing and makes deep positions uncomfortable.')
+  }
   if (input.cardio === 'endurance' || input.cardio === 'moderate') {
     notes.push('When combining strength and cardio, place strength work first unless training for a specific endurance event.')
   }
@@ -695,14 +808,14 @@ export function generateFormPlan(input: FormInput): FormPlanOutput {
     warm_up_mobility:   (() => {
       if (input.include_warmup === false) return []
       const types = resolveTypes(input.session_type)
-      const isGoalDriven = input.goal === 'power' || input.goal === 'endurance_sc' || input.goal === 'plyo'
+      const isGoalDriven = input.goal === 'power' || input.goal === 'endurance_sc' || input.goal === 'plyo' || input.goal === 'mobility'
       if (isGoalDriven) return WARM_UP_MOBILITY[getEffectiveSessionType(input.goal, types[0])]
       if (types.length === 1) return WARM_UP_MOBILITY[types[0]]
       return dedupeByName(types.flatMap(t => WARM_UP_MOBILITY[t]))
     })(),
     cool_down_mobility: (() => {
       const types = resolveTypes(input.session_type)
-      const isGoalDriven = input.goal === 'power' || input.goal === 'endurance_sc' || input.goal === 'plyo'
+      const isGoalDriven = input.goal === 'power' || input.goal === 'endurance_sc' || input.goal === 'plyo' || input.goal === 'mobility'
       if (isGoalDriven) return COOL_DOWN_MOBILITY[getEffectiveSessionType(input.goal, types[0])]
       if (types.length === 1) return COOL_DOWN_MOBILITY[types[0]]
       return dedupeByName(types.flatMap(t => COOL_DOWN_MOBILITY[t]))

@@ -37,6 +37,7 @@ const DEFAULT_DURATION: Record<string, number> = {
   plyo: 45,
   aesthetic: 60,
   general: 45,
+  mobility: 45,
 }
 
 // ─── Session maps ─────────────────────────────────────────────────────────────
@@ -200,6 +201,32 @@ function getSessions(goal: PlanGoal, days: number): PlanSession[] {
     ]
   }
 
+  if (goal === 'mobility') {
+    if (days === 2) return [
+      { session_type: 'full_body', goal: 'mobility', label: 'Yoga flow', duration_minutes: 45 },
+      { session_type: 'core',      goal: 'mobility', label: 'Pilates & core', duration_minutes: 45 },
+    ]
+    if (days === 3) return [
+      { session_type: 'full_body', goal: 'mobility', label: 'Yoga flow', duration_minutes: 45 },
+      { session_type: 'core',      goal: 'mobility', label: 'Pilates & core', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'mobility', label: 'Mobility circuit', duration_minutes: 45 },
+    ]
+    if (days === 4) return [
+      { session_type: 'full_body', goal: 'mobility', label: 'Yoga flow A', duration_minutes: 45 },
+      { session_type: 'core',      goal: 'mobility', label: 'Pilates & core', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'mobility', label: 'Mobility circuit', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'mobility', label: 'Yoga flow B', duration_minutes: 60 },
+    ]
+    // 5
+    return [
+      { session_type: 'full_body', goal: 'mobility', label: 'Yoga flow A', duration_minutes: 45 },
+      { session_type: 'core',      goal: 'mobility', label: 'Pilates & core', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'mobility', label: 'Mobility circuit', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'mobility', label: 'Yoga flow B', duration_minutes: 60 },
+      { session_type: 'full_body', goal: 'mobility', label: 'Restorative', duration_minutes: 45 },
+    ]
+  }
+
   // general
   if (days === 2) return [
     { session_type: 'full_body', goal: 'general', label: 'Full body A', duration_minutes: 45 },
@@ -277,6 +304,7 @@ export function generateTrainingPlan(params: {
     plyo: 'Plyometrics',
     aesthetic: 'Aesthetic & strong',
     general: 'General fitness',
+    mobility: 'Mobility & yoga',
   }
 
   const name = params.name || `${GOAL_LABELS[goal] ?? goal} block`
