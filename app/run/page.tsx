@@ -390,7 +390,7 @@ export default function RunPage() {
     const week1 = savedPlan.weeks[0];
 
     return (
-      <div style={{ maxWidth: "640px" }}>
+      <div className="cf-page-narrow"><div style={{ maxWidth: "640px" }}>
         <p style={labelStyle}>
           concept<span style={{ color: "var(--text-muted)" }}>//</span>run · plan saved
         </p>
@@ -546,7 +546,7 @@ export default function RunPage() {
             Download plan card
           </button>
         </div>
-      </div>
+      </div></div>
     );
   }
 
@@ -555,6 +555,7 @@ export default function RunPage() {
   const stepIndex = displayStepIndex();
 
   return (
+    <div className="cf-page-narrow">
     <div style={{ maxWidth: "640px" }}>
       <p style={labelStyle}>
         concept<span style={{ color: "var(--text-muted)" }}>//</span>run
@@ -1107,6 +1108,7 @@ export default function RunPage() {
           </button>
         </div>
       )}
+    </div>
     </div>
   );
 }
