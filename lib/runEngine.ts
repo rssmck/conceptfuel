@@ -3,7 +3,7 @@
 export type RunTier = 1 | 2 | 3 | 4
 export type GoalRace = 'parkrun' | '5k' | '10k' | 'half' | 'marathon' | 'ultra' | 'fitness'
 export type ElevationProfile = 'flat' | 'undulating' | 'hilly' | 'mountain'
-export type TrainingApproach = 'standard' | 'norwegian'
+export type TrainingApproach = 'standard' | 'norwegian' | 'hybrid'
 export type RunPhase = 'base' | 'build' | 'peak' | 'taper' | 'recovery'
 export type SessionType = 'easy' | 'tempo' | 'threshold' | 'intervals' | 'long' | 'recovery' | 'strides' | 'hill_reps' | 'race_sim' | 'double_threshold' | 'vo2max' | 'neuromuscular' | 'walk_run' | 'rest'
 
@@ -68,6 +68,7 @@ export interface RunPlanInput {
   include_mobility:    boolean
   training_approach:   TrainingApproach
   starts_on:           string
+  plan_weeks?:         number
   name?:               string
 }
 
@@ -170,7 +171,8 @@ const PHASE_NOTES: Record<RunPhase, string> = {
   recovery: 'Active recovery week. Low volume, no quality sessions. Keep moving, stay loose, let the adaptations from the previous block settle.',
 }
 
-function getPlanWeeks(goalRace: GoalRace, raceDateStr?: string, startsOn?: string): number {
+function getPlanWeeks(goalRace: GoalRace, raceDateStr?: string, startsOn?: string, manualWeeks?: number): number {
+  if (manualWeeks) return manualWeeks
   if (raceDateStr && startsOn) {
     const weeks = Math.floor((new Date(raceDateStr).getTime() - new Date(startsOn).getTime()) / (7 * 24 * 3600 * 1000))
     return Math.min(Math.max(weeks, 4), 20)
@@ -429,6 +431,17 @@ function buildWeekSessions(
         structure: `5–7 × 5min @ LT1 pace, 90s jog`,
         notes: 'Norwegian method: the key is staying below LT2. If your HR is spiking, you\'re going too hard. This should feel controlled throughout. High volume at sub-threshold builds the aerobic engine more safely than classic tempo work.',
       }
+    } else if (training_approach === 'hybrid' && tier >= 3) {
+      // Hybrid: sub-threshold volume with periodic classic intervals
+      quality2 = {
+        type: 'double_threshold',
+        label: 'Sub-threshold + strides',
+        description: zones?.threshold
+          ? `2 km easy warm-up. 4 × 6min @ ${secsToMMSS(paceToSecs(zones.threshold) + 10)}/km (just below threshold — stay aerobic throughout), 90s jog between. 6 × 20s strides${zones.rep ? ` @ ${zones.rep}/km` : ''} after. 1 km cool-down.`
+          : `2 km warm-up. 4 × 6min at controlled sub-threshold effort, 90s jog. 6 × 20s strides. 1 km cool-down.`,
+        structure: `4 × 6min sub-threshold, 6 × strides`,
+        notes: 'Hybrid session: aerobic volume at the top of zone 2 plus neuromuscular activation. The combination develops both aerobic capacity and leg speed without the recovery cost of a full threshold session.',
+      }
     } else if (isPeak && isShortRace) {
       quality2 = {
         type: 'vo2max',
@@ -486,6 +499,14 @@ function buildWeekSessions(
   if (days_per_week >= 3) sessions.push(days_per_week >= 4 ? stridesSession : easyRun)
   if (days_per_week >= 4) sessions.push(easyRun)
   if (days_per_week >= 5) sessions.push({ ...easyRun, label: 'Recovery run', description: `${Math.round(easyKm * 0.6)} km very easy recovery run. HR stays low.` })
+  if (days_per_week >= 6) sessions.push({ ...easyRun, label: 'Easy run 2', description: `${Math.round(easyKm * 0.85)} km easy${zones?.easy ? ` @ ${zones.easy}/km` : ''}. Second easy day to add aerobic volume without stress.` })
+  if (days_per_week >= 7) sessions.push({
+    type: 'recovery' as const,
+    label: 'Active recovery',
+    description: `${Math.round(easyKm * 0.5)} km very easy jog or 30–40 min walk. Pure recovery — keep HR under 65% max throughout.`,
+    target_km: Math.round(easyKm * 0.5),
+    notes: 'The seventh day is recovery, not training. If legs feel heavy, walk instead.',
+  })
 
   return sessions
 }
@@ -539,7 +560,7 @@ export function generateRunPlan(input: RunPlanInput): RunPlanTemplate {
     }
   }
 
-  const totalWeeks = getPlanWeeks(input.goal_race, input.race_date, input.starts_on)
+  const totalWeeks = getPlanWeeks(input.goal_race, input.race_date, input.starts_on, input.plan_weeks)
   const kmByWeek   = weeklyKmProgression(input, totalWeeks)
 
   const RACE_LABELS: Record<GoalRace, string> = {

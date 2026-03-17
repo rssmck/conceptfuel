@@ -26,7 +26,7 @@ const TRAINING_STYLES: { value: TrainingStyle; label: string; desc: string }[] =
   { value: "mixed",        label: "Mixed",        desc: "Combination of all" },
 ];
 
-const DAYS = [2, 3, 4, 5];
+const DAYS = [2, 3, 4, 5, 6, 7];
 const BLOCK_WEEKS = [4, 6, 8];
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 

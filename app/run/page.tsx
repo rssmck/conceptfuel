@@ -249,6 +249,10 @@ export default function RunPage() {
   // Review / save
   const [planName, setPlanName]     = useState("");
   const [startsOn, setStartsOn]     = useState(nextMonday());
+  const [planWeeks, setPlanWeeks]     = useState<number | null>(null);
+  const [generating, setGenerating]   = useState(false);
+  const [previewPlan, setPreviewPlan] = useState<RunPlanTemplate | null>(null);
+  const [expandedWeek, setExpandedWeek] = useState<number>(1);
   const [saving, setSaving]         = useState(false);
   const [saveError, setSaveError]   = useState<string | null>(null);
   const [savedPlan, setSavedPlan]   = useState<RunPlanTemplate | null>(null);
@@ -306,81 +310,105 @@ export default function RunPage() {
     return step;
   }
 
-  // ── Save ──────────────────────────────────────────────────────────────────
+  function getPlanWeekOptions(): number[] {
+    if (!tier || !goalRace) return [8, 10, 12]
+    if (goalRace === 'marathon' || goalRace === 'ultra') {
+      return tier >= 3 ? [14, 16, 18, 20] : [12, 14, 16]
+    }
+    if (goalRace === 'half') {
+      return tier >= 3 ? [12, 14, 16, 18] : [10, 12, 14]
+    }
+    if (goalRace === '10k') {
+      return tier >= 3 ? [10, 12, 14, 16] : [8, 10, 12]
+    }
+    if (goalRace === '5k' || goalRace === 'parkrun') {
+      return tier >= 3 ? [6, 8, 10, 12] : [6, 8, 10]
+    }
+    return tier >= 3 ? [8, 10, 12, 16] : [6, 8, 10, 12]
+  }
+
+  function defaultPlanWeeks(): number {
+    const opts = getPlanWeekOptions()
+    return opts[Math.floor(opts.length / 2)]
+  }
+
+  // ── Generate preview ────────────────────────────────────────────────────────
+
+  function handleGenerate() {
+    if (!tier || !goalRace || !daysPerWeek) return
+    setGenerating(true)
+    setTimeout(() => {
+      const effectiveName = planName.trim() || `${RACE_LABELS[goalRace]} · ${TIER_NAMES[tier as RunTier]}`
+      const input: RunPlanInput = {
+        tier: tier as RunTier,
+        goal_race: goalRace,
+        race_date: raceDate || undefined,
+        target_time: targetTime || undefined,
+        elevation_profile: elevation,
+        weekly_km: weeklyKm ? Number(weeklyKm) : undefined,
+        longest_recent_km: longestKm ? Number(longestKm) : undefined,
+        recent_race_distance: recentDist || undefined,
+        recent_race_time: recentTime || undefined,
+        lt_pace: ltPace || undefined,
+        vo2max: vo2max ? Number(vo2max) : undefined,
+        days_per_week: daysPerWeek,
+        available_days: availableDays,
+        club_night: hasClub && clubNight ? clubNight : undefined,
+        club_session_type: hasClub && clubSessionType ? clubSessionType : undefined,
+        gym_access: gymAccess,
+        include_strength: includeStrength,
+        include_mobility: includeMobility,
+        training_approach: approach,
+        starts_on: startsOn,
+        name: effectiveName,
+        plan_weeks: planWeeks ?? defaultPlanWeeks(),
+      }
+      const plan = generateRunPlan(input)
+      setPreviewPlan(plan)
+      setGenerating(false)
+    }, 1400)
+  }
 
   async function handleSave() {
-    if (!tier || !goalRace || !daysPerWeek || !user) return;
-    if (!user) { openAuth(); return; }
-    setSaving(true);
-    setSaveError(null);
-
-    const effectiveName =
-      planName.trim() ||
-      `${RACE_LABELS[goalRace]} \u00b7 ${TIER_NAMES[tier as RunTier]}`;
-
-    const input: RunPlanInput = {
-      tier: tier as RunTier,
-      goal_race: goalRace,
-      race_date: raceDate || undefined,
-      target_time: targetTime || undefined,
+    if (!previewPlan || !user) return
+    setSaving(true)
+    setSaveError(null)
+    const supabase = createClient()
+    const { error } = await supabase.from("run_plans").insert({
+      user_id: user.id,
+      name: previewPlan.name,
+      tier: previewPlan.tier,
+      goal_race: previewPlan.goal_race,
+      race_date: raceDate || null,
+      target_time: targetTime || null,
       elevation_profile: elevation,
-      weekly_km: weeklyKm ? Number(weeklyKm) : undefined,
-      longest_recent_km: longestKm ? Number(longestKm) : undefined,
-      recent_race_distance: recentDist || undefined,
-      recent_race_time: recentTime || undefined,
-      lt_pace: ltPace || undefined,
-      vo2max: vo2max ? Number(vo2max) : undefined,
+      weekly_km: weeklyKm ? Number(weeklyKm) : null,
+      longest_recent_km: longestKm ? Number(longestKm) : null,
+      recent_race_distance: recentDist || null,
+      recent_race_time: recentTime || null,
+      lt_pace: ltPace || null,
+      vo2max: vo2max ? Number(vo2max) : null,
       days_per_week: daysPerWeek,
       available_days: availableDays,
-      club_night: hasClub && clubNight ? clubNight : undefined,
-      club_session_type: hasClub && clubSessionType ? clubSessionType : undefined,
+      club_night: hasClub && clubNight ? clubNight : null,
+      club_session_type: hasClub && clubSessionType ? clubSessionType : null,
       gym_access: gymAccess,
       include_strength: includeStrength,
       include_mobility: includeMobility,
       training_approach: approach,
-      starts_on: startsOn,
-      name: effectiveName,
-    };
-
-    const plan = generateRunPlan(input);
-    setSavedPlan(plan);
-
-    const supabase = createClient();
-    const { error } = await supabase.from("run_plans").insert({
-      user_id: user.id,
-      name: plan.name,
-      tier: plan.tier,
-      goal_race: input.goal_race,
-      race_date: input.race_date || null,
-      target_time: input.target_time || null,
-      elevation_profile: input.elevation_profile,
-      weekly_km: input.weekly_km || null,
-      longest_recent_km: input.longest_recent_km || null,
-      recent_race_distance: input.recent_race_distance || null,
-      recent_race_time: input.recent_race_time || null,
-      lt_pace: input.lt_pace || null,
-      vo2max: input.vo2max || null,
-      days_per_week: input.days_per_week,
-      available_days: input.available_days,
-      club_night: input.club_night || null,
-      club_session_type: input.club_session_type || null,
-      gym_access: input.gym_access,
-      include_strength: input.include_strength,
-      include_mobility: input.include_mobility,
-      training_approach: input.training_approach,
-      training_zones: plan.training_zones || null,
-      vdot: plan.vdot || null,
-      weeks: plan.weeks,
-      plan_weeks: plan.plan_weeks,
+      training_zones: previewPlan.training_zones || null,
+      vdot: previewPlan.vdot || null,
+      weeks: previewPlan.weeks,
+      plan_weeks: previewPlan.plan_weeks,
       starts_on: startsOn,
       active: true,
-    });
-
+    })
     if (error) {
-      setSaveError("Something went wrong. Please try again.");
-      setSavedPlan(null);
+      setSaveError("Something went wrong. Please try again.")
+    } else {
+      setSavedPlan(previewPlan)
     }
-    setSaving(false);
+    setSaving(false)
   }
 
   // ── Success state ──────────────────────────────────────────────────────────
@@ -548,6 +576,121 @@ export default function RunPage() {
         </div>
       </div></div>
     );
+  }
+
+  // ── Generating state ──────────────────────────────────────────────────────
+
+  if (generating) {
+    return (
+      <div className="cf-page-narrow">
+        <div style={{ maxWidth: "640px", paddingTop: "80px", textAlign: "center" }}>
+          <p style={{ fontSize: "11px", letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "32px" }}>
+            concept<span style={{ color: "var(--text-muted)" }}>//</span>run
+          </p>
+          <div style={{ marginBottom: "24px" }}>
+            <span className="cf-dot cf-dot-1" style={{ color: "var(--accent)" }}>·</span>
+            <span className="cf-dot cf-dot-2" style={{ color: "var(--accent)" }}>·</span>
+            <span className="cf-dot cf-dot-3" style={{ color: "var(--accent)" }}>·</span>
+          </div>
+          <p style={{ fontSize: "14px", color: "var(--text-muted)", letterSpacing: "-0.01em" }}>Building your plan</p>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Preview state ─────────────────────────────────────────────────────────
+
+  if (previewPlan && !savedPlan) {
+    const zones = previewPlan.training_zones
+    return (
+      <div className="cf-page-narrow"><div style={{ maxWidth: "640px" }}>
+        <p style={labelStyle}>
+          concept<span style={{ color: "var(--text-muted)" }}>//</span>run · review plan
+        </p>
+
+        <h1 style={{ fontSize: "clamp(22px, 4vw, 32px)", fontWeight: 700, letterSpacing: "-0.04em", marginBottom: "6px" }}>
+          {previewPlan.name}
+        </h1>
+        <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "28px" }}>
+          {TIER_NAMES[previewPlan.tier as RunTier]} · {previewPlan.plan_weeks} weeks · {daysPerWeek} days/week
+          {previewPlan.vdot ? ` · VDOT ${previewPlan.vdot}` : ''}
+        </p>
+
+        {/* Training zones */}
+        {zones && (
+          <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden", marginBottom: "28px" }}>
+            <div style={{ padding: "10px 16px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+              <p style={{ margin: 0, fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)" }}>Training zones · /km</p>
+            </div>
+            {(Object.entries(zones) as [string, string][]).map(([k, v], i, arr) => (
+              <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "10px 16px", background: "var(--surface)", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : undefined }}>
+                <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", textTransform: "capitalize" }}>{k}</p>
+                <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "var(--text)" }}>{v}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* All weeks accordion */}
+        <p style={{ ...labelStyle, marginBottom: "12px" }}>Full programme · {previewPlan.plan_weeks} weeks</p>
+        <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden", marginBottom: "28px" }}>
+          {previewPlan.weeks.map((week) => {
+            const isOpen = expandedWeek === week.week_number
+            return (
+              <div key={week.week_number} style={{ borderBottom: "1px solid var(--border)" }}>
+                <button
+                  type="button"
+                  onClick={() => setExpandedWeek(isOpen ? 0 : week.week_number)}
+                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "var(--surface)", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <p style={{ margin: 0, fontSize: "13px", fontWeight: 700 }}>Week {week.week_number}</p>
+                    <span style={{ fontSize: "10px", color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase" }}>{week.phase}</span>
+                    <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{week.total_km} km</span>
+                  </div>
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{isOpen ? "▲" : "▼"}</span>
+                </button>
+                {isOpen && (
+                  <div style={{ borderTop: "1px solid var(--border)" }}>
+                    {week.sessions.map((s, i) => (
+                      <div key={i} style={{ padding: "12px 16px", background: "var(--bg)", borderBottom: i < week.sessions.length - 1 ? "1px solid var(--border)" : undefined }}>
+                        <p style={{ margin: "0 0 3px", fontSize: "13px", fontWeight: 600 }}>{s.label}{s.target_km ? ` · ${s.target_km} km` : ''}</p>
+                        <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>{s.description}</p>
+                        {s.target_pace && <p style={{ margin: "4px 0 0", fontSize: "11px", color: "var(--accent)" }}>Target: {s.target_pace}/km</p>}
+                      </div>
+                    ))}
+                    <div style={{ padding: "10px 16px", background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
+                      <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.6, fontStyle: "italic" }}>{week.phase_note}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Save actions */}
+        {saveError && <p style={{ fontSize: "12px", color: "var(--error, #e05555)", marginBottom: "12px" }}>{saveError}</p>}
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "16px" }}>
+          {!user ? (
+            <button type="button" onClick={() => openAuth("signin")} style={{ padding: "12px 24px", background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: "4px", fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+              Sign in to save →
+            </button>
+          ) : (
+            <button type="button" onClick={handleSave} disabled={saving} style={{ padding: "12px 24px", background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: "4px", fontSize: "13px", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontFamily: "inherit", opacity: saving ? 0.7 : 1 }}>
+              {saving ? "Saving…" : "Save to profile →"}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setPreviewPlan(null)}
+            style={{ padding: "12px 20px", background: "none", border: "1px solid var(--border)", borderRadius: "4px", fontSize: "13px", color: "var(--text-muted)", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            ← Back to edit
+          </button>
+        </div>
+      </div></div>
+    )
   }
 
   // ── Wizard ────────────────────────────────────────────────────────────────
@@ -787,7 +930,7 @@ export default function RunPage() {
           <div style={{ marginBottom: "24px" }}>
             <label style={labelStyle}>How many days per week?</label>
             <div style={{ display: "flex", gap: "8px" }}>
-              {[2, 3, 4, 5].map((d) => (
+              {[2, 3, 4, 5, 6, 7].map((d) => (
                 <PillButton
                   key={d}
                   selected={daysPerWeek === d}
@@ -911,6 +1054,12 @@ export default function RunPage() {
                 desc={opt.desc}
               />
             ))}
+              <OptionCard
+                selected={approach === "hybrid"}
+                onClick={() => setApproach("hybrid")}
+                label="Hybrid"
+                desc="Sub-threshold volume combined with targeted classic intervals. Draws from both standard and Norwegian principles for athletes who want the best of both."
+              />
           </div>
         </>
       )}
@@ -997,36 +1146,66 @@ export default function RunPage() {
             />
           </div>
 
-          {saveError && (
-            <p style={{ fontSize: "13px", color: "var(--accent)", marginBottom: "16px" }}>
-              {saveError}
+          {/* Plan length */}
+          <div style={{ marginBottom: "20px" }}>
+            <label style={labelStyle}>Plan length</label>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "6px" }}>
+              {getPlanWeekOptions().map((w) => (
+                <button
+                  key={w}
+                  type="button"
+                  onClick={() => setPlanWeeks(w)}
+                  style={{
+                    padding: "10px 18px",
+                    background: (planWeeks ?? defaultPlanWeeks()) === w ? "transparent" : "var(--surface)",
+                    border: (planWeeks ?? defaultPlanWeeks()) === w ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    color: (planWeeks ?? defaultPlanWeeks()) === w ? "var(--accent)" : "var(--text)",
+                  }}
+                >
+                  {w}w
+                </button>
+              ))}
+            </div>
+            {(goalRace === 'marathon' || goalRace === 'half') && (
+              <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "6px" }}>
+                {goalRace === 'marathon' ? 'Marathon plans benefit from 16+ weeks for a full base-build-peak-taper cycle.' : 'Half marathon plans work best with 12+ weeks.'}
+              </p>
+            )}
+          </div>
+
+          {!user && (
+            <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "16px" }}>
+              <button
+                type="button"
+                onClick={() => openAuth("signin")}
+                style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: "12px", padding: 0 }}
+              >
+                Sign in to continue →
+              </button>
             </p>
           )}
 
           <button
             type="button"
-            onClick={() => {
-              if (!user) { openAuth(); return; }
-              handleSave();
-            }}
-            disabled={saving}
+            onClick={handleGenerate}
             style={{
-              width: "100%",
-              padding: "14px",
+              padding: "12px 28px",
               background: "var(--accent)",
               color: "var(--bg)",
               border: "none",
-              borderRadius: "6px",
+              borderRadius: "4px",
               fontSize: "14px",
-              fontWeight: 700,
-              cursor: saving ? "not-allowed" : "pointer",
+              fontWeight: 600,
+              cursor: "pointer",
               fontFamily: "inherit",
-              letterSpacing: "-0.01em",
-              opacity: saving ? 0.7 : 1,
-              transition: "opacity 0.12s",
             }}
           >
-            {saving ? "Saving..." : "Save plan"}
+            Generate plan →
           </button>
         </>
       )}

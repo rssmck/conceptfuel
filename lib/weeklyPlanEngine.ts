@@ -61,12 +61,29 @@ function getSessions(goal: PlanGoal, days: number): PlanSession[] {
       { session_type: 'legs', goal: 'strength', label: 'Lower B', duration_minutes: d },
       { session_type: 'chest', goal: 'strength', label: 'Chest', duration_minutes: d },
     ]
-    // 5
+    if (days === 5) return [
+      { session_type: 'legs', goal: 'strength', label: 'Lower body A', duration_minutes: d },
+      { session_type: 'back', goal: 'strength', label: 'Back', duration_minutes: d },
+      { session_type: 'chest', goal: 'strength', label: 'Chest', duration_minutes: d },
+      { session_type: 'legs', goal: 'strength', label: 'Lower B', duration_minutes: d },
+      { session_type: 'full_body', goal: 'strength', label: 'Full body accessory', duration_minutes: d },
+    ]
+    if (days === 6) return [
+      { session_type: 'legs', goal: 'strength', label: 'Lower body A', duration_minutes: d },
+      { session_type: 'back', goal: 'strength', label: 'Back', duration_minutes: d },
+      { session_type: 'chest', goal: 'strength', label: 'Chest', duration_minutes: d },
+      { session_type: 'legs', goal: 'strength', label: 'Lower B', duration_minutes: d },
+      { session_type: 'shoulders', goal: 'strength', label: 'Shoulders', duration_minutes: d },
+      { session_type: 'full_body', goal: 'strength', label: 'Full body accessory', duration_minutes: d },
+    ]
+    // 7
     return [
       { session_type: 'legs', goal: 'strength', label: 'Lower body A', duration_minutes: d },
       { session_type: 'back', goal: 'strength', label: 'Back', duration_minutes: d },
       { session_type: 'chest', goal: 'strength', label: 'Chest', duration_minutes: d },
       { session_type: 'legs', goal: 'strength', label: 'Lower B', duration_minutes: d },
+      { session_type: 'shoulders', goal: 'strength', label: 'Shoulders', duration_minutes: d },
+      { session_type: 'arms', goal: 'strength', label: 'Arms and accessories', duration_minutes: 45 },
       { session_type: 'full_body', goal: 'strength', label: 'Full body accessory', duration_minutes: d },
     ]
   }
@@ -87,13 +104,30 @@ function getSessions(goal: PlanGoal, days: number): PlanSession[] {
       { session_type: 'legs', goal: 'hypertrophy', label: 'Legs A', duration_minutes: 75 },
       { session_type: 'glutes', goal: 'hypertrophy', label: 'Glutes and legs B', duration_minutes: 75 },
     ]
-    // 5
-    return [
+    if (days === 5) return [
       { session_type: 'chest', goal: 'hypertrophy', label: 'Chest', duration_minutes: d },
       { session_type: 'back', goal: 'hypertrophy', label: 'Back', duration_minutes: d },
       { session_type: 'legs', goal: 'hypertrophy', label: 'Legs', duration_minutes: 75 },
       { session_type: 'shoulders', goal: 'hypertrophy', label: 'Shoulders and arms', duration_minutes: d },
       { session_type: 'glutes', goal: 'hypertrophy', label: 'Glutes', duration_minutes: 75 },
+    ]
+    if (days === 6) return [
+      { session_type: 'chest', goal: 'hypertrophy', label: 'Chest and triceps', duration_minutes: d },
+      { session_type: 'back', goal: 'hypertrophy', label: 'Back and biceps', duration_minutes: d },
+      { session_type: 'legs', goal: 'hypertrophy', label: 'Quads and glutes', duration_minutes: 75 },
+      { session_type: 'shoulders', goal: 'hypertrophy', label: 'Shoulders', duration_minutes: d },
+      { session_type: 'glutes', goal: 'hypertrophy', label: 'Hamstrings and glutes', duration_minutes: 75 },
+      { session_type: 'arms', goal: 'hypertrophy', label: 'Arms and accessories', duration_minutes: 45 },
+    ]
+    // 7
+    return [
+      { session_type: 'chest', goal: 'hypertrophy', label: 'Chest and triceps', duration_minutes: d },
+      { session_type: 'back', goal: 'hypertrophy', label: 'Back and biceps', duration_minutes: d },
+      { session_type: 'legs', goal: 'hypertrophy', label: 'Quads and glutes', duration_minutes: 75 },
+      { session_type: 'shoulders', goal: 'hypertrophy', label: 'Shoulders', duration_minutes: d },
+      { session_type: 'glutes', goal: 'hypertrophy', label: 'Hamstrings and glutes', duration_minutes: 75 },
+      { session_type: 'arms', goal: 'hypertrophy', label: 'Arms and accessories', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'hypertrophy', label: 'Full body pump', duration_minutes: 45 },
     ]
   }
 
@@ -113,13 +147,30 @@ function getSessions(goal: PlanGoal, days: number): PlanSession[] {
       { session_type: 'full_body', goal: 'power', label: 'Power C', duration_minutes: d },
       { session_type: 'full_body', goal: 'power', label: 'Power D', duration_minutes: d },
     ]
-    // 5
-    return [
+    if (days === 5) return [
       { session_type: 'full_body', goal: 'power', label: 'Power A', duration_minutes: d },
       { session_type: 'full_body', goal: 'power', label: 'Power B', duration_minutes: d },
       { session_type: 'full_body', goal: 'power', label: 'Power C', duration_minutes: d },
       { session_type: 'full_body', goal: 'power', label: 'Power D', duration_minutes: d },
       { session_type: 'full_body', goal: 'power', label: 'Power E', duration_minutes: d },
+    ]
+    if (days === 6) return [
+      { session_type: 'full_body', goal: 'power', label: 'Lower power A', duration_minutes: d },
+      { session_type: 'full_body', goal: 'power', label: 'Upper power A', duration_minutes: d },
+      { session_type: 'full_body', goal: 'power', label: 'Full power', duration_minutes: d },
+      { session_type: 'full_body', goal: 'power', label: 'Lower power B', duration_minutes: d },
+      { session_type: 'full_body', goal: 'power', label: 'Upper power B', duration_minutes: d },
+      { session_type: 'core', goal: 'general', label: 'Core and reactive', duration_minutes: 45 },
+    ]
+    // 7
+    return [
+      { session_type: 'full_body', goal: 'power', label: 'Lower power A', duration_minutes: d },
+      { session_type: 'full_body', goal: 'power', label: 'Upper power A', duration_minutes: d },
+      { session_type: 'full_body', goal: 'power', label: 'Full power A', duration_minutes: d },
+      { session_type: 'full_body', goal: 'power', label: 'Lower power B', duration_minutes: d },
+      { session_type: 'full_body', goal: 'power', label: 'Upper power B', duration_minutes: d },
+      { session_type: 'core', goal: 'general', label: 'Core and reactive', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'power', label: 'Full power B', duration_minutes: d },
     ]
   }
 
@@ -139,13 +190,30 @@ function getSessions(goal: PlanGoal, days: number): PlanSession[] {
       { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C C', duration_minutes: d },
       { session_type: 'core', goal: 'general', label: 'Core and stability', duration_minutes: 45 },
     ]
-    // 5
+    if (days === 5) return [
+      { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C A', duration_minutes: d },
+      { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C B', duration_minutes: d },
+      { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C C', duration_minutes: d },
+      { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C D', duration_minutes: d },
+      { session_type: 'core', goal: 'general', label: 'Core and stability', duration_minutes: 45 },
+    ]
+    if (days === 6) return [
+      { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C A', duration_minutes: d },
+      { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C B', duration_minutes: d },
+      { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C C', duration_minutes: d },
+      { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C D', duration_minutes: d },
+      { session_type: 'core', goal: 'general', label: 'Core and stability', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'endurance_sc', label: 'Mobility and recovery', duration_minutes: 45 },
+    ]
+    // 7
     return [
       { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C A', duration_minutes: d },
       { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C B', duration_minutes: d },
       { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C C', duration_minutes: d },
       { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C D', duration_minutes: d },
       { session_type: 'core', goal: 'general', label: 'Core and stability', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'endurance_sc', label: 'Mobility and recovery', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C E', duration_minutes: d },
     ]
   }
 
@@ -165,13 +233,30 @@ function getSessions(goal: PlanGoal, days: number): PlanSession[] {
       { session_type: 'legs', goal: 'strength', label: 'Strength support', duration_minutes: 60 },
       { session_type: 'full_body', goal: 'endurance_sc', label: 'Endurance S&C', duration_minutes: 60 },
     ]
-    // 5
-    return [
+    if (days === 5) return [
       { session_type: 'full_body', goal: 'plyo', label: 'Plyometrics A', duration_minutes: 45 },
       { session_type: 'full_body', goal: 'plyo', label: 'Plyometrics B', duration_minutes: 45 },
       { session_type: 'legs', goal: 'strength', label: 'Strength support A', duration_minutes: 60 },
       { session_type: 'legs', goal: 'strength', label: 'Strength support B', duration_minutes: 60 },
       { session_type: 'core', goal: 'general', label: 'Core and stability', duration_minutes: 45 },
+    ]
+    if (days === 6) return [
+      { session_type: 'full_body', goal: 'plyo', label: 'Plyometrics A', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'plyo', label: 'Plyometrics B', duration_minutes: 45 },
+      { session_type: 'legs', goal: 'strength', label: 'Strength support A', duration_minutes: 60 },
+      { session_type: 'full_body', goal: 'plyo', label: 'Plyometrics C', duration_minutes: 45 },
+      { session_type: 'legs', goal: 'strength', label: 'Strength support B', duration_minutes: 60 },
+      { session_type: 'core', goal: 'general', label: 'Core and stability', duration_minutes: 45 },
+    ]
+    // 7
+    return [
+      { session_type: 'full_body', goal: 'plyo', label: 'Plyometrics A', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'plyo', label: 'Plyometrics B', duration_minutes: 45 },
+      { session_type: 'legs', goal: 'strength', label: 'Strength support A', duration_minutes: 60 },
+      { session_type: 'full_body', goal: 'plyo', label: 'Plyometrics C', duration_minutes: 45 },
+      { session_type: 'legs', goal: 'strength', label: 'Strength support B', duration_minutes: 60 },
+      { session_type: 'core', goal: 'general', label: 'Core and stability', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'endurance_sc', label: 'Mobility and recovery', duration_minutes: 45 },
     ]
   }
 
@@ -191,13 +276,30 @@ function getSessions(goal: PlanGoal, days: number): PlanSession[] {
       { session_type: 'legs', goal: 'aesthetic', label: 'Legs', duration_minutes: d },
       { session_type: 'shoulders', goal: 'aesthetic', label: 'Shoulders and chest', duration_minutes: d },
     ]
-    // 5
-    return [
+    if (days === 5) return [
       { session_type: 'glutes', goal: 'aesthetic', label: 'Glutes and posterior chain', duration_minutes: d },
       { session_type: 'back', goal: 'aesthetic', label: 'Back and arms', duration_minutes: d },
       { session_type: 'legs', goal: 'aesthetic', label: 'Legs', duration_minutes: d },
       { session_type: 'shoulders', goal: 'aesthetic', label: 'Shoulders and chest', duration_minutes: d },
       { session_type: 'arms', goal: 'aesthetic', label: 'Arms and core', duration_minutes: 45 },
+    ]
+    if (days === 6) return [
+      { session_type: 'glutes', goal: 'aesthetic', label: 'Glutes and posterior chain', duration_minutes: d },
+      { session_type: 'back', goal: 'aesthetic', label: 'Back and arms', duration_minutes: d },
+      { session_type: 'legs', goal: 'aesthetic', label: 'Legs', duration_minutes: d },
+      { session_type: 'shoulders', goal: 'aesthetic', label: 'Shoulders and chest', duration_minutes: d },
+      { session_type: 'glutes', goal: 'aesthetic', label: 'Glutes B and core', duration_minutes: d },
+      { session_type: 'arms', goal: 'aesthetic', label: 'Arms and accessories', duration_minutes: 45 },
+    ]
+    // 7
+    return [
+      { session_type: 'glutes', goal: 'aesthetic', label: 'Glutes and posterior chain', duration_minutes: d },
+      { session_type: 'back', goal: 'aesthetic', label: 'Back and arms', duration_minutes: d },
+      { session_type: 'legs', goal: 'aesthetic', label: 'Legs', duration_minutes: d },
+      { session_type: 'shoulders', goal: 'aesthetic', label: 'Shoulders and chest', duration_minutes: d },
+      { session_type: 'glutes', goal: 'aesthetic', label: 'Glutes B and core', duration_minutes: d },
+      { session_type: 'arms', goal: 'aesthetic', label: 'Arms and accessories', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'aesthetic', label: 'Full body and conditioning', duration_minutes: 45 },
     ]
   }
 
@@ -217,13 +319,30 @@ function getSessions(goal: PlanGoal, days: number): PlanSession[] {
       { session_type: 'full_body', goal: 'mobility', label: 'Mobility circuit', duration_minutes: 45 },
       { session_type: 'full_body', goal: 'mobility', label: 'Yoga flow B', duration_minutes: 60 },
     ]
-    // 5
-    return [
+    if (days === 5) return [
       { session_type: 'full_body', goal: 'mobility', label: 'Yoga flow A', duration_minutes: 45 },
       { session_type: 'core',      goal: 'mobility', label: 'Pilates & core', duration_minutes: 45 },
       { session_type: 'full_body', goal: 'mobility', label: 'Mobility circuit', duration_minutes: 45 },
       { session_type: 'full_body', goal: 'mobility', label: 'Yoga flow B', duration_minutes: 60 },
       { session_type: 'full_body', goal: 'mobility', label: 'Restorative', duration_minutes: 45 },
+    ]
+    if (days === 6) return [
+      { session_type: 'full_body', goal: 'mobility', label: 'Yoga flow A', duration_minutes: 45 },
+      { session_type: 'core',      goal: 'mobility', label: 'Pilates & core', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'mobility', label: 'Mobility circuit', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'mobility', label: 'Yoga flow B', duration_minutes: 60 },
+      { session_type: 'full_body', goal: 'mobility', label: 'Restorative', duration_minutes: 45 },
+      { session_type: 'core',      goal: 'mobility', label: 'Breathwork & meditation', duration_minutes: 30 },
+    ]
+    // 7
+    return [
+      { session_type: 'full_body', goal: 'mobility', label: 'Yoga flow A', duration_minutes: 45 },
+      { session_type: 'core',      goal: 'mobility', label: 'Pilates & core A', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'mobility', label: 'Mobility circuit', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'mobility', label: 'Yoga flow B', duration_minutes: 60 },
+      { session_type: 'core',      goal: 'mobility', label: 'Pilates & core B', duration_minutes: 45 },
+      { session_type: 'full_body', goal: 'mobility', label: 'Restorative', duration_minutes: 45 },
+      { session_type: 'core',      goal: 'mobility', label: 'Breathwork & meditation', duration_minutes: 30 },
     ]
   }
 
@@ -243,13 +362,30 @@ function getSessions(goal: PlanGoal, days: number): PlanSession[] {
     { session_type: 'back', goal: 'general', label: 'Pull', duration_minutes: 45 },
     { session_type: 'full_body', goal: 'general', label: 'Full body', duration_minutes: 60 },
   ]
-  // 5
-  return [
+  if (days === 5) return [
     { session_type: 'legs', goal: 'general', label: 'Lower body', duration_minutes: 45 },
     { session_type: 'chest', goal: 'general', label: 'Push', duration_minutes: 45 },
     { session_type: 'back', goal: 'general', label: 'Pull', duration_minutes: 45 },
     { session_type: 'full_body', goal: 'general', label: 'Full body', duration_minutes: 60 },
     { session_type: 'core', goal: 'general', label: 'Core and mobility', duration_minutes: 30 },
+  ]
+  if (days === 6) return [
+    { session_type: 'legs', goal: 'general', label: 'Lower body', duration_minutes: 45 },
+    { session_type: 'chest', goal: 'general', label: 'Push', duration_minutes: 45 },
+    { session_type: 'back', goal: 'general', label: 'Pull', duration_minutes: 45 },
+    { session_type: 'full_body', goal: 'general', label: 'Full body A', duration_minutes: 60 },
+    { session_type: 'core', goal: 'general', label: 'Core and mobility', duration_minutes: 30 },
+    { session_type: 'full_body', goal: 'general', label: 'Full body B', duration_minutes: 45 },
+  ]
+  // 7
+  return [
+    { session_type: 'legs', goal: 'general', label: 'Lower body', duration_minutes: 45 },
+    { session_type: 'chest', goal: 'general', label: 'Push', duration_minutes: 45 },
+    { session_type: 'back', goal: 'general', label: 'Pull', duration_minutes: 45 },
+    { session_type: 'full_body', goal: 'general', label: 'Full body A', duration_minutes: 60 },
+    { session_type: 'core', goal: 'general', label: 'Core and mobility', duration_minutes: 30 },
+    { session_type: 'full_body', goal: 'general', label: 'Full body B', duration_minutes: 45 },
+    { session_type: 'full_body', goal: 'general', label: 'Active recovery', duration_minutes: 30 },
   ]
 }
 
