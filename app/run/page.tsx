@@ -23,7 +23,7 @@ const TIER_OPTIONS: { value: RunTier; label: string; desc: string }[] = [
 ];
 
 const GOAL_RACE_OPTIONS: { value: GoalRace; label: string; desc: string }[] = [
-  { value: "parkrun",  label: "Parkrun \u00b7 5k",   desc: "Saturday morning benchmark. The best fitness test available." },
+  { value: "parkrun",  label: "Parkrun \u00b7 5k",   desc: "Saturday morning. Community, consistency and a weekly benchmark. Post-run coffee optional but encouraged." },
   { value: "5k",       label: "5k",              desc: "Speed, power and race sharpness." },
   { value: "10k",      label: "10k",             desc: "The sweet spot of speed and endurance." },
   { value: "half",     label: "Half marathon",   desc: "21.1 km. Endurance meets speed." },
