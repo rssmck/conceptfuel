@@ -36,15 +36,16 @@ interface SavedFuelPlan {
 }
 
 interface TrainingPlan {
-  id:             string;
-  name:           string;
-  goal:           string;
-  training_style: string;
-  days_per_week:  number;
-  block_weeks:    number;
-  starts_on:      string;
-  active:         boolean;
-  sessions:       WeekPhaseRow[];
+  id:              string;
+  name:            string;
+  goal:            string;
+  training_style:  string;
+  days_per_week:   number;
+  block_weeks:     number;
+  starts_on:       string;
+  active:          boolean;
+  sessions:        WeekPhaseRow[];
+  preferred_days?: string[];
 }
 
 interface WeekPhaseRow {
@@ -567,6 +568,199 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* ── This week ───────────────────────────────────────────────────────── */}
+      {(activeRunPlan || activePlan) && (() => {
+        const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+        const today = new Date();
+        const todayDay = today.getDay(); // 0=Sun
+        const mondayOffset = todayDay === 0 ? -6 : 1 - todayDay;
+        const monday = new Date(today);
+        monday.setDate(today.getDate() + mondayOffset);
+
+        // Combined sessions: { source, label, desc, dayIndex, planKey, sessionIndex, weekNum }
+        type WeekItem = { source: "run" | "gym"; label: string; desc: string; duration?: number; dayIndex: number; sessionIndex: number; weekNum: number; done: boolean };
+        const items: WeekItem[] = [];
+
+        // ── Run plan sessions for this week ──────────────────────────────────
+        if (activeRunPlan) {
+          const runStart = new Date(activeRunPlan.starts_on + "T00:00:00");
+          const diffW = Math.floor((today.getTime() - runStart.getTime()) / (7 * 24 * 3600 * 1000));
+          const runWeekNum = Math.min(Math.max(diffW + 1, 1), activeRunPlan.plan_weeks);
+          const runWeekData = activeRunPlan.weeks.find(w => w.week_number === runWeekNum);
+          if (runWeekData) {
+            // available_days is not in RunPlan interface yet — distribute evenly Mon-Sun
+            runWeekData.sessions.forEach((s, i) => {
+              const dayIndex = Math.min(i * Math.floor(7 / runWeekData.sessions.length), 6);
+              items.push({
+                source: "run", label: s.label,
+                desc: s.description,
+                duration: s.duration_min,
+                dayIndex, sessionIndex: i, weekNum: runWeekNum,
+                done: runCompletions.some(c => c.week_number === runWeekNum && c.session_index === i),
+              });
+            });
+          }
+        }
+
+        // ── Gym plan sessions for this week ──────────────────────────────────
+        if (activePlan) {
+          const gymStart = new Date(activePlan.starts_on + "T00:00:00");
+          const diffW = Math.floor((today.getTime() - gymStart.getTime()) / (7 * 24 * 3600 * 1000));
+          const gymWeekNum = Math.min(Math.max(diffW + 1, 1), activePlan.block_weeks);
+          const gymWeekData = activePlan.sessions.find(w => w.week_number === gymWeekNum);
+          const preferredDays = activePlan.preferred_days ?? [];
+          if (gymWeekData) {
+            gymWeekData.sessions.forEach((s, i) => {
+              let dayIndex: number;
+              if (preferredDays.length > i) {
+                const d = DAYS_OF_WEEK.indexOf(preferredDays[i]);
+                dayIndex = d >= 0 ? d : Math.min(i * Math.floor(7 / gymWeekData.sessions.length), 6);
+              } else {
+                dayIndex = Math.min(i * Math.floor(7 / gymWeekData.sessions.length) + 1, 6);
+              }
+              items.push({
+                source: "gym", label: s.label,
+                desc: `${s.duration_minutes} min`,
+                duration: s.duration_minutes,
+                dayIndex, sessionIndex: i, weekNum: gymWeekNum,
+                done: completions.some(c => c.week_number === gymWeekNum && c.session_index === i),
+              });
+            });
+          }
+        }
+
+        if (items.length === 0) return null;
+
+        // Sort by dayIndex
+        items.sort((a, b) => a.dayIndex - b.dayIndex);
+        const doneCount = items.filter(i => i.done).length;
+
+        return (
+          <div style={{ marginBottom: "40px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+              <p style={sectionLabel}>This week</p>
+              <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>{doneCount}/{items.length} done</p>
+            </div>
+
+            {/* Day grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "4px", marginBottom: "12px" }}>
+              {DAYS_OF_WEEK.map((day, di) => {
+                const dayItems = items.filter(i => i.dayIndex === di);
+                const isToday = di === (todayDay === 0 ? 6 : todayDay - 1);
+                return (
+                  <div
+                    key={day}
+                    style={{
+                      padding: "8px 6px",
+                      background: isToday ? "var(--surface)" : "transparent",
+                      border: `1px solid ${isToday ? "var(--accent)" : "var(--border)"}`,
+                      borderRadius: "4px",
+                      minHeight: "60px",
+                    }}
+                  >
+                    <p style={{ margin: "0 0 6px", fontSize: "9px", letterSpacing: "0.1em", textTransform: "uppercase", color: isToday ? "var(--accent)" : "var(--text-muted)" }}>
+                      {day.slice(0, 3)}
+                    </p>
+                    {dayItems.length === 0 ? (
+                      <p style={{ margin: 0, fontSize: "9px", color: "var(--border)" }}>—</p>
+                    ) : (
+                      dayItems.map((item, k) => (
+                        <div
+                          key={k}
+                          style={{
+                            display: "flex", alignItems: "center", gap: "4px",
+                            marginBottom: k < dayItems.length - 1 ? "4px" : 0,
+                          }}
+                        >
+                          <div style={{
+                            width: "6px", height: "6px", borderRadius: "50%", flexShrink: 0,
+                            background: item.done
+                              ? "var(--text-muted)"
+                              : item.source === "run" ? "var(--accent)" : "#5bc8a8",
+                          }} />
+                          <p style={{
+                            margin: 0, fontSize: "9px", lineHeight: 1.3,
+                            color: item.done ? "var(--text-muted)" : "var(--text)",
+                            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                          }}>
+                            {item.label}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Session list */}
+            <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden" }}>
+              {items.map((item, k) => (
+                <div
+                  key={k}
+                  style={{
+                    display: "flex", alignItems: "flex-start", gap: "12px",
+                    padding: "12px 16px", background: "var(--surface)",
+                    borderBottom: k < items.length - 1 ? "1px solid var(--border)" : undefined,
+                    opacity: item.done ? 0.55 : 1,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => item.source === "run"
+                      ? handleCompleteRunSession(item.weekNum, item.sessionIndex)
+                      : handleCompleteSession(item.weekNum, item.sessionIndex)
+                    }
+                    style={{
+                      width: "18px", height: "18px", borderRadius: "50%", flexShrink: 0, marginTop: "1px",
+                      border: item.done ? "none" : `1.5px solid ${item.source === "run" ? "var(--accent)" : "#5bc8a8"}`,
+                      background: item.done ? "var(--text-muted)" : "transparent",
+                      cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    }}
+                  >
+                    {item.done && <span style={{ color: "var(--bg)", fontSize: "10px", fontWeight: 700 }}>✓</span>}
+                  </button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "2px" }}>
+                      <span style={{
+                        fontSize: "9px", fontWeight: 700, letterSpacing: "0.1em",
+                        color: item.source === "run" ? "var(--accent)" : "#5bc8a8",
+                        textTransform: "uppercase",
+                      }}>
+                        {item.source === "run" ? "run" : "gym"}
+                      </span>
+                      <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "var(--text)", textDecoration: item.done ? "line-through" : undefined }}>
+                        {item.label}
+                      </p>
+                    </div>
+                    <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>{item.desc}</p>
+                  </div>
+                  <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", flexShrink: 0, marginTop: "1px" }}>
+                    {DAYS_OF_WEEK[item.dayIndex].slice(0, 3)}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            {/* Legend */}
+            <div style={{ display: "flex", gap: "16px", marginTop: "8px" }}>
+              {activeRunPlan && (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--accent)" }} />
+                  <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)" }}>concept//run</p>
+                </div>
+              )}
+              {activePlan && (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#5bc8a8" }} />
+                  <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)" }}>concept//form</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Training plan ───────────────────────────────────────────────────── */}
       <div style={{ marginBottom: "40px" }}>

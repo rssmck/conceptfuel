@@ -421,6 +421,7 @@ export default function WeeklyPlanWizard() {
       days_per_week: plan.days_per_week,
       block_weeks: plan.block_weeks,
       starts_on: plan.starts_on,
+      preferred_days: preferredDays,
       active: true,
       sessions: plan.weeks,
     });

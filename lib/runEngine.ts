@@ -5,7 +5,7 @@ export type GoalRace = 'parkrun' | '5k' | '10k' | 'half' | 'marathon' | 'ultra' 
 export type ElevationProfile = 'flat' | 'undulating' | 'hilly' | 'mountain'
 export type TrainingApproach = 'standard' | 'norwegian' | 'hybrid'
 export type RunPhase = 'base' | 'build' | 'peak' | 'taper' | 'recovery'
-export type SessionType = 'easy' | 'tempo' | 'threshold' | 'intervals' | 'long' | 'recovery' | 'strides' | 'hill_reps' | 'race_sim' | 'double_threshold' | 'vo2max' | 'neuromuscular' | 'walk_run' | 'rest'
+export type SessionType = 'easy' | 'tempo' | 'threshold' | 'intervals' | 'long' | 'recovery' | 'strides' | 'hill_reps' | 'race_sim' | 'double_threshold' | 'vo2max' | 'neuromuscular' | 'walk_run' | 'rest' | 'strength' | 'mobility'
 
 export interface TrainingZones {
   easy:      string  // MM:SS/km
@@ -213,7 +213,7 @@ function buildWeekSessions(
   weeklyKm: number,
   totalWeeks: number,
 ): RunSession[] {
-  const { tier, goal_race, days_per_week, club_night, training_approach } = input
+  const { tier, goal_race, days_per_week, club_night, training_approach, include_strength, include_mobility } = input
   const sessions: RunSession[] = []
   const isTaper = phase === 'taper'
   const isPeak  = phase === 'peak'
@@ -507,6 +507,47 @@ function buildWeekSessions(
     target_km: Math.round(easyKm * 0.5),
     notes: 'The seventh day is recovery, not training. If legs feel heavy, walk instead.',
   })
+
+  // ── Cross-training injections ──────────────────────────────────────────────
+  if (include_strength) {
+    const strengthNote = isTaper
+      ? 'Taper week — keep it short, bodyweight only. No heavy loading.'
+      : isBase
+      ? 'Focus on movement quality. Hip hinge, single-leg stability, posterior chain. No grinding.'
+      : 'Running-specific strength. Single-leg work, hip stability, glutes. Not a gym PR session.'
+    sessions.push({
+      type: 'strength',
+      label: isTaper ? 'Bodyweight strength' : tier <= 2 ? 'Running strength' : 'Strength & conditioning',
+      description: isTaper
+        ? 'Bodyweight circuit: glute bridges × 20, single-leg deadlift × 12 each, calf raises × 30, banded clams × 20. 2 sets.'
+        : tier <= 2
+        ? 'Running strength circuit (30–40 min): glute bridges, split squats, hip hinge, lateral band work, single-leg calf raises. 3 × 12.'
+        : 'S&C session (45 min): Romanian deadlift, Bulgarian split squat, hip thrust, lateral band walk, Nordic hamstring curl, plank progressions.',
+      duration_min: isTaper ? 25 : tier <= 2 ? 35 : 45,
+      notes: strengthNote,
+    })
+    if (tier >= 3 && !isTaper) {
+      sessions.push({
+        type: 'strength',
+        label: 'Upper body & core',
+        description: 'Upper body and core session (30 min): press, row, dead hang, pallof press, Copenhagen plank, anti-rotation holds.',
+        duration_min: 30,
+        notes: 'Upper body work supports posture in the late stages of long races. Keep it purposeful.',
+      })
+    }
+  }
+
+  if (include_mobility) {
+    sessions.push({
+      type: 'mobility',
+      label: isTaper ? 'Pre-race mobility' : 'Mobility & recovery',
+      description: isTaper
+        ? 'Pre-race mobility (20 min): hip circles, dynamic lunge flow, leg swings, thoracic rotations, calf & achilles work. Keep it light and flowing.'
+        : 'Mobility session (30–40 min): hip flexor release, pigeon pose, thoracic rotation, hamstring flow, ankle mobility, foam roll quads and ITB.',
+      duration_min: isTaper ? 20 : 35,
+      notes: 'Not a warm-up, not a workout. This is maintenance. Move slowly and breathe.',
+    })
+  }
 
   return sessions
 }
