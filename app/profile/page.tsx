@@ -70,6 +70,25 @@ interface AllPlan {
   created_at: string;
 }
 
+interface RunPlan {
+  id:              string;
+  name:            string;
+  tier:            number;
+  goal_race:       string;
+  race_date:       string | null;
+  plan_weeks:      number;
+  starts_on:       string;
+  training_zones:  { easy: string; tempo: string; threshold: string; interval: string; rep: string } | null;
+  weeks:           import("@/lib/runEngine").RunWeek[];
+  status:          string;
+}
+
+interface RunCompletion {
+  week_number:   number;
+  session_index: number;
+  completed_at:  string;
+}
+
 // ── Goal labels ───────────────────────────────────────────────────────────────
 
 const GOAL_LABELS: Record<string, string> = {
@@ -118,10 +137,12 @@ export default function ProfilePage() {
   const [uploading,    setUploading]    = useState(false);
   const [saveMsg,      setSaveMsg]      = useState<string | null>(null);
   const [draft,        setDraft]        = useState<Partial<Profile>>({});
-  const [activePlan,   setActivePlan]   = useState<TrainingPlan | null>(null);
-  const [completions,  setCompletions]  = useState<PlanCompletion[]>([]);
-  const [allPlans,     setAllPlans]     = useState<AllPlan[]>([]);
-  const [expandedWeek, setExpandedWeek] = useState<number>(0);
+  const [activePlan,     setActivePlan]     = useState<TrainingPlan | null>(null);
+  const [completions,    setCompletions]    = useState<PlanCompletion[]>([]);
+  const [allPlans,       setAllPlans]       = useState<AllPlan[]>([]);
+  const [expandedWeek,   setExpandedWeek]   = useState<number>(0);
+  const [activeRunPlan,  setActiveRunPlan]  = useState<RunPlan | null>(null);
+  const [runCompletions, setRunCompletions] = useState<RunCompletion[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -163,6 +184,24 @@ export default function ProfilePage() {
             .then(({ data: completionData }) => {
               if (completionData) setCompletions(completionData);
             });
+        }
+      });
+
+    // Load active run plan
+    supabase.from("run_plans")
+      .select("id, name, tier, goal_race, race_date, plan_weeks, starts_on, training_zones, weeks, status")
+      .eq("user_id", user.id)
+      .eq("active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setActiveRunPlan(data as RunPlan);
+          supabase.from("run_completions")
+            .select("week_number, session_index, completed_at")
+            .eq("plan_id", data.id)
+            .then(({ data: rc }) => { if (rc) setRunCompletions(rc); });
         }
       });
 
@@ -270,6 +309,20 @@ export default function ProfilePage() {
           session_index: sessionIndex,
         });
       setCompletions(prev => [...prev, { week_number: weekNumber, session_index: sessionIndex, completed_at: new Date().toISOString() }]);
+    }
+  };
+
+  const handleCompleteRunSession = async (weekNumber: number, sessionIndex: number) => {
+    if (!activeRunPlan || !user) return;
+    const supabase = createClient();
+    const isDone = runCompletions.some(c => c.week_number === weekNumber && c.session_index === sessionIndex);
+    if (isDone) {
+      await supabase.from("run_completions").delete()
+        .eq("plan_id", activeRunPlan.id).eq("week_number", weekNumber).eq("session_index", sessionIndex);
+      setRunCompletions(prev => prev.filter(c => !(c.week_number === weekNumber && c.session_index === sessionIndex)));
+    } else {
+      await supabase.from("run_completions").upsert({ plan_id: activeRunPlan.id, user_id: user.id, week_number: weekNumber, session_index: sessionIndex });
+      setRunCompletions(prev => [...prev, { week_number: weekNumber, session_index: sessionIndex, completed_at: new Date().toISOString() }]);
     }
   };
 
@@ -713,6 +766,123 @@ export default function ProfilePage() {
                         </p>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* ── Running plan ────────────────────────────────────────────────────── */}
+      <div style={{ marginBottom: "40px" }}>
+        <p style={sectionLabel}>Running plan</p>
+        {!activeRunPlan ? (
+          <p style={{ fontSize: "13px", color: "var(--text-muted)" }}>
+            No active run plan.{" "}
+            <Link href="/run" style={{ color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}>
+              Build a run plan →
+            </Link>
+          </p>
+        ) : (() => {
+          const start = new Date(activeRunPlan.starts_on + "T00:00:00");
+          const diffWeeks = Math.floor((Date.now() - start.getTime()) / (7 * 24 * 3600 * 1000));
+          const currentWeek = Math.min(Math.max(diffWeeks + 1, 1), activeRunPlan.plan_weeks);
+          const weekData = activeRunPlan.weeks.find(w => w.week_number === currentWeek);
+          const TIER_NAMES: Record<number, string> = { 1: "start", 2: "build", 3: "club", 4: "performance" };
+          const RACE_LABELS: Record<string, string> = { parkrun: "Parkrun", "5k": "5k", "10k": "10k", half: "Half marathon", marathon: "Marathon", ultra: "Ultra", fitness: "Fitness" };
+
+          // Streak
+          const weeksWithActivity = new Set(runCompletions.map(c => c.week_number));
+          let runStreak = 0;
+          for (let w = currentWeek; w >= 1; w--) {
+            if (weeksWithActivity.has(w)) runStreak++; else break;
+          }
+          const thisWeekDone  = runCompletions.filter(c => c.week_number === currentWeek).length;
+          const thisWeekTotal = weekData?.sessions.length ?? 0;
+          const totalDone     = runCompletions.length;
+          const totalSessions = activeRunPlan.weeks.reduce((acc, w) => acc + w.sessions.length, 0);
+          const blockPct      = totalSessions > 0 ? Math.round((totalDone / totalSessions) * 100) : 0;
+
+          return (
+            <div>
+              <div style={{ marginBottom: "20px" }}>
+                <p style={{ fontSize: "15px", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "4px" }}>{activeRunPlan.name}</p>
+                <p style={{ fontSize: "12px", color: "var(--text-muted)", marginBottom: "14px" }}>
+                  {RACE_LABELS[activeRunPlan.goal_race] ?? activeRunPlan.goal_race} · {TIER_NAMES[activeRunPlan.tier]} · Week {currentWeek} of {activeRunPlan.plan_weeks}
+                  {activeRunPlan.race_date && ` · Race ${new Date(activeRunPlan.race_date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}
+                </p>
+
+                {/* Stats row */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px", marginBottom: "16px" }}>
+                  {[
+                    { label: "Week streak", value: runStreak > 0 ? `${runStreak}w` : "—", highlight: runStreak >= 2 },
+                    { label: "This week",   value: `${thisWeekDone}/${thisWeekTotal}`, highlight: thisWeekDone === thisWeekTotal && thisWeekTotal > 0 },
+                    { label: "Block",       value: `${blockPct}%`, highlight: false },
+                  ].map(stat => (
+                    <div key={stat.label} style={{ padding: "12px 14px", background: "var(--surface)", border: `1px solid ${stat.highlight ? "var(--accent)" : "var(--border)"}`, borderRadius: "6px" }}>
+                      <p style={{ margin: "0 0 4px", fontSize: "10px", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)" }}>{stat.label}</p>
+                      <p style={{ margin: 0, fontSize: "20px", fontWeight: 700, color: stat.highlight ? "var(--accent)" : "var(--text)", letterSpacing: "-0.02em" }}>{stat.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Progress bar */}
+                <div style={{ height: "3px", background: "var(--border)", borderRadius: "2px", overflow: "hidden", marginBottom: "4px" }}>
+                  <div style={{ height: "100%", width: `${blockPct}%`, background: "var(--accent)", borderRadius: "2px", transition: "width 0.3s" }} />
+                </div>
+                <p style={{ fontSize: "11px", color: "var(--text-muted)" }}>{totalDone} of {totalSessions} sessions complete</p>
+              </div>
+
+              {/* Training zones */}
+              {activeRunPlan.training_zones && (
+                <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden", marginBottom: "20px" }}>
+                  <div style={{ padding: "10px 16px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+                    <p style={{ margin: 0, fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)" }}>Training zones · /km</p>
+                  </div>
+                  {Object.entries(activeRunPlan.training_zones).map(([k, v], i, arr) => (
+                    <div key={k} style={{ display: "flex", justifyContent: "space-between", padding: "9px 16px", background: "var(--surface)", borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : undefined }}>
+                      <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", textTransform: "capitalize" }}>{k}</p>
+                      <p style={{ margin: 0, fontSize: "12px", fontWeight: 700 }}>{v}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* This week's sessions */}
+              {weekData && (
+                <div>
+                  <p style={{ fontSize: "11px", letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "10px" }}>
+                    Week {currentWeek} · {weekData.phase} · {weekData.total_km} km
+                  </p>
+                  <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden" }}>
+                    {weekData.sessions.map((s, i) => {
+                      const done = runCompletions.some(c => c.week_number === currentWeek && c.session_index === i);
+                      return (
+                        <div key={i} style={{ padding: "12px 16px", background: "var(--surface)", borderBottom: i < weekData.sessions.length - 1 ? "1px solid var(--border)" : undefined, opacity: done ? 0.6 : 1 }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                            <button
+                              type="button"
+                              onClick={() => handleCompleteRunSession(currentWeek, i)}
+                              style={{ width: "18px", height: "18px", borderRadius: "50%", border: done ? "none" : "1.5px solid var(--border)", background: done ? "var(--accent)" : "transparent", cursor: "pointer", flexShrink: 0, marginTop: "2px", display: "flex", alignItems: "center", justifyContent: "center" }}
+                            >
+                              {done && <span style={{ color: "var(--bg)", fontSize: "10px", fontWeight: 700 }}>✓</span>}
+                            </button>
+                            <div style={{ flex: 1 }}>
+                              <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: 600, color: done ? "var(--text-muted)" : "var(--text)", textDecoration: done ? "line-through" : undefined }}>{s.label}</p>
+                              <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>{s.description}</p>
+                              {s.target_pace && <p style={{ margin: "4px 0 0", fontSize: "11px", color: "var(--accent)" }}>Target: {s.target_pace}/km</p>}
+                              {s.is_club_session && s.club_alternative && (
+                                <p style={{ margin: "6px 0 0", fontSize: "11px", color: "var(--text-muted)", fontStyle: "italic", borderLeft: "2px solid var(--border)", paddingLeft: "8px", lineHeight: 1.5 }}>
+                                  Can&apos;t make club? {s.club_alternative}
+                                </p>
+                              )}
+                            </div>
+                            {s.target_km && <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", flexShrink: 0 }}>{s.target_km} km</p>}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
