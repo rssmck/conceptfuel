@@ -1,7 +1,7 @@
 // ─── TYPES ────────────────────────────────────────────────────────────────────
 
 export type RunTier = 1 | 2 | 3 | 4
-export type GoalRace = 'parkrun' | '5k' | '10k' | 'half' | 'marathon' | 'ultra' | 'fitness'
+export type GoalRace = 'weekly5k' | '5k' | '10k' | 'half' | 'marathon' | 'ultra' | 'hyrox' | 'fitness'
 export type ElevationProfile = 'flat' | 'undulating' | 'hilly' | 'mountain'
 export type TrainingApproach = 'standard' | 'norwegian' | 'hybrid'
 export type RunPhase = 'base' | 'build' | 'peak' | 'taper' | 'recovery'
@@ -96,8 +96,8 @@ function raceTimeToMinutes(timeStr: string): number {
 // Race distance to meters
 function raceDistanceToMeters(dist: string): number {
   const map: Record<string, number> = {
-    'parkrun': 5000, '5k': 5000, '10k': 10000,
-    'half': 21097, 'marathon': 42195, 'ultra': 50000
+    'weekly5k': 5000, '5k': 5000, '10k': 10000,
+    'half': 21097, 'marathon': 42195, 'ultra': 50000, 'hyrox': 10000
   }
   return map[dist] ?? 5000
 }
@@ -178,7 +178,7 @@ function getPlanWeeks(goalRace: GoalRace, raceDateStr?: string, startsOn?: strin
     return Math.min(Math.max(weeks, 4), 20)
   }
   const defaults: Record<GoalRace, number> = {
-    parkrun: 6, '5k': 8, '10k': 10, half: 12, marathon: 16, ultra: 18, fitness: 8
+    weekly5k: 6, '5k': 8, '10k': 10, half: 12, marathon: 16, ultra: 18, hyrox: 10, fitness: 8
   }
   return defaults[goalRace]
 }
@@ -330,8 +330,9 @@ function buildWeekSessions(
   }
 
   // Tier 3 + 4: structured quality
-  const isShortRace = goal_race === 'parkrun' || goal_race === '5k' || goal_race === '10k'
+  const isShortRace = goal_race === 'weekly5k' || goal_race === '5k' || goal_race === '10k'
   const isLongRace  = goal_race === 'marathon' || goal_race === 'ultra'
+  const isHyrox     = goal_race === 'hyrox'
 
   // Quality session 1 — the main track/interval session
   let quality1: RunSession
@@ -402,16 +403,52 @@ function buildWeekSessions(
         notes: 'Threshold pace is "comfortably uncomfortable" — you could answer a question but wouldn\'t want to say much more. 90s jog recovery only, not standing rest.',
       }
     }
+  } else if (isHyrox) {
+    // Hyrox: 8 × 1km runs + functional work — train the running component with functional intervals
+    const weekMod = (week % 3)
+    if (weekMod === 0) {
+      quality1 = {
+        type: 'intervals',
+        label: 'Hyrox run intervals — 1km reps',
+        description: zones?.interval
+          ? `2 km easy warm-up. 6–8 × 1km @ ${zones.interval}/km, 90s jog recovery. 1 km cool-down. Simulate race effort on the run legs.`
+          : `2 km warm-up. 6–8 × 1km at hard aerobic effort, 90s jog. 1 km cool-down.`,
+        structure: `6–8 × 1km, 90s jog`,
+        target_pace: zones?.interval,
+        notes: 'Hyrox run legs are 1km each. These reps build the specific endurance to run hard immediately after functional work. Keep the jog recovery moving — Hyrox doesn\'t give you stand-still rest.',
+      }
+    } else if (weekMod === 1) {
+      quality1 = {
+        type: 'threshold',
+        label: 'Hyrox threshold run',
+        description: zones?.threshold
+          ? `2 km warm-up. 3 × 8min @ ${zones.threshold}/km, 90s jog. 1 km cool-down. Race-effort sustained running.`
+          : `2 km warm-up. 3 × 8min at threshold effort, 90s jog. 1 km cool-down.`,
+        structure: `3 × 8min threshold, 90s jog`,
+        target_pace: zones?.threshold,
+        notes: 'Threshold pace for Hyrox is the pace you\'d sustain across all 8 run legs. Controlled, hard, repeatable.',
+      }
+    } else {
+      quality1 = {
+        type: 'intervals',
+        label: 'Run-fatigue intervals',
+        description: zones?.interval
+          ? `2 km warm-up. 5 × [1km @ ${zones.interval}/km + 2min functional work (burpees / wall balls / sled push mimicry) + 90s jog]. 1 km cool-down.`
+          : `2 km warm-up. 5 × [1km hard + 2min functional work + 90s jog]. 1 km cool-down.`,
+        structure: `5 × (1km + 2min functional), 90s jog`,
+        notes: 'Train running under fatigue. The functional block simulates the transition from a Hyrox station back into the run. The ability to clear lactate and find pace quickly is the key Hyrox skill.',
+      }
+    }
   } else {
-    // Long race training (HM / marathon)
+    // Long race training (HM / marathon) — fixed sensible tempo volumes
+    const tempoKm = isBuild ? 5 : isPeak ? 7 : 4  // capped: 4–7km of quality work, not % of weekly volume
     quality1 = {
       type: 'tempo',
       label: 'Tempo run',
       description: zones?.tempo
-        ? `${Math.round(weeklyKm * 0.12)} km easy warm-up, ${Math.round(weeklyKm * 0.18)} km continuous at ${zones.tempo}/km, ${Math.round(weeklyKm * 0.08)} km easy cool-down.`
-        : `Warm-up 2 km, ${Math.round(weeklyKm * 0.2)} km at comfortably hard effort, 2 km cool-down.`,
+        ? `2 km easy warm-up. ${tempoKm} km continuous at ${zones.tempo}/km. 1 km easy cool-down.`
+        : `2 km warm-up. ${tempoKm} km at comfortably hard effort. 1 km cool-down.`,
       target_pace: zones?.tempo,
-      target_km: Math.round(weeklyKm * 0.4),
       notes: 'Tempo pace is sustainable for 45–60 min but requires concentration. Don\'t drift faster — the purpose is time at threshold, not heroics.',
     }
   }
@@ -475,23 +512,63 @@ function buildWeekSessions(
     }
   }
 
-  // Club night integration
+  // Club night integration — replace quality1 with a properly capped club session
   if (club_night && tier >= 3) {
-    const altDesc = isBase
-      ? `Club night alternative: ${easyKm + 1} km easy with 6 × 20s strides.`
+    const clubSession: RunSession = isBase
+      ? {
+          type: 'easy',
+          label: 'Club night — easy + strides',
+          description: zones?.easy
+            ? `2 km warm-up. 5 km easy @ ${zones.easy}/km with club. 4 × 20s strides at the end. 1 km cool-down.`
+            : `2 km warm-up. 5 km easy with club. 4 × 20s strides at the end. 1 km cool-down.`,
+          structure: `5 km easy + strides`,
+          is_club_session: true,
+          club_alternative: `Solo alternative: ${easyKm + 1} km easy with 6 × 20s strides.`,
+          notes: 'Base phase — use club night for the easy run. Strides at the end activate the fast-twitch fibres.',
+        }
       : isTaper
-      ? `Club night — if the session is hard intervals, do this instead: 4 km easy + 4 × 20s strides. Race week, protect the legs.`
+      ? {
+          type: 'strides',
+          label: 'Club night — sharpener only',
+          description: zones?.rep
+            ? `2 km easy warm-up. 4 × 100m @ ${zones.rep}/km with full walk recovery. 2 km easy. Race week — nothing taxing.`
+            : `2 km warm-up. 4 × 100m at controlled fast effort, full walk recovery. 2 km easy.`,
+          structure: `4 × 100m, walk recovery`,
+          is_club_session: true,
+          club_alternative: `Solo: 3 km easy jog + 4 × 20s strides. Do not race the club session this week.`,
+          notes: 'Race week. Use the club environment for motivation, not exertion. If the club is doing a hard session, leave early or run easy alongside.',
+        }
       : isShortRace
-      ? `Club night alternative (if session doesn't suit): 3 km warm-up, 8 × 400m @ 5k pace, 100m jog, 1 km cool-down.`
-      : `Club night alternative: 2 km warm-up, 5 × 1km @ threshold, 90s jog, 2 km cool-down.`
+      ? {
+          type: 'intervals',
+          label: 'Club night — track session',
+          description: zones?.interval
+            ? `2 km warm-up. Club track session or: 8 × 400m @ ${zones.interval}/km, 100m jog recovery. 1 km cool-down. Total ~6–7 km.`
+            : `2 km warm-up. Club track session or: 8 × 400m at 5k effort, 100m jog. 1 km cool-down.`,
+          structure: `8 × 400m or club track session`,
+          target_pace: zones?.interval,
+          is_club_session: true,
+          club_alternative: zones?.interval
+            ? `Solo: 2 km warm-up, 8 × 400m @ ${zones.interval}/km, 100m jog, 1 km cool-down.`
+            : `Solo: 2 km warm-up, 8 × 400m at 5k pace, 100m jog, 1 km cool-down.`,
+          notes: 'Club track session. If the club session suits your phase (short reps, 5k–10k pace), do it. If it\'s a long tempo or road session that doesn\'t suit, use the alternative.',
+        }
+      : {
+          type: 'threshold',
+          label: 'Club night — threshold session',
+          description: zones?.threshold
+            ? `2 km warm-up. Club session or: 3 × 2km @ ${zones.threshold}/km, 2 min jog between. 1 km cool-down. Total ~9 km.`
+            : `2 km warm-up. Club session or: 3 × 2km at threshold effort, 2 min jog. 1 km cool-down.`,
+          structure: `3 × 2km threshold or club session`,
+          target_pace: zones?.threshold,
+          is_club_session: true,
+          club_alternative: zones?.threshold
+            ? `Solo: 2 km warm-up, 3 × 2km @ ${zones.threshold}/km, 2 min jog, 1 km cool-down.`
+            : `Solo: 2 km warm-up, 3 × 2km at threshold, 2 min jog, 1 km cool-down.`,
+          notes: 'Club night replaces the main quality session. Total volume capped at ~9 km. If the club is running longer, run your own session or leave at the cool-down.',
+        }
 
-    quality1 = {
-      ...quality1,
-      label: `${quality1.label} · club night`,
-      is_club_session: true,
-      club_alternative: altDesc,
-      notes: (quality1.notes ?? '') + ` · Club night: if the club session suits your phase, do that. If not (e.g. race week and they\'re doing mile reps), use the alternative below.`,
-    }
+    quality1 = clubSession
   }
 
   sessions.push(quality1)
@@ -557,7 +634,7 @@ function buildWeekSessions(
 function weeklyKmProgression(input: RunPlanInput, totalWeeks: number): number[] {
   const base = input.weekly_km ?? (input.tier === 1 ? 8 : input.tier === 2 ? 20 : input.tier === 3 ? 35 : 50)
   const peakMultiplier: Record<GoalRace, number> = {
-    parkrun: 1.3, '5k': 1.4, '10k': 1.5, half: 1.7, marathon: 2.0, ultra: 2.2, fitness: 1.3
+    weekly5k: 1.3, '5k': 1.4, '10k': 1.5, half: 1.7, marathon: 2.0, ultra: 2.2, hyrox: 1.4, fitness: 1.3
   }
   const peak = Math.round(base * (peakMultiplier[input.goal_race] ?? 1.4))
 
@@ -605,8 +682,8 @@ export function generateRunPlan(input: RunPlanInput): RunPlanTemplate {
   const kmByWeek   = weeklyKmProgression(input, totalWeeks)
 
   const RACE_LABELS: Record<GoalRace, string> = {
-    parkrun: 'parkrun', '5k': '5k', '10k': '10k', half: 'half marathon',
-    marathon: 'marathon', ultra: 'ultra', fitness: 'fitness'
+    weekly5k: 'weekly 5k', '5k': '5k', '10k': '10k', half: 'half marathon',
+    marathon: 'marathon', ultra: 'ultra', hyrox: 'Hyrox', fitness: 'fitness'
   }
 
   const TIER_NAMES: Record<RunTier, string> = {

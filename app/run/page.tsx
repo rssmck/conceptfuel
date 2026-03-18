@@ -23,13 +23,14 @@ const TIER_OPTIONS: { value: RunTier; label: string; desc: string }[] = [
 ];
 
 const GOAL_RACE_OPTIONS: { value: GoalRace; label: string; desc: string }[] = [
-  { value: "parkrun",  label: "Parkrun \u00b7 5k",   desc: "Saturday morning. Community, consistency and a weekly benchmark. Post-run coffee optional but encouraged." },
-  { value: "5k",       label: "5k",              desc: "Speed, power and race sharpness." },
-  { value: "10k",      label: "10k",             desc: "The sweet spot of speed and endurance." },
-  { value: "half",     label: "Half marathon",   desc: "21.1 km. Endurance meets speed." },
-  { value: "marathon", label: "Marathon",        desc: "42.2 km. The full test." },
-  { value: "ultra",    label: "Ultra",           desc: "Beyond the marathon." },
-  { value: "fitness",  label: "Just run",        desc: "No race. Build fitness and enjoy it." },
+  { value: "weekly5k", label: "Weekly 5k",      desc: "Saturday morning. Community, consistency and a weekly benchmark. Post-run coffee optional but encouraged." },
+  { value: "5k",       label: "5k race",        desc: "Speed, power and race sharpness." },
+  { value: "10k",      label: "10k",            desc: "The sweet spot of speed and endurance." },
+  { value: "half",     label: "Half marathon",  desc: "21.1 km. Endurance meets speed." },
+  { value: "marathon", label: "Marathon",       desc: "42.2 km. The full test." },
+  { value: "ultra",    label: "Ultra",          desc: "Beyond the marathon." },
+  { value: "hyrox",   label: "Hyrox",          desc: "8 × 1km runs + functional work. Train the run legs, build the engine, survive the stations." },
+  { value: "fitness",  label: "Just run",       desc: "No race. Build fitness and enjoy it." },
 ];
 
 const ELEVATION_OPTIONS: { value: ElevationProfile; label: string }[] = [
@@ -56,8 +57,8 @@ const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const RACE_DISTANCES = ["5k", "10k", "half", "marathon"];
 
 const RACE_LABELS: Record<GoalRace, string> = {
-  parkrun: "parkrun", "5k": "5k", "10k": "10k", half: "half marathon",
-  marathon: "marathon", ultra: "ultra", fitness: "fitness",
+  weekly5k: "weekly 5k", "5k": "5k", "10k": "10k", half: "half marathon",
+  marathon: "marathon", ultra: "ultra", hyrox: "Hyrox", fitness: "fitness",
 };
 
 const TIER_NAMES: Record<RunTier, string> = {
@@ -82,7 +83,7 @@ function getPlanWeeksPreview(goalRace: GoalRace, raceDateStr?: string, startsOn?
     return Math.min(Math.max(weeks, 4), 20);
   }
   const defaults: Record<GoalRace, number> = {
-    parkrun: 6, "5k": 8, "10k": 10, half: 12, marathon: 16, ultra: 18, fitness: 8,
+    weekly5k: 6, "5k": 8, "10k": 10, half: 12, marathon: 16, ultra: 18, hyrox: 10, fitness: 8,
   };
   return defaults[goalRace];
 }
@@ -321,8 +322,11 @@ export default function RunPage() {
     if (goalRace === '10k') {
       return tier >= 3 ? [10, 12, 14, 16] : [8, 10, 12]
     }
-    if (goalRace === '5k' || goalRace === 'parkrun') {
+    if (goalRace === '5k' || goalRace === 'weekly5k') {
       return tier >= 3 ? [6, 8, 10, 12] : [6, 8, 10]
+    }
+    if (goalRace === 'hyrox') {
+      return tier >= 3 ? [10, 12, 14, 16] : [8, 10, 12]
     }
     return tier >= 3 ? [8, 10, 12, 16] : [6, 8, 10, 12]
   }
@@ -520,20 +524,18 @@ export default function RunPage() {
                       fontSize: "13px",
                       fontWeight: 700,
                       margin: 0,
-                      marginBottom: "4px",
+                      marginBottom: session.structure || session.target_pace ? "4px" : 0,
                       color: "var(--text)",
                     }}
                   >
                     {session.label}
-                    {session.target_km ? (
-                      <span style={{ fontWeight: 400, color: "var(--text-muted)", marginLeft: "8px" }}>
-                        {session.target_km} km
-                      </span>
-                    ) : null}
                   </p>
-                  <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0, lineHeight: 1.5 }}>
-                    {session.description}
-                  </p>
+                  {(session.structure || session.target_pace) && (
+                    <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: 0, lineHeight: 1.5 }}>
+                      {session.structure ?? ""}
+                      {session.target_pace ? ` · ${session.target_pace}/km` : ""}
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -654,9 +656,12 @@ export default function RunPage() {
                   <div style={{ borderTop: "1px solid var(--border)" }}>
                     {week.sessions.map((s, i) => (
                       <div key={i} style={{ padding: "12px 16px", background: "var(--bg)", borderBottom: i < week.sessions.length - 1 ? "1px solid var(--border)" : undefined }}>
-                        <p style={{ margin: "0 0 3px", fontSize: "13px", fontWeight: 600 }}>{s.label}{s.target_km ? ` · ${s.target_km} km` : ''}</p>
-                        <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>{s.description}</p>
-                        {s.target_pace && <p style={{ margin: "4px 0 0", fontSize: "11px", color: "var(--accent)" }}>Target: {s.target_pace}/km</p>}
+                        <p style={{ margin: "0 0 3px", fontSize: "13px", fontWeight: 600 }}>{s.label}</p>
+                        {(s.structure || s.target_pace) && (
+                          <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                            {s.structure ?? ""}{s.target_pace ? ` · ${s.target_pace}/km` : ""}
+                          </p>
+                        )}
                       </div>
                     ))}
                     <div style={{ padding: "10px 16px", background: "var(--surface)", borderTop: "1px solid var(--border)" }}>

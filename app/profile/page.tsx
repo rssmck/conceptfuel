@@ -984,7 +984,7 @@ export default function ProfilePage() {
           const currentWeek = Math.min(Math.max(diffWeeks + 1, 1), activeRunPlan.plan_weeks);
           const weekData = activeRunPlan.weeks.find(w => w.week_number === currentWeek);
           const TIER_NAMES: Record<number, string> = { 1: "start", 2: "build", 3: "club", 4: "performance" };
-          const RACE_LABELS: Record<string, string> = { parkrun: "Parkrun", "5k": "5k", "10k": "10k", half: "Half marathon", marathon: "Marathon", ultra: "Ultra", fitness: "Fitness" };
+          const RACE_LABELS: Record<string, string> = { weekly5k: "Weekly 5k", "5k": "5k", "10k": "10k", half: "Half marathon", marathon: "Marathon", ultra: "Ultra", hyrox: "Hyrox", fitness: "Fitness" };
 
           // Streak
           const weeksWithActivity = new Set(runCompletions.map(c => c.week_number));
@@ -1064,8 +1064,11 @@ export default function ProfilePage() {
                             </button>
                             <div style={{ flex: 1 }}>
                               <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: 600, color: done ? "var(--text-muted)" : "var(--text)", textDecoration: done ? "line-through" : undefined }}>{s.label}</p>
-                              <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>{s.description}</p>
-                              {s.target_pace && <p style={{ margin: "4px 0 0", fontSize: "11px", color: "var(--accent)" }}>Target: {s.target_pace}/km</p>}
+                              {(s.structure || s.target_pace) && (
+                                <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                                  {s.structure ?? ""}{s.target_pace ? ` · ${s.target_pace}/km` : ""}
+                                </p>
+                              )}
                               {s.is_club_session && s.club_alternative && (
                                 <p style={{ margin: "6px 0 0", fontSize: "11px", color: "var(--text-muted)", fontStyle: "italic", borderLeft: "2px solid var(--border)", paddingLeft: "8px", lineHeight: 1.5 }}>
                                   Can&apos;t make club? {s.club_alternative}
