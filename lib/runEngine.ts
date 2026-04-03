@@ -204,6 +204,16 @@ function paceNote(pace: string): string {
   return pace ? ` @ ${pace}/km` : ''
 }
 
+// Returns how far into the current phase this week is (1-indexed)
+function getPhaseWeek(week: number, totalWeeks: number, goalRace: GoalRace): number {
+  const currentPhase = getPhase(week, totalWeeks, goalRace)
+  let count = 0
+  for (let w = 1; w <= week; w++) {
+    if (getPhase(w, totalWeeks, goalRace) === currentPhase) count++
+  }
+  return count
+}
+
 // Build sessions for a week based on tier, phase, goal, and training preferences
 function buildWeekSessions(
   input: RunPlanInput,
@@ -212,6 +222,7 @@ function buildWeekSessions(
   zones: TrainingZones | undefined,
   weeklyKm: number,
   totalWeeks: number,
+  phaseWeek: number,
 ): RunSession[] {
   const { tier, goal_race, days_per_week, club_night, training_approach, include_strength, include_mobility } = input
   const sessions: RunSession[] = []
@@ -337,70 +348,89 @@ function buildWeekSessions(
   // Quality session 1 — the main track/interval session
   let quality1: RunSession
 
+  // Rotation slot and iteration — drives progression within a phase
+  const ROTATION = 4
+  const slot = (phaseWeek - 1) % ROTATION            // 0–3
+  const iter = Math.floor((phaseWeek - 1) / ROTATION) // how many full rotations completed
+  const isRecoverySlot = slot === 3 && !isPeak        // slot 3 in non-peak = active recovery
+
   if (isBase) {
-    // Strides and easy during base
-    quality1 = stridesSession
+    // Base: strides on slot 0-1, light fartlek on slot 2-3 for variety
+    if (slot <= 1) {
+      quality1 = stridesSession
+    } else {
+      quality1 = {
+        type: 'easy',
+        label: 'Fartlek run',
+        description: zones?.easy
+          ? `${easyKm + 1} km easy with 5 × 1 min surges @ ${zones.tempo ?? 'tempo'}/km effort, 2 min easy between. Unstructured — just feel it.`
+          : `${easyKm + 1} km easy with 5 × 1 min pick-ups, 2 min easy between. Light effort, no pressure.`,
+        structure: `${easyKm + 1} km easy + 5 × 1 min surges`,
+        notes: 'Base phase — no hard quality work yet. Surges wake the legs up without accumulating fatigue.',
+      }
+    }
   } else if (isTaper) {
     quality1 = {
       type: 'strides',
       label: 'Sharpener + strides',
       description: `${Math.round(easyKm * 0.8)} km easy, 4 × 20s strides${zones?.rep ? ` @ ${zones.rep}/km` : ''}, 3 min easy cool-down. Keep it short, keep it sharp.`,
+      structure: `4 × 20s strides`,
       target_km: Math.round(easyKm * 0.9),
       notes: 'Race week. This session is to stay sharp, not to build fitness. Do not push anything hard.',
     }
   } else if (isShortRace) {
-    // 5k/10k training — the interesting stuff
-    // Vary the rep distance across the plan using week number
-    const weekMod = (week % 4)
-    if (weekMod === 0 || isBase) {
-      // Neuromuscular short reps (the missing ingredient)
+    // 4-slot rotation: neuromuscular → intervals → speed endurance → threshold/recovery
+    if (isRecoverySlot) {
+      // Active recovery slot — lighter quality week, not full rest
+      quality1 = {
+        type: 'strides',
+        label: 'Easy + strides — recovery week',
+        description: zones?.easy
+          ? `${easyKm + 1} km easy @ ${zones.easy}/km with 6 × 20s strides. Nothing more.`
+          : `${easyKm + 1} km easy with 6 × 20s strides. Recovery week.`,
+        structure: `${easyKm + 1} km easy + 6 × 20s strides`,
+        notes: 'Recovery week. The body adapts during rest, not during training. Protect this week.',
+      }
+    } else if (slot === 0) {
+      // Neuromuscular — builds 10 → 12 → 14 reps across iterations
+      const reps = 10 + iter * 2
       quality1 = {
         type: 'neuromuscular',
         label: 'Speed session — short reps',
         description: zones?.rep
-          ? `3 km easy warm-up. 10–14 × 200m @ ${zones.rep}/km, 100m walk recovery — do not stand still. 1 km cool-down.`
-          : `3 km easy warm-up. 10–14 × 200m at controlled sprint effort, 100m walk recovery. 1 km cool-down.`,
-        structure: `10–14 × 200m, 100m walk recovery`,
+          ? `3 km easy warm-up. ${reps} × 200m @ ${zones.rep}/km, 100m walk recovery — do not stand still. 1 km cool-down.`
+          : `3 km easy warm-up. ${reps} × 200m at controlled sprint effort, 100m walk recovery. 1 km cool-down.`,
+        structure: `${reps} × 200m, 100m walk recovery`,
         target_pace: zones?.rep,
-        target_km: 4 + 10 * 0.3,
-        notes: 'These are NOT all-out sprints. Think 95% effort, smooth mechanics. The walk recovery is important — do not stand still or skip it. Short reps develop neuromuscular efficiency and top-end speed that translates directly to 5k performance.',
+        notes: 'These are NOT all-out sprints. Think 95% effort, smooth mechanics. Walk recovery is deliberate — develops lactate clearance. Short reps build the neuromuscular efficiency that makes race pace feel easier.',
       }
-    } else if (weekMod === 1) {
-      // 400m reps — the classic
-      const reps = isPeak ? '16–20' : isBuild ? '12–16' : '8–12'
+    } else if (slot === 1) {
+      // 400m reps — builds 8 → 10 → 12 → 14 reps
+      const reps400 = 8 + iter * 2
+      const repStr = isPeak ? `${reps400 + 2}–${reps400 + 4}` : `${reps400}`
       quality1 = {
         type: 'intervals',
         label: '400m repetitions',
         description: zones?.interval
-          ? `3 km easy warm-up. ${reps} × 400m @ ${zones.interval}/km, 100m jog recovery (never stop — keep moving). ${reps === '16–20' ? 'Split into sets of 4 if needed, 90s between sets.' : ''} 1 km cool-down.`
-          : `3 km easy warm-up. ${reps} × 400m at 5k race effort, 100m jog recovery. 1 km cool-down.`,
-        structure: `${reps} × 400m @ 5k pace, 100m jog`,
+          ? `3 km easy warm-up. ${repStr} × 400m @ ${zones.interval}/km, 100m jog recovery — keep moving. 1 km cool-down.`
+          : `3 km easy warm-up. ${repStr} × 400m at 5k race effort, 100m jog recovery. 1 km cool-down.`,
+        structure: `${repStr} × 400m @ 5k pace, 100m jog`,
         target_pace: zones?.interval,
-        notes: 'Recovery jog — not walk, not standstill. Keeping moving between reps is deliberate: it develops lactate clearance. Hit each rep consistently, not faster early and dying late.',
-      }
-    } else if (weekMod === 2) {
-      // 600m-800m speed endurance
-      quality1 = {
-        type: 'intervals',
-        label: 'Speed endurance — 600s',
-        description: zones?.interval
-          ? `3 km easy warm-up. 8–10 × 600m @ ${secsToMMSS(paceToSecs(zones.interval) + 5)}/km — slightly slower than 5k pace, 200m jog recovery. 1 km cool-down.`
-          : `3 km warm-up. 8–10 × 600m at 5k effort minus 5s/km, 200m jog recovery. 1 km cool-down.`,
-        structure: `8–10 × 600m, 200m jog`,
-        notes: 'Speed endurance. These should feel controlled through rep 1–4, genuinely challenging by rep 7. Consistent pace across all reps is the goal.',
+        notes: 'Recovery jog — not walk, not standstill. Keeping moving between reps develops lactate clearance. Hit each rep consistently, not faster early then dying late.',
       }
     } else {
-      // Threshold reps for 10k/5k
-      const reps5k = goal_race === '5k' ? '5 × 1km' : '4 × 1.5km'
+      // Slot 2: speed endurance — 600-800m builds 5 → 6 → 8 reps
+      const reps600 = 5 + iter
+      const dist = goal_race === '10k' ? '800m' : '600m'
+      const repPace = zones?.interval ? secsToMMSS(paceToSecs(zones.interval) + (dist === '800m' ? 8 : 5)) : null
       quality1 = {
-        type: 'threshold',
-        label: 'Threshold reps',
-        description: zones?.threshold
-          ? `3 km easy warm-up. ${reps5k} @ ${zones.threshold}/km, 90s jog recovery. 1 km cool-down.`
-          : `3 km warm-up. ${reps5k} at threshold effort, 90s jog. 1 km cool-down.`,
-        structure: `${reps5k}, 90s jog`,
-        target_pace: zones?.threshold,
-        notes: 'Threshold pace is "comfortably uncomfortable" — you could answer a question but wouldn\'t want to say much more. 90s jog recovery only, not standing rest.',
+        type: 'intervals',
+        label: `Speed endurance — ${dist}s`,
+        description: repPace
+          ? `3 km easy warm-up. ${reps600} × ${dist} @ ${repPace}/km, 200m jog recovery. 1 km cool-down.`
+          : `3 km warm-up. ${reps600} × ${dist} at slightly slower than 5k effort, 200m jog. 1 km cool-down.`,
+        structure: `${reps600} × ${dist}, 200m jog`,
+        notes: 'Speed endurance. Controlled through the first half, genuinely hard by the last two reps. Consistent pace is the goal — not fast early, dying late.',
       }
     }
   } else if (isHyrox) {
@@ -440,74 +470,149 @@ function buildWeekSessions(
       }
     }
   } else {
-    // Long race training (HM / marathon) — fixed sensible tempo volumes
-    const tempoKm = isBuild ? 5 : isPeak ? 7 : 4  // capped: 4–7km of quality work, not % of weekly volume
-    quality1 = {
-      type: 'tempo',
-      label: 'Tempo run',
-      description: zones?.tempo
-        ? `2 km easy warm-up. ${tempoKm} km continuous at ${zones.tempo}/km. 1 km easy cool-down.`
-        : `2 km warm-up. ${tempoKm} km at comfortably hard effort. 1 km cool-down.`,
-      target_pace: zones?.tempo,
-      notes: 'Tempo pace is sustainable for 45–60 min but requires concentration. Don\'t drift faster — the purpose is time at threshold, not heroics.',
+    // Long race training (HM / marathon) — 3-slot rotation with progression
+    const longSlot = (phaseWeek - 1) % 3
+    const longIter = Math.floor((phaseWeek - 1) / 3)
+
+    if (!isBuild && !isPeak) {
+      // Base/recovery: simple strides session
+      quality1 = stridesSession
+    } else if (longSlot === 0) {
+      // Continuous tempo — builds 4 → 5 → 6 → 7 km
+      const tempoKm = Math.min(4 + longIter + (isPeak ? 1 : 0), 7)
+      quality1 = {
+        type: 'tempo',
+        label: 'Continuous tempo',
+        description: zones?.tempo
+          ? `2 km easy warm-up. ${tempoKm} km continuous @ ${zones.tempo}/km — comfortably hard. 1 km easy cool-down.`
+          : `2 km warm-up. ${tempoKm} km at comfortably hard effort — you could answer a question but wouldn't want to. 1 km cool-down.`,
+        structure: `${tempoKm} km tempo`,
+        target_pace: zones?.tempo,
+        notes: 'Tempo pace is sustainable for 45–60 min but requires concentration. Don\'t drift faster — the purpose is time at threshold, not heroics.',
+      }
+    } else if (longSlot === 1) {
+      // Broken tempo / threshold reps — builds from 3×8min to 3×12min
+      const repMin = 8 + longIter * 2
+      const repKm = goal_race === 'half' ? '1.5km' : '2km'
+      const repCount = 3 + longIter
+      quality1 = {
+        type: 'threshold',
+        label: 'Threshold reps',
+        description: zones?.threshold
+          ? `2 km easy warm-up. ${repCount} × ${repKm} @ ${zones.threshold}/km, 90s jog recovery. 1 km cool-down.`
+          : `2 km warm-up. ${repCount} × ${repKm} at threshold effort, 90s jog. 1 km cool-down.`,
+        structure: `${repCount} × ${repKm}, 90s jog`,
+        target_pace: zones?.threshold,
+        notes: `Broken tempo — easier to hold pace in rep form on a mid-week day. 90s jog recovery only, not standing rest. ${repMin} min total quality work.`,
+      }
+    } else {
+      // Cruise intervals / marathon pace work
+      const mpReps = 3 + longIter
+      if (goal_race === 'marathon' || goal_race === 'ultra') {
+        quality1 = {
+          type: 'race_sim',
+          label: 'Marathon pace reps',
+          description: zones?.marathon
+            ? `2 km easy warm-up. ${mpReps} × 2km @ ${zones.marathon}/km, 90s jog. 1 km cool-down. Race pace — own it.`
+            : `2 km warm-up. ${mpReps} × 2km at goal marathon pace, 90s jog. 1 km cool-down.`,
+          structure: `${mpReps} × 2km @ marathon pace, 90s jog`,
+          target_pace: zones?.marathon,
+          notes: 'Marathon pace work. This should feel controlled and purposeful — not easy, not hard. The goal is to internalise race pace so it feels natural on race day.',
+        }
+      } else {
+        // Half marathon: faster pace reps
+        quality1 = {
+          type: 'intervals',
+          label: 'Half marathon pace intervals',
+          description: zones?.interval
+            ? `2 km easy warm-up. ${mpReps} × 1km @ ${zones.interval}/km, 60s jog. 1 km cool-down.`
+            : `2 km warm-up. ${mpReps} × 1km at half marathon pace, 60s jog. 1 km cool-down.`,
+          structure: `${mpReps} × 1km @ HM pace, 60s jog`,
+          target_pace: zones?.interval,
+          notes: 'Race-specific pace. Should feel like a strong but controlled effort — not threshold, not all-out.',
+        }
+      }
     }
   }
 
-  // Quality session 2 (tier 3+, build/peak, 4+ days/week)
+  // Quality session 2 (tier 3+, build/peak, 4+ days/week) — rotates for stimulus variety
   let quality2: RunSession | null = null
 
-  if (!isBase && !isTaper && days_per_week >= 4) {
+  if (!isBase && !isTaper && days_per_week >= 4 && !isRecoverySlot) {
     if (training_approach === 'norwegian' && tier >= 3) {
-      // Double threshold
+      // Norwegian: double threshold — vary rep count across phaseWeek
+      const dtReps = 5 + Math.min(iter, 2)
       quality2 = {
         type: 'double_threshold',
         label: 'Sub-threshold intervals',
         description: zones?.threshold
-          ? `3 km easy warm-up. 5–7 × 5min @ ${secsToMMSS(paceToSecs(zones.threshold) + 12)}/km (10–15s/km SLOWER than threshold — stay aerobic), 90s jog between. This is LT1, not LT2. 2 km cool-down.`
-          : `3 km warm-up. 5–7 × 5min at sub-threshold effort — aerobic but purposeful. 90s jog. 2 km cool-down.`,
-        structure: `5–7 × 5min @ LT1 pace, 90s jog`,
-        notes: 'Norwegian method: the key is staying below LT2. If your HR is spiking, you\'re going too hard. This should feel controlled throughout. High volume at sub-threshold builds the aerobic engine more safely than classic tempo work.',
+          ? `3 km easy warm-up. ${dtReps} × 5min @ ${secsToMMSS(paceToSecs(zones.threshold) + 12)}/km (10–15s/km SLOWER than threshold — stay aerobic), 90s jog between. This is LT1, not LT2. 2 km cool-down.`
+          : `3 km warm-up. ${dtReps} × 5min at sub-threshold effort — aerobic but purposeful. 90s jog. 2 km cool-down.`,
+        structure: `${dtReps} × 5min @ LT1 pace, 90s jog`,
+        notes: 'Norwegian method: the key is staying below LT2. If your HR is spiking, you\'re going too hard. This should feel controlled throughout.',
       }
     } else if (training_approach === 'hybrid' && tier >= 3) {
-      // Hybrid: sub-threshold volume with periodic classic intervals
-      quality2 = {
-        type: 'double_threshold',
-        label: 'Sub-threshold + strides',
-        description: zones?.threshold
-          ? `2 km easy warm-up. 4 × 6min @ ${secsToMMSS(paceToSecs(zones.threshold) + 10)}/km (just below threshold — stay aerobic throughout), 90s jog between. 6 × 20s strides${zones.rep ? ` @ ${zones.rep}/km` : ''} after. 1 km cool-down.`
-          : `2 km warm-up. 4 × 6min at controlled sub-threshold effort, 90s jog. 6 × 20s strides. 1 km cool-down.`,
-        structure: `4 × 6min sub-threshold, 6 × strides`,
-        notes: 'Hybrid session: aerobic volume at the top of zone 2 plus neuromuscular activation. The combination develops both aerobic capacity and leg speed without the recovery cost of a full threshold session.',
-      }
-    } else if (isPeak && isShortRace) {
-      quality2 = {
-        type: 'vo2max',
-        label: 'VO\u2082max intervals',
-        description: zones?.interval
-          ? `3 km easy warm-up. 5–6 × 3min @ ${zones.interval}/km, 3min jog recovery. 2 km cool-down.`
-          : `3 km warm-up. 5–6 × 3min at hard effort (about 8.5/10), 3min jog recovery. 2 km cool-down.`,
-        structure: `5–6 × 3min, 3min jog`,
-        target_pace: zones?.interval,
-        notes: 'VO\u2082max work. You should feel close to maximal by the end of each rep. Full jog recovery — this is not lactate tolerance training, it\'s pure VO\u2082max stimulus.',
-      }
-    } else if (!isShortRace && isPeak) {
-      quality2 = {
-        type: 'race_sim',
-        label: 'Race simulation',
-        description: zones?.marathon
-          ? `5 km easy warm-up, then ${Math.round(weeklyKm * 0.2)} km at ${zones.marathon}/km — goal marathon pace. This is what race pace feels like on tired legs. 2 km easy cool-down.`
-          : `5 km easy warm-up, ${Math.round(weeklyKm * 0.18)} km at goal race pace, 2 km cool-down.`,
-        notes: 'This is the most race-specific session in the block. Mentally treat it as the race. Nutrition and hydration exactly as race day.',
+      // Hybrid: alternate sub-threshold and strides sessions
+      const hybridSlot = (phaseWeek - 1) % 2
+      if (hybridSlot === 0) {
+        quality2 = {
+          type: 'double_threshold',
+          label: 'Sub-threshold + strides',
+          description: zones?.threshold
+            ? `2 km easy warm-up. 4 × 6min @ ${secsToMMSS(paceToSecs(zones.threshold) + 10)}/km, 90s jog between. 6 × 20s strides${zones.rep ? ` @ ${zones.rep}/km` : ''} after. 1 km cool-down.`
+            : `2 km warm-up. 4 × 6min at sub-threshold effort, 90s jog. 6 × 20s strides. 1 km cool-down.`,
+          structure: `4 × 6min sub-threshold, 6 × strides`,
+          notes: 'Aerobic volume at the top of zone 2 plus neuromuscular activation. The combination develops aerobic capacity and leg speed without the recovery cost of a full threshold session.',
+        }
+      } else {
+        quality2 = {
+          type: 'hill_reps',
+          label: 'Hill reps',
+          description: `2 km easy warm-up. 8–10 × 45s hard hill effort, walk back recovery. 1 km easy cool-down.`,
+          structure: `8–10 × 45s hill, walk recovery`,
+          notes: 'Hill reps build specific strength and power with lower injury risk than flat sprinting. Walk back — full recovery is the point.',
+        }
       }
     } else {
-      quality2 = {
-        type: 'tempo',
-        label: 'Mid-week tempo',
-        description: zones?.tempo
-          ? `2 km easy, 3 × 10min @ ${zones.tempo}/km, 2min jog between, 1 km cool-down.`
-          : `2 km easy, 3 × 10min at comfortably hard effort, 2 min jog, 1 km cool-down.`,
-        target_pace: zones?.tempo,
-        notes: 'Broken tempo — easier to hit pace on a mid-week session. The recoveries are short by design.',
+      // Standard approach — 3-way rotation: VO2max / hill reps / broken tempo
+      const q2Slot = (phaseWeek - 1) % 3
+      if (q2Slot === 0) {
+        // VO2max intervals — builds 4 → 5 → 6 reps
+        const vo2Reps = 4 + Math.min(iter, 2)
+        quality2 = {
+          type: 'vo2max',
+          label: 'VO\u2082max intervals',
+          description: zones?.interval
+            ? `3 km easy warm-up. ${vo2Reps} × 3min @ ${zones.interval}/km, 3min jog recovery. 2 km cool-down.`
+            : `3 km warm-up. ${vo2Reps} × 3min at hard effort (8.5/10), 3min jog recovery. 2 km cool-down.`,
+          structure: `${vo2Reps} × 3min, 3min jog`,
+          target_pace: zones?.interval,
+          notes: 'VO\u2082max work. You should feel close to maximal by the end of each rep. Full jog recovery — this is not lactate tolerance training, it\'s pure VO\u2082max stimulus.',
+        }
+      } else if (q2Slot === 1) {
+        // Hill reps — specific strength, different stimulus from track work
+        const hillReps = 6 + iter * 2
+        quality2 = {
+          type: 'hill_reps',
+          label: 'Hill reps',
+          description: `2 km easy warm-up. ${hillReps} × 45s hard hill effort, walk back recovery. 1 km cool-down.`,
+          structure: `${hillReps} × 45s hill, walk recovery`,
+          notes: 'Hill reps build specific strength and power with lower injury risk than flat sprinting. Walk back every time — full recovery is the point, not fitness.',
+        }
+      } else {
+        // Broken tempo / mid-week threshold — third different stimulus
+        const btReps = isShortRace ? 3 : 4
+        const btDist = isShortRace ? '1km' : '1.5km'
+        quality2 = {
+          type: 'threshold',
+          label: 'Mid-week threshold reps',
+          description: zones?.threshold
+            ? `2 km easy, ${btReps} × ${btDist} @ ${zones.threshold}/km, 90s jog between, 1 km cool-down.`
+            : `2 km easy, ${btReps} × ${btDist} at threshold effort, 90s jog, 1 km cool-down.`,
+          structure: `${btReps} × ${btDist} threshold, 90s jog`,
+          target_pace: zones?.threshold,
+          notes: 'Broken threshold — keeps the session manageable mid-week. Short recoveries by design.',
+        }
       }
     }
   }
@@ -696,7 +801,8 @@ export function generateRunPlan(input: RunPlanInput): RunPlanTemplate {
     const w = i + 1
     const phase = getPhase(w, totalWeeks, input.goal_race)
     const weekKm = kmByWeek[i]
-    const sessions = buildWeekSessions(input, w, phase, zones, weekKm, totalWeeks)
+    const phaseWeek = getPhaseWeek(w, totalWeeks, input.goal_race)
+    const sessions = buildWeekSessions(input, w, phase, zones, weekKm, totalWeeks, phaseWeek)
     return {
       week_number: w,
       phase,
