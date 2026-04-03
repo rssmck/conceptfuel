@@ -52,6 +52,16 @@ const MODULES = [
   },
   {
     slug: "method",
+    href: "/coach",
+    status: "live",
+    label: "concept//coach",
+    tagline: "Athletics session planner",
+    desc: "Full session plans for coaches. Discipline, event, age group and venue-specific. Warm-up, drills, main set, coaching cues and footwear guidance — with EA age category welfare built in.",
+    badge: "BETA",
+    cta: "Open session planner",
+  },
+  {
+    slug: "method",
     href: "/method",
     status: "live",
     label: "concept//method",

@@ -13,6 +13,7 @@ export default function Nav() {
     { href: "/plan",    label: "fuel" },
     { href: "/form",    label: "form" },
     { href: "/run",     label: "run" },
+    { href: "/coach",   label: "coach" },
     { href: "/profile", label: "profile" },
   ];
 
