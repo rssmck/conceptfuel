@@ -183,15 +183,22 @@ function getPlanWeeks(goalRace: GoalRace, raceDateStr?: string, startsOn?: strin
   return defaults[goalRace]
 }
 
+// How many taper weeks for each race type
+function taperWeeks(goalRace: GoalRace): number {
+  if (goalRace === 'marathon' || goalRace === 'ultra') return 3
+  if (goalRace === 'half') return 2
+  return 1
+}
+
 function getPhase(week: number, total: number, goalRace: GoalRace): RunPhase {
   const pct = week / total
   if (goalRace === 'fitness') return week <= total * 0.5 ? 'base' : 'build'
+  const tw = taperWeeks(goalRace)
   if (total <= 6) {
     if (week === total) return 'taper'
     return pct <= 0.5 ? 'base' : 'build'
   }
-  if (week === total) return 'taper'
-  if (week >= total - 1 && (goalRace === 'marathon' || goalRace === 'half' || goalRace === 'ultra')) return 'taper'
+  if (week > total - tw) return 'taper'
   if (pct <= 0.3) return 'base'
   if (pct <= 0.65) return 'build'
   return 'peak'
@@ -230,6 +237,9 @@ function buildWeekSessions(
   const isPeak  = phase === 'peak'
   const isBuild = phase === 'build'
   const isBase  = phase === 'base'
+  // How deep into taper: 1 = first taper week (e.g. marathon week -2), taperWeeks = race week
+  const tw = taperWeeks(goal_race)
+  const taperDepth = isTaper ? tw - (totalWeeks - week) : 0  // 1 = early taper, tw = race week
 
   // ── Tier 1: walk/run intervals ──────────────────────────────────────────────
   if (tier === 1) {
@@ -280,22 +290,34 @@ function buildWeekSessions(
 
   // Long run (always included from tier 2+)
   const longKm = isTaper
-    ? Math.round(weeklyKm * 0.28)
+    ? taperDepth === 1 && tw >= 3
+      ? Math.round(weeklyKm * 0.35)   // first taper week — still a decent long run, just not maximal
+      : taperDepth <= tw - 1
+      ? Math.round(weeklyKm * 0.30)   // mid taper — moderate
+      : Math.round(weeklyKm * 0.25)   // race week — short confidence run
     : isPeak
     ? Math.round(weeklyKm * 0.38)
     : Math.round(weeklyKm * 0.33)
 
+  const longRunNote = isTaper
+    ? taperDepth === 1
+      ? 'First taper week. Still a real long run but volume down. Easy effort throughout — no heroics. The fitness is already there.'
+      : taperDepth <= tw - 1
+      ? 'Taper is working. This is a comfort run — keep it easy, enjoy it. No pressure on pace or distance.'
+      : 'Race week. Short confidence run only. Easy pace, familiar route, just get the legs moving. Nothing more.'
+    : 'Easy effort throughout. If running with others, you should be able to hold a conversation.'
+
   const longRun: RunSession = {
     type: 'long',
-    label: 'Long run',
+    label: isTaper && taperDepth === tw ? 'Race week easy run' : 'Long run',
     description: isTaper
-      ? `${longKm} km easy — legs-only, relaxed, no effort. This is not the time to push.`
+      ? `${longKm} km easy${zones?.easy ? ` @ ${zones.easy}/km or slower` : ''} — relaxed, no effort.`
       : isPeak && (goal_race === 'marathon' || goal_race === 'half')
       ? `${longKm} km with final ${Math.round(longKm * 0.25)} km at ${zones?.marathon ?? 'goal race'}/km — progressive finish to practise running on tired legs`
       : `${longKm} km easy run${paceNote(zones?.easy ?? '')} — aerobic base building`,
     target_km: longKm,
     target_pace: zones?.easy,
-    notes: isTaper ? 'Taper week — genuinely easy. Trust the fitness you\'ve built.' : 'Easy effort throughout. If running with others, you should be able to hold a conversation.',
+    notes: longRunNote,
   }
   sessions.push(longRun)
 
@@ -370,13 +392,45 @@ function buildWeekSessions(
       }
     }
   } else if (isTaper) {
-    quality1 = {
-      type: 'strides',
-      label: 'Sharpener + strides',
-      description: `${Math.round(easyKm * 0.8)} km easy, 4 × 20s strides${zones?.rep ? ` @ ${zones.rep}/km` : ''}, 3 min easy cool-down. Keep it short, keep it sharp.`,
-      structure: `4 × 20s strides`,
-      target_km: Math.round(easyKm * 0.9),
-      notes: 'Race week. This session is to stay sharp, not to build fitness. Do not push anything hard.',
+    if (taperDepth === 1 && tw >= 3) {
+      // First week of a 3-week taper — still a light quality session, just reduced volume
+      const earlyTaperReps = isShortRace ? '6 × 400m' : '3 × 1km'
+      const earlyTaperPace = isShortRace ? zones?.interval : zones?.threshold
+      quality1 = {
+        type: isShortRace ? 'intervals' : 'threshold',
+        label: 'Light quality — taper begins',
+        description: earlyTaperPace
+          ? `2 km easy warm-up. ${earlyTaperReps} @ ${earlyTaperPace}/km, full jog recovery. 1 km cool-down. Volume reduced — quality maintained.`
+          : `2 km warm-up. ${earlyTaperReps} at race effort, full jog recovery. 1 km cool-down.`,
+        structure: `${earlyTaperReps}, jog recovery`,
+        target_pace: earlyTaperPace,
+        notes: 'First taper week. Reduce volume, keep the stimulus. This is not the week to push — it\'s the week to let the training bed in.',
+      }
+    } else if (taperDepth <= tw - 1) {
+      // Mid taper / pre-race sharpener — short reps to stay sharp
+      const sharpReps = isShortRace || goal_race === 'half' ? '4 × 200m' : '4 × 100m'
+      const sharpPace = isShortRace ? zones?.interval : zones?.rep
+      quality1 = {
+        type: 'strides',
+        label: 'Pre-race sharpener',
+        description: sharpPace
+          ? `${Math.round(easyKm * 0.6)} km easy warm-up. ${sharpReps} @ ${sharpPace}/km, full walk recovery. 1 km easy cool-down. Stay sharp, stay fresh.`
+          : `${Math.round(easyKm * 0.6)} km easy warm-up. ${sharpReps} at quick controlled effort, full walk recovery. 1 km easy cool-down.`,
+        structure: `${sharpReps}, walk recovery`,
+        target_pace: sharpPace,
+        notes: 'Pre-race sharpener. The purpose is to wake the legs up and maintain neuromuscular readiness — not to train. Keep it short, keep it sharp, leave feeling good.',
+      }
+    } else {
+      // Race week — minimal
+      quality1 = {
+        type: 'strides',
+        label: 'Race week — 4 strides only',
+        description: zones?.rep
+          ? `${Math.round(easyKm * 0.5)} km easy jog, 4 × 20s strides @ ${zones.rep}/km with full walk recovery. Nothing more.`
+          : `${Math.round(easyKm * 0.5)} km easy jog, 4 × 20s strides, full walk recovery. Done.`,
+        structure: `4 × 20s strides`,
+        notes: 'Race week. The work is done. These strides are to keep the legs awake, not to build fitness. Don\'t add to this session.',
+      }
     }
   } else if (isShortRace) {
     // 4-slot rotation: neuromuscular → intervals → speed endurance → threshold/recovery
@@ -743,12 +797,25 @@ function weeklyKmProgression(input: RunPlanInput, totalWeeks: number): number[] 
   }
   const peak = Math.round(base * (peakMultiplier[input.goal_race] ?? 1.4))
 
+  const tw = taperWeeks(input.goal_race)
+  // Taper volumes as fraction of peak, stepped by week from taper start
+  // e.g. marathon 3-week taper: 75% → 55% → 35% of peak
+  const taperFractions: number[][] = [
+    [0.35],           // 1-week taper
+    [0.60, 0.38],     // 2-week taper
+    [0.75, 0.55, 0.35], // 3-week taper
+  ]
+  const fractions = taperFractions[tw - 1]
+
   return Array.from({ length: totalWeeks }, (_, i) => {
     const w = i + 1
     const pct = w / totalWeeks
-    if (w === totalWeeks) return Math.round(base * 0.5) // taper week
-    if (w >= totalWeeks - 1 && (input.goal_race === 'marathon' || input.goal_race === 'half' || input.goal_race === 'ultra')) return Math.round(base * 0.65)
-    // Recovery weeks every 4th week
+    // Taper weeks — stepped reduction
+    const weeksFromEnd = totalWeeks - w  // 0 = race week, 1 = week before, etc.
+    if (weeksFromEnd < tw) {
+      return Math.round(peak * fractions[weeksFromEnd])
+    }
+    // Recovery weeks every 4th week during build
     if (w % 4 === 0 && pct < 0.75) return Math.round(base + (peak - base) * (pct - 0.08))
     return Math.round(base + (peak - base) * Math.min(pct * 1.2, 0.95))
   })
