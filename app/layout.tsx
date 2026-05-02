@@ -103,7 +103,7 @@ export default function RootLayout({
           <AuthModal />
           <EarlyAccessBanner />
           <Nav />
-          <main>{children}</main>
+          <main style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 56px)" }}>{children}</main>
         </AuthProvider>
         <footer
           style={{

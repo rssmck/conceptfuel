@@ -45,6 +45,7 @@ const basePlan: PlanInput = {
   duration_minutes: 240,
   caffeine_enabled: true,
   bicarb_enabled: false,
+  nomio_enabled: false,
 }
 
 // ─── CASE 1: Marathon, race mode, race effort, gi=high ─────────────────────
@@ -223,8 +224,8 @@ describe('Case 6: Hyrox 70 min, race effort, gi=med', () => {
       caffeine_enabled: true,
       bicarb_enabled: false,
     }
-    const runPlan: PlanInput = { ...sharedPlan, sport: 'running' }
-    const hyroxPlan: PlanInput = { ...sharedPlan, sport: 'hyrox' }
+    const runPlan: PlanInput = { ...sharedPlan, sport: 'running', nomio_enabled: false }
+    const hyroxPlan: PlanInput = { ...sharedPlan, sport: 'hyrox', nomio_enabled: false }
     const runResult = generateFuelPlan(profile, runPlan)
     const hyroxResult = generateFuelPlan(profile, hyroxPlan)
     expect(hyroxResult.carb_target_g_per_hr).toBeLessThanOrEqual(runResult.carb_target_g_per_hr)

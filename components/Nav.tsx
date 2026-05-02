@@ -36,10 +36,6 @@ export default function Nav() {
     <nav
       style={{
         borderBottom: "1px solid var(--border)",
-        padding: "12px 20px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
         position: "sticky",
         top: 0,
         background: "var(--nav-bg)",
@@ -48,61 +44,92 @@ export default function Nav() {
         zIndex: 100,
       }}
     >
-      {/* Left: toggle + logo */}
-      <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
-        <ThemeToggle />
-        <Link
-          href="/"
-          style={{
-            fontWeight: 700,
-            fontSize: "15px",
-            color: "var(--text)",
-            textDecoration: "none",
-            letterSpacing: "-0.02em",
-            whiteSpace: "nowrap",
-          }}
-        >
-          concept<span style={{ color: "var(--text-muted)" }}>//</span>athleticclub
-        </Link>
+      {/* Top row — logo + utilities */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 20px",
+          paddingTop: "calc(10px + env(safe-area-inset-top))",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+          <ThemeToggle />
+          <Link
+            href="/"
+            style={{
+              fontWeight: 700,
+              fontSize: "15px",
+              color: "var(--text)",
+              textDecoration: "none",
+              letterSpacing: "-0.02em",
+              whiteSpace: "nowrap",
+            }}
+          >
+            concept<span style={{ color: "var(--text-muted)" }}>//</span>athleticclub
+          </Link>
+        </div>
+
+        <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+          {/* Secondary links — desktop only */}
+          <div className="cf-nav-secondary">
+            {secondaryLinks.map((l) => (
+              <Link key={l.href} href={l.href} style={linkStyle(l.href)}>
+                {l.label}
+              </Link>
+            ))}
+          </div>
+          <a
+            href="https://instagram.com/conceptathletic"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              fontSize: "13px",
+              color: "var(--text-muted)",
+              textDecoration: "none",
+              transition: "color 0.15s",
+              whiteSpace: "nowrap",
+            }}
+          >
+            ig
+          </a>
+          <UserMenu />
+        </div>
       </div>
 
-      {/* Right: nav links */}
-      <div style={{ display: "flex", gap: "20px", alignItems: "center", marginLeft: "16px" }}>
-        {/* Primary links — always visible */}
+      {/* Bottom row — primary tool links */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0",
+          borderTop: "1px solid var(--border)",
+          overflowX: "auto",
+          WebkitOverflowScrolling: "touch" as React.CSSProperties["WebkitOverflowScrolling"],
+          scrollbarWidth: "none" as React.CSSProperties["scrollbarWidth"],
+          msOverflowStyle: "none" as React.CSSProperties["msOverflowStyle"],
+        }}
+      >
         {primaryLinks.map((l) => (
-          <Link key={l.href} href={l.href} style={linkStyle(l.href)}>
+          <Link
+            key={l.href}
+            href={l.href}
+            style={{
+              fontSize: "12px",
+              letterSpacing: "0.06em",
+              padding: "9px 16px",
+              color: pathname === l.href ? "var(--accent)" : "var(--text-muted)",
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+              borderBottom: pathname === l.href ? "2px solid var(--accent)" : "2px solid transparent",
+              transition: "color 0.15s, border-color 0.15s",
+              flexShrink: 0,
+            }}
+          >
             {l.label}
           </Link>
         ))}
-
-        {/* Secondary links — hidden on mobile */}
-        <div className="cf-nav-secondary">
-          {secondaryLinks.map((l) => (
-            <Link key={l.href} href={l.href} style={linkStyle(l.href)}>
-              {l.label}
-            </Link>
-          ))}
-        </div>
-
-        <a
-          href="https://instagram.com/conceptathletic"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            fontSize: "13px",
-            color: "var(--text-muted)",
-            textDecoration: "none",
-            transition: "color 0.15s",
-            borderLeft: "1px solid var(--border)",
-            paddingLeft: "16px",
-            whiteSpace: "nowrap",
-          }}
-        >
-          ig
-        </a>
-        <div style={{ borderLeft: "1px solid var(--border)", paddingLeft: "16px" }}>
-          <UserMenu />
-        </div>
       </div>
     </nav>
   );

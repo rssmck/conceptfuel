@@ -76,7 +76,7 @@ html {
 body {
   background: var(--bg);
   color: var(--text);
-  min-height: 100vh;
+  min-height: 100dvh;
   font-family: var(--font-geist-mono), 'JetBrains Mono', ui-monospace, monospace;
   font-size: 14px;
   line-height: 1.6;
@@ -252,6 +252,9 @@ select option {
     justify-content: space-between;
   }
 }
+
+/* Hide scrollbar on nav link row */
+.cf-nav-links::-webkit-scrollbar { display: none; }
 
 /* Loading screen */
 @keyframes cf-pulse {

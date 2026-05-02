@@ -251,9 +251,13 @@ export default function RunPage() {
   const [planName, setPlanName]     = useState("");
   const [startsOn, setStartsOn]     = useState(nextMonday());
   const [planWeeks, setPlanWeeks]     = useState<number | null>(null);
+  const [customWeeks, setCustomWeeks] = useState<string>("");
+  const [weekGuardNotice, setWeekGuardNotice] = useState<string | null>(null);
   const [generating, setGenerating]   = useState(false);
   const [previewPlan, setPreviewPlan] = useState<RunPlanTemplate | null>(null);
   const [expandedWeek, setExpandedWeek] = useState<number>(1);
+  const [viewMode, setViewMode]       = useState<"list" | "page">("list");
+  const [pageWeek, setPageWeek]       = useState<number>(1);
   const [saving, setSaving]         = useState(false);
   const [saveError, setSaveError]   = useState<string | null>(null);
   const [savedPlan, setSavedPlan]   = useState<RunPlanTemplate | null>(null);
@@ -340,6 +344,20 @@ export default function RunPage() {
 
   function handleGenerate() {
     if (!tier || !goalRace || !daysPerWeek) return
+
+    // Plan length guard
+    const customVal = customWeeks.trim() !== "" ? parseInt(customWeeks, 10) : NaN
+    const rawWeeks = !isNaN(customVal) ? customVal : (planWeeks ?? defaultPlanWeeks())
+    const clamped = Math.min(Math.max(rawWeeks, 4), 24)
+    if (clamped !== rawWeeks) {
+      setWeekGuardNotice(`Plan length adjusted to ${clamped} weeks (valid range: 4–24).`)
+    } else if (!isNaN(customVal)) {
+      setWeekGuardNotice(null)
+    } else {
+      setWeekGuardNotice(null)
+    }
+    const effectiveWeeks = clamped
+
     setGenerating(true)
     setTimeout(() => {
       const effectiveName = planName.trim() || `${RACE_LABELS[goalRace]} · ${TIER_NAMES[tier as RunTier]}`
@@ -365,7 +383,7 @@ export default function RunPage() {
         training_approach: approach,
         starts_on: startsOn,
         name: effectiveName,
-        plan_weeks: planWeeks ?? defaultPlanWeeks(),
+        plan_weeks: effectiveWeeks,
       }
       const plan = generateRunPlan(input)
       setPreviewPlan(plan)
@@ -633,46 +651,129 @@ export default function RunPage() {
           </div>
         )}
 
-        {/* All weeks accordion */}
-        <p style={{ ...labelStyle, marginBottom: "12px" }}>Full programme · {previewPlan.plan_weeks} weeks</p>
-        <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden", marginBottom: "28px" }}>
-          {previewPlan.weeks.map((week) => {
-            const isOpen = expandedWeek === week.week_number
-            return (
-              <div key={week.week_number} style={{ borderBottom: "1px solid var(--border)" }}>
-                <button
-                  type="button"
-                  onClick={() => setExpandedWeek(isOpen ? 0 : week.week_number)}
-                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "var(--surface)", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
-                >
+        {/* View toggle */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+          <p style={{ ...labelStyle, margin: 0 }}>Full programme · {previewPlan.plan_weeks} weeks</p>
+          <div style={{ display: "flex", gap: "6px" }}>
+            {(["list", "page"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => { setViewMode(mode); if (mode === "page") setPageWeek(1); }}
+                style={{
+                  padding: "4px 12px",
+                  fontSize: "11px",
+                  fontFamily: "inherit",
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  background: viewMode === mode ? "var(--accent)" : "var(--surface)",
+                  color: viewMode === mode ? "var(--bg)" : "var(--text-muted)",
+                  border: viewMode === mode ? "none" : "1px solid var(--border)",
+                }}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* List view — accordion */}
+        {viewMode === "list" && (
+          <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden", marginBottom: "28px" }}>
+            {previewPlan.weeks.map((week) => {
+              const isOpen = expandedWeek === week.week_number
+              return (
+                <div key={week.week_number} style={{ borderBottom: "1px solid var(--border)" }}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedWeek(isOpen ? 0 : week.week_number)}
+                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "var(--surface)", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                      <p style={{ margin: 0, fontSize: "13px", fontWeight: 700 }}>Week {week.week_number}</p>
+                      <span style={{ fontSize: "10px", color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase" }}>{week.phase}</span>
+                      <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{week.total_km} km</span>
+                    </div>
+                    <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{isOpen ? "▲" : "▼"}</span>
+                  </button>
+                  {isOpen && (
+                    <div style={{ borderTop: "1px solid var(--border)" }}>
+                      {week.sessions.map((s, i) => (
+                        <div key={i} style={{ padding: "12px 16px", background: "var(--bg)", borderBottom: i < week.sessions.length - 1 ? "1px solid var(--border)" : undefined }}>
+                          <p style={{ margin: "0 0 3px", fontSize: "13px", fontWeight: 600 }}>{s.label}</p>
+                          {(s.structure || s.target_pace) && (
+                            <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                              {s.structure ?? ""}{s.target_pace ? ` · ${s.target_pace}/km` : ""}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                      <div style={{ padding: "10px 16px", background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
+                        <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.6, fontStyle: "italic" }}>{week.phase_note}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Page view — one week at a time */}
+        {viewMode === "page" && (() => {
+          const totalWeeks = previewPlan.weeks.length
+          const week = previewPlan.weeks[pageWeek - 1]
+          if (!week) return null
+          return (
+            <div style={{ marginBottom: "28px" }}>
+              {/* Week header */}
+              <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden" }}>
+                <div style={{ padding: "14px 16px", background: "var(--surface)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                    <p style={{ margin: 0, fontSize: "13px", fontWeight: 700 }}>Week {week.week_number}</p>
+                    <p style={{ margin: 0, fontSize: "14px", fontWeight: 700 }}>Week {week.week_number}</p>
                     <span style={{ fontSize: "10px", color: "var(--accent)", letterSpacing: "0.1em", textTransform: "uppercase" }}>{week.phase}</span>
                     <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{week.total_km} km</span>
                   </div>
-                  <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{isOpen ? "▲" : "▼"}</span>
-                </button>
-                {isOpen && (
-                  <div style={{ borderTop: "1px solid var(--border)" }}>
-                    {week.sessions.map((s, i) => (
-                      <div key={i} style={{ padding: "12px 16px", background: "var(--bg)", borderBottom: i < week.sessions.length - 1 ? "1px solid var(--border)" : undefined }}>
-                        <p style={{ margin: "0 0 3px", fontSize: "13px", fontWeight: 600 }}>{s.label}</p>
-                        {(s.structure || s.target_pace) && (
-                          <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>
-                            {s.structure ?? ""}{s.target_pace ? ` · ${s.target_pace}/km` : ""}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                    <div style={{ padding: "10px 16px", background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
-                      <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.6, fontStyle: "italic" }}>{week.phase_note}</p>
-                    </div>
+                  <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>{pageWeek} / {totalWeeks}</span>
+                </div>
+                {week.sessions.map((s, i) => (
+                  <div key={i} style={{ padding: "14px 16px", background: "var(--bg)", borderBottom: i < week.sessions.length - 1 ? "1px solid var(--border)" : undefined }}>
+                    <p style={{ margin: "0 0 4px", fontSize: "13px", fontWeight: 600 }}>{s.label}</p>
+                    {(s.structure || s.target_pace) && (
+                      <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                        {s.structure ?? ""}{s.target_pace ? ` · ${s.target_pace}/km` : ""}
+                      </p>
+                    )}
                   </div>
-                )}
+                ))}
+                <div style={{ padding: "10px 16px", background: "var(--surface)", borderTop: "1px solid var(--border)" }}>
+                  <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)", lineHeight: 1.6, fontStyle: "italic" }}>{week.phase_note}</p>
+                </div>
               </div>
-            )
-          })}
-        </div>
+              {/* Prev / Next */}
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: "12px", gap: "8px" }}>
+                <button
+                  type="button"
+                  disabled={pageWeek <= 1}
+                  onClick={() => setPageWeek((p) => Math.max(1, p - 1))}
+                  style={{ padding: "9px 18px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "6px", fontFamily: "inherit", fontSize: "13px", color: pageWeek <= 1 ? "var(--text-muted)" : "var(--text)", cursor: pageWeek <= 1 ? "not-allowed" : "pointer" }}
+                >
+                  ← Prev week
+                </button>
+                <button
+                  type="button"
+                  disabled={pageWeek >= totalWeeks}
+                  onClick={() => setPageWeek((p) => Math.min(totalWeeks, p + 1))}
+                  style={{ padding: "9px 18px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "6px", fontFamily: "inherit", fontSize: "13px", color: pageWeek >= totalWeeks ? "var(--text-muted)" : "var(--text)", cursor: pageWeek >= totalWeeks ? "not-allowed" : "pointer" }}
+                >
+                  Next week →
+                </button>
+              </div>
+            </div>
+          )
+        })()}
 
         {/* Save actions */}
         {saveError && <p style={{ fontSize: "12px", color: "var(--error, #e05555)", marginBottom: "12px" }}>{saveError}</p>}
@@ -1159,23 +1260,43 @@ export default function RunPage() {
                 <button
                   key={w}
                   type="button"
-                  onClick={() => setPlanWeeks(w)}
+                  onClick={() => { setPlanWeeks(w); setCustomWeeks(""); setWeekGuardNotice(null); }}
                   style={{
                     padding: "10px 18px",
-                    background: (planWeeks ?? defaultPlanWeeks()) === w ? "transparent" : "var(--surface)",
-                    border: (planWeeks ?? defaultPlanWeeks()) === w ? "1.5px solid var(--accent)" : "1px solid var(--border)",
+                    background: customWeeks === "" && (planWeeks ?? defaultPlanWeeks()) === w ? "transparent" : "var(--surface)",
+                    border: customWeeks === "" && (planWeeks ?? defaultPlanWeeks()) === w ? "1.5px solid var(--accent)" : "1px solid var(--border)",
                     borderRadius: "6px",
                     cursor: "pointer",
                     fontFamily: "inherit",
                     fontSize: "13px",
                     fontWeight: 700,
-                    color: (planWeeks ?? defaultPlanWeeks()) === w ? "var(--accent)" : "var(--text)",
+                    color: customWeeks === "" && (planWeeks ?? defaultPlanWeeks()) === w ? "var(--accent)" : "var(--text)",
                   }}
                 >
                   {w}w
                 </button>
               ))}
             </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "10px" }}>
+              <span style={{ fontSize: "11px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>or custom:</span>
+              <input
+                type="number"
+                min={4}
+                max={24}
+                placeholder="e.g. 11"
+                value={customWeeks}
+                onChange={(e) => {
+                  setCustomWeeks(e.target.value);
+                  setPlanWeeks(null);
+                  setWeekGuardNotice(null);
+                }}
+                style={{ ...inputStyle, width: "90px" }}
+              />
+              {customWeeks !== "" && <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>weeks</span>}
+            </div>
+            {weekGuardNotice && (
+              <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "6px" }}>{weekGuardNotice}</p>
+            )}
             {(goalRace === 'marathon' || goalRace === 'half') && (
               <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "6px" }}>
                 {goalRace === 'marathon' ? 'Marathon plans benefit from 16+ weeks for a full base-build-peak-taper cycle.' : 'Half marathon plans work best with 12+ weeks.'}

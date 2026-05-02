@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import type { Metadata } from "next";
 import type { PlanSession } from "@/lib/weeklyPlanEngine";
 
 // ── Types ─────────────────────────────────────────────────────────────────────

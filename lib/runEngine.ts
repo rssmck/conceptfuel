@@ -60,12 +60,12 @@ export interface RunPlanInput {
   lt_pace?:            string    // 'MM:SS' per km
   vo2max?:             number
   days_per_week:       number
-  available_days:      string[]
+  available_days?:     string[]
   club_night?:         string
   club_session_type?:  string
-  gym_access:          boolean
-  include_strength:    boolean
-  include_mobility:    boolean
+  gym_access?:         boolean
+  include_strength?:   boolean
+  include_mobility?:   boolean
   training_approach:   TrainingApproach
   starts_on:           string
   plan_weeks?:         number
@@ -75,14 +75,18 @@ export interface RunPlanInput {
 // ─── PACE UTILITIES ───────────────────────────────────────────────────────────
 
 function paceToSecs(pace: string): number {
+  if (!pace || typeof pace !== 'string') return 0
   const parts = pace.split(':').map(Number)
+  if (parts.some(isNaN) || parts.length === 0) return 0
   if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
   return parts[0] * 60 + (parts[1] ?? 0)
 }
 
 function secsToMMSS(secs: number): string {
-  const m = Math.floor(secs / 60)
-  const s = Math.round(secs % 60)
+  if (!isFinite(secs) || secs <= 0) return '0:00'
+  let m = Math.floor(secs / 60)
+  let s = Math.round(secs % 60)
+  if (s === 60) { m++; s = 0 }
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
@@ -231,7 +235,9 @@ function buildWeekSessions(
   totalWeeks: number,
   phaseWeek: number,
 ): RunSession[] {
-  const { tier, goal_race, days_per_week, club_night, training_approach, include_strength, include_mobility } = input
+  const { tier, goal_race, days_per_week, club_night, training_approach } = input
+  const include_strength = input.include_strength ?? false
+  const include_mobility = input.include_mobility ?? false
   const sessions: RunSession[] = []
   const isTaper = phase === 'taper'
   const isPeak  = phase === 'peak'
@@ -239,7 +245,7 @@ function buildWeekSessions(
   const isBase  = phase === 'base'
   // How deep into taper: 1 = first taper week (e.g. marathon week -2), taperWeeks = race week
   const tw = taperWeeks(goal_race)
-  const taperDepth = isTaper ? tw - (totalWeeks - week) : 0  // 1 = early taper, tw = race week
+  const taperDepth = isTaper ? Math.max(1, tw - (totalWeeks - week)) : 0  // 1 = early taper, tw = race week
 
   // ── Tier 1: walk/run intervals ──────────────────────────────────────────────
   if (tier === 1) {
@@ -315,6 +321,9 @@ function buildWeekSessions(
       : isPeak && (goal_race === 'marathon' || goal_race === 'half')
       ? `${longKm} km with final ${Math.round(longKm * 0.25)} km at ${zones?.marathon ?? 'goal race'}/km — progressive finish to practise running on tired legs`
       : `${longKm} km easy run${paceNote(zones?.easy ?? '')} — aerobic base building`,
+    structure: isPeak && (goal_race === 'marathon' || goal_race === 'half')
+      ? `${longKm} km progressive — final ${Math.round(longKm * 0.25)} km @ marathon pace`
+      : `${longKm} km easy`,
     target_km: longKm,
     target_pace: zones?.easy,
     notes: longRunNote,
@@ -327,6 +336,7 @@ function buildWeekSessions(
     type: 'easy',
     label: 'Easy run',
     description: `${easyKm} km easy${zones?.easy ? ` @ ${zones.easy}/km or slower` : ''}. Fully aerobic, minimal effort.`,
+    structure: `${easyKm} km easy`,
     target_km: easyKm,
     target_pace: zones?.easy,
     notes: 'If this feels hard, slow down. Easy means easy. No ego on these days.',
@@ -337,6 +347,7 @@ function buildWeekSessions(
     type: 'strides',
     label: 'Easy + strides',
     description: `${easyKm} km easy${paceNote(zones?.easy ?? '')}, then 6–8 × 20s strides${zones?.rep ? ` @ ${zones.rep}/km` : ' at controlled sprint pace'} with 40s walk between. Total ~${easyKm + 1} km.`,
+    structure: `${easyKm} km easy + 6–8 × 20s strides`,
     target_km: easyKm + 1,
     notes: 'Strides are short, sharp and smooth — not all-out sprints. Focus on quick turnover and relaxed form. Full walk recovery.',
   }
@@ -732,7 +743,8 @@ function buildWeekSessions(
 
   sessions.push(quality1)
   if (quality2) sessions.push(quality2)
-  if (days_per_week >= 3) sessions.push(days_per_week >= 4 ? stridesSession : easyRun)
+  // Day 3: strides only in build/peak — base and taper get easy run to avoid duplicate strides
+  if (days_per_week >= 3) sessions.push((!isBase && !isTaper) && days_per_week >= 4 ? stridesSession : easyRun)
   if (days_per_week >= 4) sessions.push(easyRun)
   if (days_per_week >= 5) sessions.push({ ...easyRun, label: 'Recovery run', description: `${Math.round(easyKm * 0.6)} km very easy recovery run. HR stays low.` })
   if (days_per_week >= 6) sessions.push({ ...easyRun, label: 'Easy run 2', description: `${Math.round(easyKm * 0.85)} km easy${zones?.easy ? ` @ ${zones.easy}/km` : ''}. Second easy day to add aerobic volume without stress.` })
@@ -798,12 +810,12 @@ function weeklyKmProgression(input: RunPlanInput, totalWeeks: number): number[] 
   const peak = Math.round(base * (peakMultiplier[input.goal_race] ?? 1.4))
 
   const tw = taperWeeks(input.goal_race)
-  // Taper volumes as fraction of peak, stepped by week from taper start
-  // e.g. marathon 3-week taper: 75% → 55% → 35% of peak
+  // Indexed by weeksFromEnd (0 = race week → lowest volume)
+  // 3-week marathon: race wk=35%, mid=55%, first taper wk=75%
   const taperFractions: number[][] = [
-    [0.35],           // 1-week taper
-    [0.60, 0.38],     // 2-week taper
-    [0.75, 0.55, 0.35], // 3-week taper
+    [0.35],              // 1-week taper: race wk
+    [0.38, 0.60],        // 2-week taper: race wk, wk before
+    [0.35, 0.55, 0.75],  // 3-week taper: race wk, mid, first taper wk
   ]
   const fractions = taperFractions[tw - 1]
 
@@ -813,7 +825,7 @@ function weeklyKmProgression(input: RunPlanInput, totalWeeks: number): number[] 
     // Taper weeks — stepped reduction
     const weeksFromEnd = totalWeeks - w  // 0 = race week, 1 = week before, etc.
     if (weeksFromEnd < tw) {
-      return Math.round(peak * fractions[weeksFromEnd])
+      return Math.round(peak * fractions[Math.min(weeksFromEnd, fractions.length - 1)])
     }
     // Recovery weeks every 4th week during build
     if (w % 4 === 0 && pct < 0.75) return Math.round(base + (peak - base) * (pct - 0.08))
@@ -828,7 +840,7 @@ export function generateRunPlan(input: RunPlanInput): RunPlanTemplate {
   let vdot: number | undefined
   let zones: TrainingZones | undefined
 
-  if (input.lt_pace) {
+  if (input.lt_pace && paceToSecs(input.lt_pace) > 0) {
     zones = calcZonesFromLTPace(input.lt_pace)
   } else if (input.recent_race_time && input.recent_race_distance) {
     const km = raceDistanceToMeters(input.recent_race_distance) / 1000

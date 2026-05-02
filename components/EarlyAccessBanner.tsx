@@ -14,7 +14,7 @@ export default function EarlyAccessBanner() {
   if (dismissed) return null;
 
   return (
-    <div className="cf-early-banner">
+    <div className="cf-early-banner" style={{ position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 50, paddingBottom: "max(env(safe-area-inset-bottom), 8px)" }}>
       <span style={{ fontWeight: 400, opacity: 0.9 }}>
         <strong>Early access</strong> · Performance tools built for you ·{" "}
         <span style={{ opacity: 0.7 }}>free to join</span>

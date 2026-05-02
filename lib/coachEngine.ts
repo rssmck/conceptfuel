@@ -552,7 +552,7 @@ function getMainSet(input: CoachInput): CoachSessionPlan['main_set'] {
           'Recovery standing still — athletes should jog the recovery even if it feels slower',
           'Mechanics falling apart from rep 3 onwards — reduce volume, not pace',
         ],
-        modifications: isU ? `U${age_group.toUpperCase()} athletes: reduce to ${Math.round(reps * 0.75)} reps. Monitor recovery between reps closely.` : undefined,
+        modifications: isU ? `${age_group.toUpperCase()} athletes: reduce to ${Math.round(reps * 0.75)} reps. Monitor recovery between reps closely.` : undefined,
       }
     }
 
