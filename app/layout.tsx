@@ -133,9 +133,17 @@ export default function RootLayout({
             </a>
             <a
               href="/terms"
-              style={{ color: "var(--text-muted)", textDecoration: "none" }}
+              style={{ color: "var(--text-muted)", textDecoration: "none", marginRight: "16px" }}
             >
               terms
+            </a>
+            <a
+              href="https://instagram.com/conceptathletic"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "var(--text-muted)", textDecoration: "none" }}
+            >
+              instagram
             </a>
           </p>
         </footer>

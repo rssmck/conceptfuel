@@ -80,20 +80,6 @@ export default function Nav() {
               </Link>
             ))}
           </div>
-          <a
-            href="https://instagram.com/conceptathletic"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              fontSize: "13px",
-              color: "var(--text-muted)",
-              textDecoration: "none",
-              transition: "color 0.15s",
-              whiteSpace: "nowrap",
-            }}
-          >
-            ig
-          </a>
           <UserMenu />
         </div>
       </div>
