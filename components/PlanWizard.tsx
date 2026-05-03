@@ -59,8 +59,8 @@ const planSchema = z
       .regex(/^\d{1,2}:\d{2}$/, "Format HH:MM e.g. 1:30")
       .refine((v) => {
         const mins = parseDurationToMinutes(v);
-        return mins >= 10 && mins <= 600;
-      }, "Duration must be 10 min – 10 hr"),
+        return mins >= 10 && mins <= 1440;
+      }, "Duration must be 10 min – 24 hr"),
     caffeine_enabled: z.boolean(),
     bicarb_enabled: z.boolean(),
     bicarb_brand: z.enum(["maurten", "flycarb"]).optional(),
@@ -71,7 +71,7 @@ const planSchema = z
     disclaimer_accepted: z.literal(true, {
       error: "You must read and accept the disclaimer to continue.",
     }),
-    distance: z.enum(["5k", "10k", "half", "marathon", "twenty_miles", "other"]).optional(),
+    distance: z.enum(["5k", "10k", "half", "marathon", "twenty_miles", "ultra", "other"]).optional(),
     session_subtype: z
       .enum(["long_run", "tempo_threshold", "intervals", "hyrox_sim", "long_ride", "tempo_ride", "trail_run", "indoor_ride"])
       .optional(),
@@ -509,7 +509,7 @@ function PlanSetupStep({
 
   const handleCalculatePace = () => {
     let distKm = distanceToKm(distance ?? "");
-    if (!distKm && distance === "other") {
+    if (!distKm && (distance === "other" || distance === "ultra")) {
       const parsed = parseFloat(customDistanceKm);
       if (parsed > 0 && isFinite(parsed)) distKm = parsed;
     }
@@ -691,16 +691,17 @@ function PlanSetupStep({
             <option value="half">Half marathon (21.1 km)</option>
             <option value="marathon">Marathon (42.2 km)</option>
             <option value="twenty_miles">20 miles (32.2 km)</option>
+            <option value="ultra">Ultra (50km+)</option>
             <option value="other">Other / custom</option>
           </select>
-          {distance === "other" && (
+          {(distance === "other" || distance === "ultra") && (
             <div style={{ marginTop: "10px", display: "flex", alignItems: "center", gap: "8px" }}>
               <input
                 type="number"
                 min="1"
                 max="1000"
                 step="0.1"
-                placeholder="e.g. 50"
+                placeholder={distance === "ultra" ? "e.g. 100" : "e.g. 50"}
                 value={customDistanceKm}
                 onChange={(e) => setCustomDistanceKm(e.target.value)}
                 style={{ maxWidth: "110px" }}
@@ -817,7 +818,7 @@ function PlanSetupStep({
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginTop: "8px" }}>
           {(fuelType === "session"
             ? ["0:30", "0:45", "1:00", "1:15", "1:30", "2:00"]
-            : ["0:45", "1:00", "1:30", "2:00", "3:00", "4:00", "5:00"]
+            : ["0:45", "1:00", "1:30", "2:00", "3:00", "4:00", "5:00", "6:00", "8:00", "10:00", "12:00"]
           ).map((d) => (
             <button
               key={d}
@@ -863,7 +864,7 @@ function PlanSetupStep({
       )}
 
       {/* Pace estimator — races only. Sessions use total duration directly. */}
-      {fuelType === "race" && sport === "running" && distance && (distance !== "other" || customDistanceKm) && (
+      {fuelType === "race" && sport === "running" && distance && (distance !== "other" && distance !== "ultra" || customDistanceKm) && (
         <div
           style={{
             marginBottom: "24px",
@@ -935,7 +936,9 @@ function PlanSetupStep({
             {distance === "5k" ? "5 km"
               : distance === "10k" ? "10 km"
               : distance === "half" ? "21.1 km"
-              : "42.2 km"}.
+              : distance === "marathon" ? "42.2 km"
+              : distance === "twenty_miles" ? "32.2 km"
+              : `${customDistanceKm} km`}.
           </p>
         </div>
       )}

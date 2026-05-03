@@ -1103,7 +1103,7 @@ export default function PlanResults({ result, planValues, name, onStartOver }: P
                       fontVariantNumeric: "tabular-nums",
                     }}
                   >
-                    {item.minute_offset === 0 ? "Pre-start" : `${item.minute_offset} min`}
+                    {item.minute_offset === 0 ? "Pre-start" : item.minute_offset >= 60 ? `${Math.floor(item.minute_offset / 60)}h${item.minute_offset % 60 > 0 ? ` ${item.minute_offset % 60}m` : ''}` : `${item.minute_offset} min`}
                   </span>
                   <span style={{ fontSize: "13px", color: "var(--text)", flex: 1 }}>
                     {item.suggestion}

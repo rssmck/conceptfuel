@@ -10,7 +10,7 @@ export type PlanType = 'race' | 'session'
 export type Sport = 'running' | 'trail_running' | 'cycling' | 'hyrox'
 export type Effort = 'easy' | 'steady' | 'hard' | 'race'
 export type Conditions = 'normal' | 'hot'
-export type Distance = '5k' | '10k' | 'half' | 'marathon' | 'twenty_miles' | 'other'
+export type Distance = '5k' | '10k' | 'half' | 'marathon' | 'twenty_miles' | 'ultra' | 'other'
 export type SessionSubtype = 'long_run' | 'tempo_threshold' | 'intervals' | 'hyrox_sim' | 'long_ride' | 'tempo_ride' | 'trail_run' | 'indoor_ride'
 export type BicarbBrand = 'maurten' | 'flycarb'
 export type BicarbExperience = 'first_time' | 'experienced'
@@ -125,8 +125,11 @@ function getCarbBand(
     band = { min: 60, max: 90 }
   } else if (duration_minutes < 240) {
     band = { min: 75, max: 95 }
+  } else if (duration_minutes < 480) {
+    band = { min: 70, max: 90 }
   } else {
-    band = { min: 75, max: 90 }
+    // Ultra (8h+): GI accumulates over many hours — lower ceiling, wider spread based on tolerance
+    band = { min: 55, max: 85 }
   }
 
   // Cycling: riders can absorb more carbs (lower GI stress vs running impact)
@@ -292,20 +295,23 @@ function generateSchedule(
   let freq_minutes: number
   let carbs_per_dose: number
 
+  // For ultra-long events use wider intervals — aid stations are typically 45-60 min apart
+  // and mixing real food with gels means you're not dosing every 30 min
+  const baseFreq = duration_minutes >= 480 ? 45 : 30
+
   if (product && product.carbs_g > 0) {
     // Work backwards from serving size so the schedule actually hits the target rate.
     // e.g. OTE Superfuel (40g) at 80g/hr → ideal interval = 40/80*60 = 30 min, not 20 min.
     const idealInterval = (product.carbs_g / carb_target_g_per_hr) * 60
-    const snapPoints = [12, 15, 20, 25, 30, 45, 60]
+    const snapPoints = duration_minutes >= 480
+      ? [20, 25, 30, 45, 60]
+      : [12, 15, 20, 25, 30, 45, 60]
     freq_minutes = snapPoints.reduce((prev, curr) =>
       Math.abs(curr - idealInterval) < Math.abs(prev - idealInterval) ? curr : prev
     )
     carbs_per_dose = product.carbs_g // 1 serving per interval
   } else {
-    // Rate-first scheduling for generic / no product.
-    // Use 30-min intervals — most athletes take 1 gel every 30 min in practice.
-    // e.g. 90 g/hr → 45g every 30 min (≈ 2 gels); 60 g/hr → 30g every 30 min (≈ 1 gel).
-    freq_minutes = 30
+    freq_minutes = baseFreq
     carbs_per_dose = Math.round(carb_target_g_per_hr * (freq_minutes / 60))
   }
 
@@ -380,9 +386,9 @@ function computeSodium(
   effort: Effort,
   conditions: Conditions,
   plan_type: PlanType,
+  duration_minutes: number,
   session_subtype?: SessionSubtype
 ): number {
-  // Indoor cycling: elevated sweat rate + sodium losses with no cooling airflow
   const isIndoor = session_subtype === 'indoor_ride'
   const effectiveConditions: Conditions = isIndoor && conditions === 'normal' ? 'hot' : conditions
 
@@ -402,7 +408,17 @@ function computeSodium(
   if (plan_type === 'race') p = Math.min(0.85, p + 0.05)
   if (isIndoor) p = Math.min(0.9, p + 0.1)
 
-  return roundToNearest50(b.min + p * (b.max - b.min))
+  let base = roundToNearest50(b.min + p * (b.max - b.min))
+
+  // Ultra events: sodium loss is cumulative and hyponatraemia risk increases with duration.
+  // Ramp up sodium target by ~15% for events 4-8h, ~30% for 8h+.
+  if (duration_minutes >= 480) {
+    base = roundToNearest50(base * 1.3)
+  } else if (duration_minutes >= 240) {
+    base = roundToNearest50(base * 1.15)
+  }
+
+  return base
 }
 
 // ─── CAFFEINE GUIDANCE ────────────────────────────────────────────────────────
@@ -577,7 +593,7 @@ export function generateFuelPlan(
 
   // D) Fluid + Sodium
   const fluid_ml_per_hr = computeFluid(effort, conditions, plan_type, session_subtype)
-  const sodium_mg_per_hr = computeSodium(effort, conditions, plan_type, session_subtype)
+  const sodium_mg_per_hr = computeSodium(effort, conditions, plan_type, duration_minutes, session_subtype)
 
   // E) Caffeine
   const caffeine_guidance =
@@ -644,6 +660,22 @@ export function generateFuelPlan(
   if (session_subtype === 'intervals' && effort === 'race') {
     notes.push(
       'Race-simulation interval session: pre-session fuelling is critical. Aim for 60–90g carbs in the 2–3 hours before you start, plus a gel or carb drink 20–30 min before your warm-up. For sessions over 90 min, follow the intake schedule above — your gut still needs practise processing carbs at race pace.'
+    )
+  }
+
+  if (duration_minutes >= 480) {
+    notes.push(
+      'Ultra event (8h+): transition to real food from around hour 3–4. Bananas, boiled potatoes, rice balls, and savoury snacks alongside gels dramatically reduce GI stress over extended duration. Your gut will thank you in the back half.'
+    )
+    notes.push(
+      'Sodium strategy: hyponatraemia risk increases sharply past 6 hours especially if you are drinking to thirst. Do not over-drink plain water. Use electrolyte tabs or salt caps every 60–90 min and aim to match your sweat rate, not exceed it. Sodium targets here are already elevated for ultra duration — treat them as a floor, not a ceiling, in hot conditions.'
+    )
+    notes.push(
+      'Aid stations: build your schedule around aid station locations rather than rigid time intervals. Know what each aid station offers and carry enough nutrition to bridge the gap if aid fails or runs out late in the race.'
+    )
+  } else if (duration_minutes >= 240) {
+    notes.push(
+      'Long event (4–8h): plan real-food intakes alongside gels from around hour 2. Sodium losses accumulate significantly — use electrolyte tabs or sodium-containing products rather than plain water throughout.'
     )
   }
 
