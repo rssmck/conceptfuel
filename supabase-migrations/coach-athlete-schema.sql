@@ -19,7 +19,6 @@ $$;
 
 
 -- ─── PROFILES ─────────────────────────────────────────────────────────────────
--- Extends auth.users. One row per user.
 
 create table if not exists profiles (
   id               uuid primary key default gen_random_uuid(),
@@ -50,8 +49,6 @@ create trigger profiles_updated_at
 
 
 -- ─── AUTO-CREATE PROFILE ON SIGNUP ───────────────────────────────────────────
--- Creates a minimal profile row (role=athlete) when a new auth user is created.
--- Role and details are completed during onboarding.
 
 create or replace function handle_new_user()
 returns trigger language plpgsql security definer as $$
@@ -74,14 +71,16 @@ create trigger on_auth_user_created
 
 
 -- ─── COACH_ATHLETE ────────────────────────────────────────────────────────────
--- Many-to-many: an athlete can have multiple coaches (head, S&C, physio, etc.).
+-- Many-to-many with explicit status so invites can be accepted or declined.
+-- status: invited (pending) -> active (accepted) | declined | removed
 
 create table if not exists coach_athlete (
   id          uuid primary key default gen_random_uuid(),
   coach_id    uuid references profiles(id) on delete cascade not null,
   athlete_id  uuid references profiles(id) on delete cascade not null,
   role_label  text not null default 'Head coach',
-  active      boolean not null default true,
+  status      text not null default 'invited'
+                check (status in ('invited', 'active', 'declined', 'removed')),
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now(),
   unique(coach_id, athlete_id)
@@ -94,6 +93,26 @@ drop trigger if exists coach_athlete_updated_at on coach_athlete;
 create trigger coach_athlete_updated_at
   before update on coach_athlete
   for each row execute function handle_updated_at();
+
+
+-- ─── ATHLETE INVITES ─────────────────────────────────────────────────────────
+-- Coach generates an invite token; athlete claims it via /join?code=TOKEN.
+-- token is 12-char hex, unique, expires in 30 days.
+-- A single invite can only be claimed once.
+
+create table if not exists athlete_invites (
+  id          uuid primary key default gen_random_uuid(),
+  coach_id    uuid references profiles(id) on delete cascade not null,
+  token       text not null unique default substr(md5(random()::text || clock_timestamp()::text), 1, 12),
+  role_label  text not null default 'Head coach',
+  claimed_by  uuid references profiles(id) on delete set null,
+  claimed_at  timestamptz,
+  expires_at  timestamptz not null default now() + interval '30 days',
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists athlete_invites_coach_idx on athlete_invites(coach_id);
+create index if not exists athlete_invites_token_idx on athlete_invites(token);
 
 
 -- ─── SEASON PHASES ────────────────────────────────────────────────────────────
@@ -186,7 +205,6 @@ create trigger training_sessions_updated_at
 
 
 -- ─── SESSION CUES ─────────────────────────────────────────────────────────────
--- Highlighted cues are the primary display element in the athlete session view.
 
 create table if not exists session_cues (
   id                uuid primary key default gen_random_uuid(),
@@ -212,7 +230,6 @@ create trigger session_cues_updated_at
 
 
 -- ─── CUE LIBRARY ─────────────────────────────────────────────────────────────
--- Reusable cues per coach. athlete_id null = available to all of the coach's athletes.
 
 create table if not exists cue_library (
   id          uuid primary key default gen_random_uuid(),
@@ -244,7 +261,7 @@ create table if not exists strength_logs (
   athlete_id  uuid references profiles(id) on delete cascade not null,
   exercise    text not null,
   sets        integer,
-  reps        text,      -- text allows '8-10', 'AMRAP', etc.
+  reps        text,
   load_kg     numeric,
   notes       text,
   "order"     integer not null default 0,
@@ -334,7 +351,6 @@ create trigger results_updated_at
 
 
 -- ─── PERSONAL BESTS ───────────────────────────────────────────────────────────
--- One row per athlete per event. Upsert when a new PB is set.
 
 create table if not exists personal_bests (
   id               uuid primary key default gen_random_uuid(),
@@ -384,7 +400,6 @@ create trigger rankings_updated_at
 
 
 -- ─── COMMENTS ─────────────────────────────────────────────────────────────────
--- Attached to any entity. Pinned comment surfaces as headline in calendar tiles.
 
 create table if not exists comments (
   id           uuid primary key default gen_random_uuid(),
@@ -466,7 +481,7 @@ create trigger visualisation_scripts_updated_at
 
 
 -- ─── PRE-COMPETITION ROUTINES ─────────────────────────────────────────────────
--- steps jsonb: [{minutes_before_race, activity, cue, notes}]
+-- steps: [{minutes_before_race, activity, cue, notes}]
 
 create table if not exists competition_routines (
   id           uuid primary key default gen_random_uuid(),
@@ -490,7 +505,6 @@ create trigger competition_routines_updated_at
 
 
 -- ─── MOOD AND READINESS ───────────────────────────────────────────────────────
--- One entry per athlete per day. Completed by athlete at session/competition start.
 
 create table if not exists mood_and_readiness (
   id               uuid primary key default gen_random_uuid(),
@@ -518,7 +532,7 @@ create trigger mood_and_readiness_updated_at
 
 
 -- ============================================================
--- HELPER FUNCTIONS  (used by RLS policies below)
+-- HELPER FUNCTIONS
 -- ============================================================
 
 create or replace function get_my_profile_id()
@@ -528,15 +542,16 @@ as $$
   select id from profiles where user_id = auth.uid() limit 1;
 $$;
 
+-- Checks caller is an active coach of the given athlete profile id.
 create or replace function is_coach_of(athlete_profile_id uuid)
 returns boolean
 language sql security definer stable
 as $$
   select exists (
     select 1 from coach_athlete
-    where coach_id    = get_my_profile_id()
-      and athlete_id  = athlete_profile_id
-      and active      = true
+    where coach_id   = get_my_profile_id()
+      and athlete_id = athlete_profile_id
+      and status     = 'active'
   );
 $$;
 
@@ -551,6 +566,66 @@ as $$
 $$;
 
 
+-- ─── CLAIM INVITE RPC ─────────────────────────────────────────────────────────
+-- Called from the /join page after the athlete is authenticated.
+-- Returns a jsonb result object with either {success: true, coach_name: "..."} or {error: "..."}.
+
+create or replace function claim_invite(p_token text)
+returns jsonb
+language plpgsql security definer
+as $$
+declare
+  v_invite     athlete_invites%rowtype;
+  v_my_id      uuid;
+  v_coach_name text;
+begin
+  v_my_id := get_my_profile_id();
+
+  if v_my_id is null then
+    return jsonb_build_object('error', 'not_authenticated');
+  end if;
+
+  select * into v_invite
+  from athlete_invites
+  where token = p_token;
+
+  if not found then
+    return jsonb_build_object('error', 'not_found');
+  end if;
+
+  if v_invite.expires_at < now() then
+    return jsonb_build_object('error', 'expired');
+  end if;
+
+  -- Already claimed by this same person — idempotent success
+  if v_invite.claimed_by = v_my_id then
+    select full_name into v_coach_name from profiles where id = v_invite.coach_id;
+    return jsonb_build_object('success', true, 'coach_name', v_coach_name, 'already_linked', true);
+  end if;
+
+  if v_invite.claimed_by is not null then
+    return jsonb_build_object('error', 'already_claimed');
+  end if;
+
+  if v_invite.coach_id = v_my_id then
+    return jsonb_build_object('error', 'self_invite');
+  end if;
+
+  insert into coach_athlete (coach_id, athlete_id, role_label, status)
+  values (v_invite.coach_id, v_my_id, v_invite.role_label, 'active')
+  on conflict (coach_id, athlete_id) do update set status = 'active';
+
+  update athlete_invites
+  set claimed_by = v_my_id, claimed_at = now()
+  where id = v_invite.id;
+
+  select full_name into v_coach_name from profiles where id = v_invite.coach_id;
+
+  return jsonb_build_object('success', true, 'coach_name', v_coach_name);
+end;
+$$;
+
+
 -- ============================================================
 -- ROW LEVEL SECURITY
 -- ============================================================
@@ -559,10 +634,10 @@ $$;
 
 alter table profiles enable row level security;
 
-drop policy if exists "profiles: own read"            on profiles;
+drop policy if exists "profiles: own read"              on profiles;
 drop policy if exists "profiles: athlete read by coach" on profiles;
-drop policy if exists "profiles: own insert"          on profiles;
-drop policy if exists "profiles: own update"          on profiles;
+drop policy if exists "profiles: own insert"            on profiles;
+drop policy if exists "profiles: own update"            on profiles;
 
 create policy "profiles: own read"
   on profiles for select
@@ -586,8 +661,9 @@ create policy "profiles: own update"
 
 alter table coach_athlete enable row level security;
 
-drop policy if exists "coach_athlete: coach manages"         on coach_athlete;
-drop policy if exists "coach_athlete: athlete reads own"     on coach_athlete;
+drop policy if exists "coach_athlete: coach manages"     on coach_athlete;
+drop policy if exists "coach_athlete: athlete reads own" on coach_athlete;
+drop policy if exists "coach_athlete: athlete responds"  on coach_athlete;
 
 create policy "coach_athlete: coach manages"
   on coach_athlete for all
@@ -597,6 +673,30 @@ create policy "coach_athlete: coach manages"
 create policy "coach_athlete: athlete reads own"
   on coach_athlete for select
   using (athlete_id = get_my_profile_id());
+
+-- Athletes can accept or decline an invite (update status only on their own rows)
+create policy "coach_athlete: athlete responds"
+  on coach_athlete for update
+  using (athlete_id = get_my_profile_id());
+
+
+-- ─── athlete_invites ─────────────────────────────────────────────────────────
+
+alter table athlete_invites enable row level security;
+
+drop policy if exists "athlete_invites: coach manages" on athlete_invites;
+drop policy if exists "athlete_invites: public read by token" on athlete_invites;
+
+-- Coaches manage their own invites
+create policy "athlete_invites: coach manages"
+  on athlete_invites for all
+  using  (coach_id = get_my_profile_id() or is_admin())
+  with check (coach_id = get_my_profile_id());
+
+-- Anyone authenticated can read an invite by token (needed for the /join page preview)
+create policy "athlete_invites: public read by token"
+  on athlete_invites for select
+  using (auth.uid() is not null);
 
 
 -- ─── season_phases ────────────────────────────────────────────────────────────
@@ -896,7 +996,6 @@ create policy "rankings: delete"
 
 
 -- ─── comments ─────────────────────────────────────────────────────────────────
--- Readable by both parties in any shared coach-athlete relationship with the author.
 
 alter table comments enable row level security;
 
@@ -912,7 +1011,7 @@ create policy "comments: read"
     or is_admin()
     or exists (
       select 1 from coach_athlete ca
-      where ca.active = true
+      where ca.status = 'active'
         and (
           (ca.coach_id   = get_my_profile_id() and ca.athlete_id = author_id)
           or (ca.athlete_id = get_my_profile_id() and ca.coach_id   = author_id)
@@ -1012,7 +1111,6 @@ create policy "competition_routines: delete"
 
 
 -- ─── mood_and_readiness ───────────────────────────────────────────────────────
--- Athletes write their own entries. Coaches can read (not write) their athletes'.
 
 alter table mood_and_readiness enable row level security;
 
@@ -1039,12 +1137,22 @@ create policy "mood_and_readiness: delete"
 
 
 -- ============================================================
--- DONE
--- After running this migration:
--- 1. Go to Storage and create a bucket named "athlete-uploads"
---    with RLS enabled (private bucket).
--- 2. Set your own profile role to 'coach' or 'admin' via the
---    Supabase table editor (profiles table, find your row by user_id).
--- 3. The on_auth_user_created trigger will auto-create a profile
---    for any new signup from this point forward.
+-- POST-MIGRATION MANUAL STEPS
+-- (do these in the Supabase dashboard after running this SQL)
+--
+-- 1. Storage: create a bucket named "athlete-uploads", private,
+--    with RLS enabled.
+--
+-- 2. Set your own account's role to 'coach' or 'admin':
+--    In Table Editor > profiles, find your row by user_id
+--    (matches your auth.users id) and set role = 'coach'.
+--    Or run:
+--      update profiles set role = 'coach' where user_id = auth.uid();
+--    in the SQL editor while signed in. (auth.uid() only works
+--    in the SQL editor if you are using the anon key context;
+--    otherwise find your user_id from auth.users and hard-code it.)
+--
+-- 3. The on_auth_user_created trigger handles all new signups
+--    from this point. Existing auth users need a manual profile
+--    row if they don't have one yet.
 -- ============================================================
