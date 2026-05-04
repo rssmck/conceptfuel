@@ -9,12 +9,13 @@ export default function Nav() {
   const pathname = usePathname();
 
   const primaryLinks = [
-    { href: "/",        label: "club" },
-    { href: "/plan",    label: "fuel" },
-    { href: "/form",    label: "form" },
-    { href: "/run",     label: "run" },
-    { href: "/coach",   label: "coach" },
-    { href: "/profile", label: "profile" },
+    { href: "/",               label: "club" },
+    { href: "/plan",           label: "fuel" },
+    { href: "/form",           label: "form" },
+    { href: "/run",            label: "run" },
+    { href: "/coach",          label: "coach" },
+    { href: "/coach/session",  label: "session" },
+    { href: "/profile",        label: "profile" },
   ];
 
   const secondaryLinks = [
@@ -24,9 +25,22 @@ export default function Nav() {
     { href: "/pricing", label: "pricing" },
   ];
 
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    if (pathname === href) return true;
+    // Only match prefix if no sibling link owns the sub-path
+    if (pathname.startsWith(href + "/")) {
+      const siblingOwns = primaryLinks.some(
+        (l) => l.href !== href && pathname.startsWith(l.href) && l.href.length > href.length
+      );
+      return !siblingOwns;
+    }
+    return false;
+  };
+
   const linkStyle = (href: string): React.CSSProperties => ({
     fontSize: "13px",
-    color: pathname === href ? "var(--accent)" : "var(--text-muted)",
+    color: isActive(href) ? "var(--accent)" : "var(--text-muted)",
     textDecoration: "none",
     transition: "color 0.15s",
     whiteSpace: "nowrap",
@@ -105,10 +119,10 @@ export default function Nav() {
               fontSize: "12px",
               letterSpacing: "0.06em",
               padding: "9px 16px",
-              color: pathname === l.href ? "var(--accent)" : "var(--text-muted)",
+              color: isActive(l.href) ? "var(--accent)" : "var(--text-muted)",
               textDecoration: "none",
               whiteSpace: "nowrap",
-              borderBottom: pathname === l.href ? "2px solid var(--accent)" : "2px solid transparent",
+              borderBottom: isActive(l.href) ? "2px solid var(--accent)" : "2px solid transparent",
               transition: "color 0.15s, border-color 0.15s",
               flexShrink: 0,
             }}
