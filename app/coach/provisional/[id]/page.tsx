@@ -38,8 +38,10 @@ type Invite = { id: string; token: string; expires_at: string };
 
 const EVENT_GROUPS = [
   "sprints", "hurdles", "middle_distance", "long_distance",
-  "jumps", "throws", "combined", "para",
+  "jumps", "throws", "combined",
 ];
+
+const PHASE_COLORS = ["#4a9eff", "#f0a500", "#22c55e", "#a855f7", "#ef4444", "#06b6d4", "#fb923c"];
 
 const PRIORITY_COLOR: Record<string, string> = {
   prep: "var(--text-muted)", gate: "#4a9eff", key: "#f0a500", A: "var(--accent)",
@@ -87,11 +89,12 @@ function FTA({ label, value, onChange, placeholder }: {
 }
 
 function ReadField({ label, value }: { label: string; value: string | null | undefined }) {
-  if (!value) return null;
   return (
     <div style={{ marginBottom: "12px" }}>
       <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: "0 0 2px", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
-      <p style={{ fontSize: "14px", color: "var(--text)", margin: 0, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{value}</p>
+      <p style={{ fontSize: "14px", color: "var(--text)", margin: 0, lineHeight: 1.55, whiteSpace: "pre-wrap", opacity: value ? 1 : 0.35 }}>
+        {value || "—"}
+      </p>
     </div>
   );
 }
@@ -137,9 +140,9 @@ function CompForm({ v, onChange, onSave, onCancel, onDelete, saving }: {
         <FI label="Date *" value={v.date ?? ""} onChange={val => set("date", val)} type="date" />
         <FI label="End date" value={v.end_date ?? ""} onChange={val => set("end_date", val)} type="date" />
       </div>
-      <FI label="Meeting" value={v.meeting ?? ""} onChange={val => set("meeting", val)} placeholder="e.g. England Senior Para Championships" />
+      <FI label="Meeting" value={v.meeting ?? ""} onChange={val => set("meeting", val)} placeholder="e.g. County Championships, National Series" />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-        <FI label="Venue" value={v.venue ?? ""} onChange={val => set("venue", val)} placeholder="e.g. Bedford" />
+        <FI label="Venue" value={v.venue ?? ""} onChange={val => set("venue", val)} placeholder="e.g. Manchester, Gateshead" />
         <FI label="Events (comma-separated)" value={v.events_str} onChange={val => set("events_str", val)} placeholder="400m" />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
@@ -190,6 +193,94 @@ function phaseLen(s: string, e: string) {
 }
 
 const blankComp = { events_str: "", priority: "prep", status: "upcoming" } as const;
+
+const COMP_DOT_COLORS: Record<string, string> = {
+  prep: "#888888", gate: "#4a9eff", key: "#f0a500", A: "#22c55e",
+};
+
+function SeasonCalendar({ phases, comps }: { phases: Phase[]; comps: Comp[] }) {
+  const allDates = [
+    ...phases.flatMap(p => [p.start_date, p.end_date]),
+    ...comps.flatMap(c => [c.date, c.end_date].filter((d): d is string => !!d)),
+  ];
+  if (allDates.length === 0) return null;
+
+  const minD = allDates.reduce((a, b) => (a < b ? a : b));
+  const maxD = allDates.reduce((a, b) => (a > b ? a : b));
+
+  const months: Date[] = [];
+  const cur = new Date(new Date(minD + "T12:00:00").getFullYear(), new Date(minD + "T12:00:00").getMonth(), 1);
+  const endM = new Date(new Date(maxD + "T12:00:00").getFullYear(), new Date(maxD + "T12:00:00").getMonth(), 1);
+  while (cur <= endM) { months.push(new Date(cur)); cur.setMonth(cur.getMonth() + 1); }
+
+  function pIdx(dateStr: string) {
+    return phases.findIndex(p => dateStr >= p.start_date && dateStr <= p.end_date);
+  }
+  function compOn(dateStr: string) {
+    return comps.find(c => c.date === dateStr || (c.end_date && c.date <= dateStr && c.end_date >= dateStr));
+  }
+
+  return (
+    <div style={{ marginBottom: "32px" }}>
+      <p style={{ fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", marginBottom: "12px" }}>Season overview</p>
+      {phases.length > 0 && (
+        <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginBottom: "14px" }}>
+          {phases.map((ph, i) => (
+            <div key={ph.id} style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+              <span style={{ width: "10px", height: "10px", borderRadius: "2px", background: PHASE_COLORS[i % PHASE_COLORS.length], flexShrink: 0, display: "inline-block" }} />
+              <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Phase {ph.order}: {ph.name}</span>
+            </div>
+          ))}
+          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#f0a500", flexShrink: 0, display: "inline-block" }} />
+            <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Competition</span>
+          </div>
+        </div>
+      )}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: "16px" }}>
+        {months.map(month => {
+          const y = month.getFullYear();
+          const mo = month.getMonth();
+          const daysInMonth = new Date(y, mo + 1, 0).getDate();
+          const startOffset = (new Date(y, mo, 1).getDay() + 6) % 7;
+          const cells: (null | { d: number; dateStr: string; pi: number; comp: Comp | undefined })[] = [];
+          for (let i = 0; i < startOffset; i++) cells.push(null);
+          for (let d = 1; d <= daysInMonth; d++) {
+            const dateStr = `${y}-${String(mo + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+            cells.push({ d, dateStr, pi: pIdx(dateStr), comp: compOn(dateStr) });
+          }
+          return (
+            <div key={`${y}-${mo}`}>
+              <p style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-muted)", margin: "0 0 5px" }}>
+                {month.toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "1px" }}>
+                {["M","T","W","T","F","S","S"].map((d, i) => (
+                  <div key={i} style={{ fontSize: "8px", color: "var(--text-muted)", textAlign: "center", paddingBottom: "3px", opacity: 0.5 }}>{d}</div>
+                ))}
+                {cells.map((cell, i) => {
+                  const col = cell?.pi !== undefined && cell.pi >= 0 ? PHASE_COLORS[cell.pi % PHASE_COLORS.length] : null;
+                  return (
+                    <div key={i} style={{ aspectRatio: "1", borderRadius: "2px", background: col ? col + "30" : "transparent", position: "relative", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {cell && (
+                        <>
+                          <span style={{ fontSize: "8px", color: col ?? "var(--text-muted)", opacity: col ? 0.85 : 0.35 }}>{cell.d}</span>
+                          {cell.comp && (
+                            <span style={{ position: "absolute", bottom: "1px", right: "1px", width: "3px", height: "3px", borderRadius: "50%", background: COMP_DOT_COLORS[cell.comp.priority] ?? "#888" }} />
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -431,7 +522,7 @@ export default function ProvisionalAthletePage() {
           <div style={{ display: "grid", gap: "12px" }}>
             <FI label="Name *" value={pf.name ?? ""} onChange={v => setPf(f => ({ ...f, name: v }))} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <FI label="Classification" value={pf.classification ?? ""} onChange={v => setPf(f => ({ ...f, classification: v }))} placeholder="e.g. T38" />
+              <FI label="Classification" value={pf.classification ?? ""} onChange={v => setPf(f => ({ ...f, classification: v }))} placeholder="If applicable" />
               <FI label="Club" value={pf.club ?? ""} onChange={v => setPf(f => ({ ...f, club: v }))} />
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
@@ -468,10 +559,10 @@ export default function ProvisionalAthletePage() {
       >
         {editSection === "target" ? (
           <div style={{ display: "grid", gap: "12px" }}>
-            <FI label="Season goal" value={tf.season_goal ?? ""} onChange={v => setTf(f => ({ ...f, season_goal: v }))} placeholder="e.g. Sub-65s, UK T38 #1" />
+            <FI label="Season goal" value={tf.season_goal ?? ""} onChange={v => setTf(f => ({ ...f, season_goal: v }))} placeholder="e.g. National final, PB by 2%, top 3 ranking" />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
-              <FI label="Target event" value={tf.target_event ?? ""} onChange={v => setTf(f => ({ ...f, target_event: v }))} placeholder="400m" />
-              <FI label="Target performance" value={tf.target_performance ?? ""} onChange={v => setTf(f => ({ ...f, target_performance: v }))} placeholder="Sub-65s" />
+              <FI label="Target event" value={tf.target_event ?? ""} onChange={v => setTf(f => ({ ...f, target_event: v }))} placeholder="e.g. 100m, high jump" />
+              <FI label="Target performance" value={tf.target_performance ?? ""} onChange={v => setTf(f => ({ ...f, target_performance: v }))} placeholder="e.g. 10.80, 6.50m" />
               <FI label="Target date" value={tf.target_date ?? ""} onChange={v => setTf(f => ({ ...f, target_date: v }))} type="date" />
             </div>
           </div>
@@ -495,12 +586,12 @@ export default function ProvisionalAthletePage() {
       >
         {editSection === "principles" ? (
           <div style={{ display: "grid", gap: "12px" }}>
-            <FTA label="Athlete type" value={qf.athlete_type ?? ""} onChange={v => setQf(f => ({ ...f, athlete_type: v }))} placeholder="Describe how this athlete responds to training environments and competition" />
-            <FTA label="Training model" value={qf.training_model ?? ""} onChange={v => setQf(f => ({ ...f, training_model: v }))} placeholder="Primary training methodology and philosophy" />
-            <FTA label="Competition strategy" value={qf.competition_strategy ?? ""} onChange={v => setQf(f => ({ ...f, competition_strategy: v }))} placeholder="Selection criteria, rivals to manage, race exposure approach" />
-            <FTA label="Technical priority" value={qf.technical_priority ?? ""} onChange={v => setQf(f => ({ ...f, technical_priority: v }))} placeholder="Key technical development goal for this season" />
-            <FTA label="Pacing model" value={qf.pacing_model ?? ""} onChange={v => setQf(f => ({ ...f, pacing_model: v }))} placeholder="How this athlete responds to pacing stimuli" />
-            <FTA label="Session structure" value={qf.session_structure ?? ""} onChange={v => setQf(f => ({ ...f, session_structure: v }))} placeholder="Intensity day pattern, protected sessions, volume notes" />
+            <FTA label="Athlete type" value={qf.athlete_type ?? ""} onChange={v => setQf(f => ({ ...f, athlete_type: v }))} placeholder="How this athlete responds to training load, pressure and environment" />
+            <FTA label="Training model" value={qf.training_model ?? ""} onChange={v => setQf(f => ({ ...f, training_model: v }))} placeholder="Overall training methodology and weekly structure" />
+            <FTA label="Competition strategy" value={qf.competition_strategy ?? ""} onChange={v => setQf(f => ({ ...f, competition_strategy: v }))} placeholder="Race selection approach, competitors to target, exposure goals" />
+            <FTA label="Technical priority" value={qf.technical_priority ?? ""} onChange={v => setQf(f => ({ ...f, technical_priority: v }))} placeholder="Primary technical focus area this season" />
+            <FTA label="Pacing model" value={qf.pacing_model ?? ""} onChange={v => setQf(f => ({ ...f, pacing_model: v }))} placeholder="How this athlete distributes effort across a race or event" />
+            <FTA label="Session structure" value={qf.session_structure ?? ""} onChange={v => setQf(f => ({ ...f, session_structure: v }))} placeholder="Intensity pattern, key session types, volume and recovery notes" />
             <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
               <input type="checkbox" checked={qf.talent_hub ?? false} onChange={e => setQf(f => ({ ...f, talent_hub: e.target.checked }))} />
               <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>Talent Hub athlete</span>
@@ -520,12 +611,12 @@ export default function ProvisionalAthletePage() {
             <ReadField label="Session structure" value={athlete.session_structure} />
             {athlete.talent_hub && <ReadField label="Talent Hub" value={athlete.talent_hub_notes || "Yes"} />}
             <ReadField label="Coach notes" value={athlete.coach_notes} />
-            {!athlete.athlete_type && !athlete.training_model && !athlete.competition_strategy && (
-              <p style={{ fontSize: "13px", color: "var(--text-muted)", margin: 0 }}>No coaching principles recorded yet.</p>
-            )}
           </div>
         )}
       </Section>
+
+      {/* Season overview calendar */}
+      <SeasonCalendar phases={phases} comps={comps} />
 
       {/* Season plan ────────────────────────────────────────────────────────── */}
       <div style={{ marginBottom: "32px" }}>
@@ -550,10 +641,10 @@ export default function ProvisionalAthletePage() {
                       <FI label="End date *" value={phaseF.end_date ?? ""} onChange={v => setPhaseF(f => ({ ...f, end_date: v }))} type="date" />
                       <FI label="Phase no." value={String(phaseF.order ?? idx + 1)} onChange={v => setPhaseF(f => ({ ...f, order: Number(v) }))} type="number" />
                     </div>
-                    <FI label="Theme" value={phaseF.focus ?? ""} onChange={v => setPhaseF(f => ({ ...f, focus: v }))} placeholder="e.g. Return" />
+                    <FI label="Theme" value={phaseF.focus ?? ""} onChange={v => setPhaseF(f => ({ ...f, focus: v }))} placeholder="e.g. Base, Build, Peak, Taper" />
                     <FTA label="Training focus" value={phaseF.training_focus ?? ""} onChange={v => setPhaseF(f => ({ ...f, training_focus: v }))} />
-                    <FTA label="Competitions" value={phaseF.competition_notes ?? ""} onChange={v => setPhaseF(f => ({ ...f, competition_notes: v }))} placeholder="Planned races or 'None'" />
-                    <FI label='Key cue' value={phaseF.key_cue ?? ""} onChange={v => setPhaseF(f => ({ ...f, key_cue: v }))} placeholder='"Same pace, quieter feet."' />
+                    <FTA label="Competitions" value={phaseF.competition_notes ?? ""} onChange={v => setPhaseF(f => ({ ...f, competition_notes: v }))} placeholder="Planned competitions, or None" />
+                    <FI label="Key cue" value={phaseF.key_cue ?? ""} onChange={v => setPhaseF(f => ({ ...f, key_cue: v }))} placeholder="A short, memorable coaching cue for this phase" />
                     <FTA label="Notes" value={phaseF.coach_notes ?? ""} onChange={v => setPhaseF(f => ({ ...f, coach_notes: v }))} />
                   </div>
                   <div style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
@@ -607,10 +698,10 @@ export default function ProvisionalAthletePage() {
                   <FI label="Start date *" value={newPhase.start_date ?? ""} onChange={v => setNewPhase(f => ({ ...f, start_date: v }))} type="date" />
                   <FI label="End date *" value={newPhase.end_date ?? ""} onChange={v => setNewPhase(f => ({ ...f, end_date: v }))} type="date" />
                 </div>
-                <FI label="Theme" value={newPhase.focus ?? ""} onChange={v => setNewPhase(f => ({ ...f, focus: v }))} placeholder="e.g. Return" />
-                <FTA label="Training focus" value={newPhase.training_focus ?? ""} onChange={v => setNewPhase(f => ({ ...f, training_focus: v }))} />
-                <FTA label="Competitions" value={newPhase.competition_notes ?? ""} onChange={v => setNewPhase(f => ({ ...f, competition_notes: v }))} placeholder="None / ~20 Jun low-key regional" />
-                <FI label="Key cue" value={newPhase.key_cue ?? ""} onChange={v => setNewPhase(f => ({ ...f, key_cue: v }))} placeholder='"Same pace, quieter feet."' />
+                <FI label="Theme" value={newPhase.focus ?? ""} onChange={v => setNewPhase(f => ({ ...f, focus: v }))} placeholder="e.g. Base, Build, Peak, Taper" />
+                <FTA label="Training focus" value={newPhase.training_focus ?? ""} onChange={v => setNewPhase(f => ({ ...f, training_focus: v }))} placeholder="Key training objectives and load emphasis for this phase" />
+                <FTA label="Competitions" value={newPhase.competition_notes ?? ""} onChange={v => setNewPhase(f => ({ ...f, competition_notes: v }))} placeholder="Planned competitions, or None" />
+                <FI label="Key cue" value={newPhase.key_cue ?? ""} onChange={v => setNewPhase(f => ({ ...f, key_cue: v }))} placeholder="A short, memorable coaching cue for this phase" />
                 <FTA label="Notes" value={newPhase.coach_notes ?? ""} onChange={v => setNewPhase(f => ({ ...f, coach_notes: v }))} />
               </div>
               <div style={{ display: "flex", gap: "8px", marginTop: "14px" }}>

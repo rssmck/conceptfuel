@@ -38,7 +38,6 @@ const EVENT_GROUPS = [
   { value: "jumps",           label: "Jumps" },
   { value: "throws",          label: "Throws" },
   { value: "combined",        label: "Combined events" },
-  { value: "para",            label: "Para athletics" },
 ];
 
 const INPUT: React.CSSProperties = {
@@ -51,11 +50,7 @@ const LABEL: React.CSSProperties = {
   fontSize: "11px", color: "var(--text-muted)", display: "block", marginBottom: "4px",
 };
 
-const emptyForm = {
-  name: "", classification: "", club: "", event_group: "",
-  season_goal: "", target_event: "", target_performance: "",
-  target_date: "", talent_hub: false,
-};
+const emptyForm = { name: "", club: "", event_group: "" };
 
 export default function CoachPage() {
   const { user, loading } = useAuth();
@@ -68,7 +63,7 @@ export default function CoachPage() {
   const [saving,       setSaving]       = useState(false);
   const [copied,       setCopied]       = useState<string | null>(null);
 
-  const f = (k: keyof typeof emptyForm, v: string | boolean) =>
+  const f = (k: keyof typeof emptyForm, v: string) =>
     setForm(prev => ({ ...prev, [k]: v }));
 
   const fetchData = useCallback(async () => {
@@ -109,16 +104,10 @@ export default function CoachPage() {
     setSaving(true);
     const sb = createClient();
     const { error } = await sb.from("provisional_athletes").insert({
-      coach_id:           user.id,
-      name:               form.name.trim(),
-      classification:     form.classification  || null,
-      club:               form.club            || null,
-      event_group:        form.event_group     || null,
-      season_goal:        form.season_goal     || null,
-      target_event:       form.target_event    || null,
-      target_performance: form.target_performance || null,
-      target_date:        form.target_date     || null,
-      talent_hub:         form.talent_hub,
+      coach_id:   user.id,
+      name:       form.name.trim(),
+      club:       form.club       || null,
+      event_group: form.event_group || null,
     });
     setSaving(false);
     if (!error) { setForm(emptyForm); setShowAdd(false); fetchData(); }
@@ -187,47 +176,21 @@ export default function CoachPage() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <div>
-                <label style={LABEL}>Classification</label>
-                <input value={form.classification} onChange={e => f("classification", e.target.value)} style={INPUT} placeholder="e.g. T38" />
-              </div>
-              <div>
                 <label style={LABEL}>Club</label>
                 <input value={form.club} onChange={e => f("club", e.target.value)} style={INPUT} placeholder="Club name" />
               </div>
-            </div>
-
-            <div>
-              <label style={LABEL}>Event group</label>
-              <select value={form.event_group} onChange={e => f("event_group", e.target.value)} style={INPUT}>
-                <option value="">Select event group</option>
-                {EVENT_GROUPS.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label style={LABEL}>Season goal</label>
-              <input value={form.season_goal} onChange={e => f("season_goal", e.target.value)} style={INPUT} placeholder="e.g. Sub-65s at England Para Champs" />
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
               <div>
-                <label style={LABEL}>Target event</label>
-                <input value={form.target_event} onChange={e => f("target_event", e.target.value)} style={INPUT} placeholder="400m" />
-              </div>
-              <div>
-                <label style={LABEL}>Target performance</label>
-                <input value={form.target_performance} onChange={e => f("target_performance", e.target.value)} style={INPUT} placeholder="Sub-65s" />
-              </div>
-              <div>
-                <label style={LABEL}>Target date</label>
-                <input type="date" value={form.target_date} onChange={e => f("target_date", e.target.value)} style={INPUT} />
+                <label style={LABEL}>Event group</label>
+                <select value={form.event_group} onChange={e => f("event_group", e.target.value)} style={INPUT}>
+                  <option value="">Select</option>
+                  {EVENT_GROUPS.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
+                </select>
               </div>
             </div>
 
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-              <input type="checkbox" checked={form.talent_hub} onChange={e => f("talent_hub", e.target.checked)} />
-              <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>Talent Hub athlete</span>
-            </label>
+            <p style={{ fontSize: "11px", color: "var(--text-muted)", margin: 0 }}>
+              Profile, classification, season targets, coaching principles and competition calendar are all set on the athlete page.
+            </p>
 
           </div>
 
