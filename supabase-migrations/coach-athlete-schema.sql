@@ -2,7 +2,8 @@
 -- concept//coach + concept//athlete — schema migration
 -- ============================================================
 -- Run in the Supabase SQL editor (project dashboard > SQL editor).
--- Existing tables (training_plans, plan_completions) are untouched.
+-- The existing profiles table is extended in-place with ALTER TABLE
+-- — no data is lost. All other existing tables are untouched.
 -- Safe to re-run: all statements use IF NOT EXISTS / OR REPLACE.
 -- ============================================================
 
@@ -18,29 +19,24 @@ end;
 $$;
 
 
--- ─── PROFILES ─────────────────────────────────────────────────────────────────
+-- ─── PROFILES — extend existing table ─────────────────────────────────────────
+-- Your profiles table uses id = auth.users.id (standard Supabase pattern).
+-- We only add the columns this platform needs that are not already present.
 
-create table if not exists profiles (
-  id               uuid primary key default gen_random_uuid(),
-  user_id          uuid references auth.users(id) on delete cascade not null unique,
-  role             text not null default 'athlete' check (role in ('athlete', 'coach', 'admin')),
-  full_name        text,
-  date_of_birth    date,
-  club             text,
-  county           text,
-  nation           text,
-  classification   text,       -- T38, T47, etc. Nullable for non-para athletes.
-  event_group      text,       -- sprints / middle_distance / throws / jumps / combined
-  preferred_events text[],     -- e.g. ARRAY['100m', '200m']
-  coach_notes      text,
-  athlete_notes    text,
-  avatar_url       text,
-  onboarded        boolean not null default false,
-  created_at       timestamptz not null default now(),
-  updated_at       timestamptz not null default now()
-);
-
-create index if not exists profiles_user_id_idx on profiles(user_id);
+alter table profiles
+  add column if not exists role             text not null default 'athlete'
+                                              check (role in ('athlete', 'coach', 'admin')),
+  add column if not exists club             text,
+  add column if not exists county           text,
+  add column if not exists nation           text,
+  add column if not exists classification   text,
+  add column if not exists event_group      text,
+  add column if not exists preferred_events text[],
+  add column if not exists coach_notes      text,
+  add column if not exists athlete_notes    text,
+  add column if not exists talent_hub       boolean not null default false,
+  add column if not exists talent_hub_notes text,
+  add column if not exists onboarded        boolean not null default false;
 
 drop trigger if exists profiles_updated_at on profiles;
 create trigger profiles_updated_at
@@ -53,13 +49,13 @@ create trigger profiles_updated_at
 create or replace function handle_new_user()
 returns trigger language plpgsql security definer as $$
 begin
-  insert into profiles (user_id, role, full_name)
+  insert into profiles (id, role, name)
   values (
     new.id,
     'athlete',
     coalesce(new.raw_user_meta_data->>'full_name', '')
   )
-  on conflict (user_id) do nothing;
+  on conflict (id) do nothing;
   return new;
 end;
 $$;
@@ -535,14 +531,15 @@ create trigger mood_and_readiness_updated_at
 -- HELPER FUNCTIONS
 -- ============================================================
 
+-- Your profiles.id = auth.users.id, so get_my_profile_id() is just auth.uid().
+-- Kept as a function for consistency with all the RLS policies below.
 create or replace function get_my_profile_id()
 returns uuid
 language sql security definer stable
 as $$
-  select id from profiles where user_id = auth.uid() limit 1;
+  select id from profiles where id = auth.uid() limit 1;
 $$;
 
--- Checks caller is an active coach of the given athlete profile id.
 create or replace function is_coach_of(athlete_profile_id uuid)
 returns boolean
 language sql security definer stable
@@ -561,14 +558,14 @@ language sql security definer stable
 as $$
   select exists (
     select 1 from profiles
-    where user_id = auth.uid() and role = 'admin'
+    where id = auth.uid() and role = 'admin'
   );
 $$;
 
 
 -- ─── CLAIM INVITE RPC ─────────────────────────────────────────────────────────
 -- Called from the /join page after the athlete is authenticated.
--- Returns a jsonb result object with either {success: true, coach_name: "..."} or {error: "..."}.
+-- Returns jsonb: {success: true, coach_name, already_linked?} or {error: "..."}.
 
 create or replace function claim_invite(p_token text)
 returns jsonb
@@ -599,7 +596,7 @@ begin
 
   -- Already claimed by this same person — idempotent success
   if v_invite.claimed_by = v_my_id then
-    select full_name into v_coach_name from profiles where id = v_invite.coach_id;
+    select name into v_coach_name from profiles where id = v_invite.coach_id;
     return jsonb_build_object('success', true, 'coach_name', v_coach_name, 'already_linked', true);
   end if;
 
@@ -619,7 +616,7 @@ begin
   set claimed_by = v_my_id, claimed_at = now()
   where id = v_invite.id;
 
-  select full_name into v_coach_name from profiles where id = v_invite.coach_id;
+  select name into v_coach_name from profiles where id = v_invite.coach_id;
 
   return jsonb_build_object('success', true, 'coach_name', v_coach_name);
 end;
@@ -641,7 +638,7 @@ drop policy if exists "profiles: own update"            on profiles;
 
 create policy "profiles: own read"
   on profiles for select
-  using (user_id = auth.uid() or is_admin());
+  using (id = auth.uid() or is_admin());
 
 create policy "profiles: athlete read by coach"
   on profiles for select
@@ -649,12 +646,12 @@ create policy "profiles: athlete read by coach"
 
 create policy "profiles: own insert"
   on profiles for insert
-  with check (user_id = auth.uid());
+  with check (id = auth.uid());
 
 create policy "profiles: own update"
   on profiles for update
-  using (user_id = auth.uid())
-  with check (user_id = auth.uid());
+  using (id = auth.uid())
+  with check (id = auth.uid());
 
 
 -- ─── coach_athlete ────────────────────────────────────────────────────────────
@@ -674,7 +671,6 @@ create policy "coach_athlete: athlete reads own"
   on coach_athlete for select
   using (athlete_id = get_my_profile_id());
 
--- Athletes can accept or decline an invite (update status only on their own rows)
 create policy "coach_athlete: athlete responds"
   on coach_athlete for update
   using (athlete_id = get_my_profile_id());
@@ -684,16 +680,14 @@ create policy "coach_athlete: athlete responds"
 
 alter table athlete_invites enable row level security;
 
-drop policy if exists "athlete_invites: coach manages" on athlete_invites;
+drop policy if exists "athlete_invites: coach manages"        on athlete_invites;
 drop policy if exists "athlete_invites: public read by token" on athlete_invites;
 
--- Coaches manage their own invites
 create policy "athlete_invites: coach manages"
   on athlete_invites for all
   using  (coach_id = get_my_profile_id() or is_admin())
   with check (coach_id = get_my_profile_id());
 
--- Anyone authenticated can read an invite by token (needed for the /join page preview)
 create policy "athlete_invites: public read by token"
   on athlete_invites for select
   using (auth.uid() is not null);
@@ -1143,16 +1137,13 @@ create policy "mood_and_readiness: delete"
 -- 1. Storage: create a bucket named "athlete-uploads", private,
 --    with RLS enabled.
 --
--- 2. Set your own account's role to 'coach' or 'admin':
---    In Table Editor > profiles, find your row by user_id
---    (matches your auth.users id) and set role = 'coach'.
---    Or run:
---      update profiles set role = 'coach' where user_id = auth.uid();
---    in the SQL editor while signed in. (auth.uid() only works
---    in the SQL editor if you are using the anon key context;
---    otherwise find your user_id from auth.users and hard-code it.)
+-- 2. Set your own account's role to 'coach' or 'admin'.
+--    Your profiles.id = your auth.users.id. Find it in the
+--    Supabase dashboard under Authentication > Users, then run:
+--      update profiles set role = 'coach' where id = '<your-user-id>';
 --
 -- 3. The on_auth_user_created trigger handles all new signups
---    from this point. Existing auth users need a manual profile
---    row if they don't have one yet.
+--    from this point. Existing auth users without a profiles row
+--    need one inserted manually (or they can visit the app and
+--    trigger the onboarding flow).
 -- ============================================================
