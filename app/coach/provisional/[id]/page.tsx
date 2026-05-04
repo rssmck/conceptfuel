@@ -27,6 +27,11 @@ type Season = {
 
 type Invite = { id: string; token: string; expires_at: string };
 
+type PB = {
+  id: string; event: string; performance: string;
+  date: string | null; venue: string | null; meeting: string | null;
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const EVENT_GROUPS = [
@@ -157,11 +162,17 @@ export default function ProvisionalAthletePage() {
 
   const [athlete,      setAthlete]      = useState<PA | null>(null);
   const [seasons,      setSeasons]      = useState<Season[]>([]);
+  const [pbs,          setPbs]          = useState<PB[]>([]);
   const [invite,       setInvite]       = useState<Invite | null>(null);
   const [fetching,     setFetching]     = useState(true);
   const [copied,       setCopied]       = useState(false);
   const [saving,       setSaving]       = useState(false);
   const [savingSeason, setSavingSeason] = useState(false);
+  const [savingPb,     setSavingPb]     = useState(false);
+
+  const [showAddPb,   setShowAddPb]   = useState(false);
+  const [editPbId,    setEditPbId]    = useState<string | null>(null);
+  const [pbDraft,     setPbDraft]     = useState({ event: "", performance: "", date: "", venue: "", meeting: "" });
 
   const [editSection, setEditSection] = useState<"profile" | "principles" | null>(null);
   const [pf, setPf] = useState<Partial<PA>>({});
@@ -173,7 +184,7 @@ export default function ProvisionalAthletePage() {
   const fetchData = useCallback(async () => {
     if (!user || !id) return;
     const sb = createClient();
-    const [{ data: pa }, { data: inv }, { data: seas }] = await Promise.all([
+    const [{ data: pa }, { data: inv }, { data: seas }, { data: pbData }] = await Promise.all([
       sb.from("provisional_athletes").select("*").eq("id", id).single(),
       sb.from("athlete_invites")
         .select("id, token, expires_at")
@@ -184,10 +195,15 @@ export default function ProvisionalAthletePage() {
         .select("id, name, season_type, start_date, end_date, goal, target_event, target_performance, status")
         .eq("provisional_athlete_id", id)
         .order("start_date", { ascending: false }),
+      sb.from("personal_bests")
+        .select("id, event, performance, date, venue, meeting")
+        .eq("provisional_athlete_id", id)
+        .order("event"),
     ]);
     setAthlete(pa);
     setInvite(inv ?? null);
     setSeasons(seas ?? []);
+    setPbs(pbData ?? []);
     setFetching(false);
   }, [user, id]);
 
@@ -216,6 +232,31 @@ export default function ProvisionalAthletePage() {
     setTimeout(() => setCopied(false), 3000);
   }
 
+  async function savePb() {
+    if (!pbDraft.event || !pbDraft.performance) return;
+    setSavingPb(true);
+    const sb = createClient();
+    const payload = {
+      event: pbDraft.event, performance: pbDraft.performance,
+      date: pbDraft.date || null, venue: pbDraft.venue || null,
+      meeting: pbDraft.meeting || null,
+    };
+    if (editPbId) {
+      await sb.from("personal_bests").update(payload).eq("id", editPbId);
+    } else {
+      await sb.from("personal_bests").insert({ ...payload, provisional_athlete_id: id });
+    }
+    setPbDraft({ event: "", performance: "", date: "", venue: "", meeting: "" });
+    setShowAddPb(false); setEditPbId(null);
+    await fetchData(); setSavingPb(false);
+  }
+
+  async function deletePb(pbId: string) {
+    if (!confirm("Delete this personal best?")) return;
+    await createClient().from("personal_bests").delete().eq("id", pbId);
+    fetchData();
+  }
+
   async function addSeason(e: React.FormEvent) {
     e.preventDefault();
     if (!user || !newSeason.name.trim()) return;
@@ -236,6 +277,12 @@ export default function ProvisionalAthletePage() {
     });
     setSavingSeason(false);
     if (!error) { setNewSeason({ ...blankSeason }); setShowAddSeason(false); fetchData(); }
+  }
+
+  async function deleteSeason(seasonId: string) {
+    if (!confirm("Delete this season and all its phases, competitions, and sessions? This cannot be undone.")) return;
+    await createClient().from("seasons").delete().eq("id", seasonId);
+    fetchData();
   }
 
   if (loading || fetching) {
@@ -369,6 +416,77 @@ export default function ProvisionalAthletePage() {
         )}
       </Section>
 
+      {/* Personal bests */}
+      <div style={{ marginBottom: "32px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+          <p style={{ fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)", margin: 0 }}>Personal bests</p>
+          <button
+            onClick={() => { setShowAddPb(s => !s); setEditPbId(null); setPbDraft({ event: "", performance: "", date: "", venue: "", meeting: "" }); }}
+            style={{ fontSize: "12px", padding: "4px 10px", background: "transparent", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--text-muted)", cursor: "pointer" }}
+          >
+            {showAddPb ? "Cancel" : "+ Add PB"}
+          </button>
+        </div>
+
+        {(showAddPb || editPbId) && (
+          <div style={{ marginBottom: "12px", padding: "14px 16px", border: "1px solid var(--accent)", borderRadius: "8px", background: "var(--surface)" }}>
+            <div style={{ display: "grid", gap: "10px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <FI label="Event *" value={pbDraft.event} onChange={v => setPbDraft(d => ({ ...d, event: v }))} placeholder="e.g. 400m, marathon" />
+                <FI label="Performance *" value={pbDraft.performance} onChange={v => setPbDraft(d => ({ ...d, performance: v }))} placeholder="e.g. 65.42, 2:28:30" />
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+                <FI label="Date" value={pbDraft.date} onChange={v => setPbDraft(d => ({ ...d, date: v }))} type="date" />
+                <FI label="Venue" value={pbDraft.venue} onChange={v => setPbDraft(d => ({ ...d, venue: v }))} placeholder="e.g. Manchester" />
+                <FI label="Meeting" value={pbDraft.meeting} onChange={v => setPbDraft(d => ({ ...d, meeting: v }))} placeholder="e.g. County Championships" />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+              <button onClick={savePb} disabled={savingPb} style={{ padding: "6px 16px", background: "var(--accent)", color: "var(--bg)", fontWeight: 600, fontSize: "13px", borderRadius: "4px", border: "none", cursor: "pointer", opacity: savingPb ? 0.7 : 1 }}>
+                {savingPb ? "Saving..." : "Save"}
+              </button>
+              <button onClick={() => { setShowAddPb(false); setEditPbId(null); }} style={{ padding: "6px 14px", background: "transparent", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--text-muted)", fontSize: "13px", cursor: "pointer" }}>Cancel</button>
+              {editPbId && (
+                <button onClick={() => deletePb(editPbId)} style={{ marginLeft: "auto", padding: "6px 14px", background: "transparent", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--text-muted)", fontSize: "13px", cursor: "pointer" }}>Delete</button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {pbs.length > 0 ? (
+          <div style={{ border: "1px solid var(--border)", borderRadius: "8px", overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--border)" }}>
+                  {["Event", "Performance", "Date", "Venue"].map(h => (
+                    <th key={h} style={{ fontSize: "10px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.08em", textAlign: "left", padding: "8px 12px", background: "var(--surface)" }}>{h.toUpperCase()}</th>
+                  ))}
+                  <th style={{ width: "48px", background: "var(--surface)" }} />
+                </tr>
+              </thead>
+              <tbody>
+                {pbs.map((pb, i) => (
+                  <tr key={pb.id} style={{ borderBottom: i < pbs.length - 1 ? "1px solid var(--border)" : "none" }}>
+                    <td style={{ padding: "10px 12px", fontSize: "13px", fontWeight: 600, color: "var(--text)" }}>{pb.event}</td>
+                    <td style={{ padding: "10px 12px", fontSize: "14px", fontWeight: 700, color: "var(--accent)", fontFamily: "monospace" }}>{pb.performance}</td>
+                    <td style={{ padding: "10px 12px", fontSize: "12px", color: "var(--text-muted)" }}>{pb.date ? fmtDate(pb.date) : "—"}</td>
+                    <td style={{ padding: "10px 12px", fontSize: "12px", color: "var(--text-muted)" }}>{pb.venue || (pb.meeting ? pb.meeting : "—")}</td>
+                    <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                      <button
+                        onClick={() => { setEditPbId(pb.id); setShowAddPb(false); setPbDraft({ event: pb.event, performance: pb.performance, date: pb.date ?? "", venue: pb.venue ?? "", meeting: pb.meeting ?? "" }); }}
+                        style={{ fontSize: "11px", padding: "3px 8px", background: "transparent", border: "1px solid var(--border)", borderRadius: "3px", color: "var(--text-muted)", cursor: "pointer" }}
+                      >Edit</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          !showAddPb && <p style={{ fontSize: "13px", color: "var(--text-muted)", padding: "4px 0", opacity: 0.6 }}>No personal bests recorded yet.</p>
+        )}
+      </div>
+
       {/* Seasons */}
       <div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
@@ -426,35 +544,43 @@ export default function ProvisionalAthletePage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {seasons.map(s => (
-            <Link key={s.id} href={`/coach/provisional/${id}/season/${s.id}`} style={{ display: "block", padding: "16px 18px", border: "1px solid var(--border)", borderRadius: "8px", background: "var(--surface)", textDecoration: "none" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "5px", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "3px", background: "var(--border)", color: "var(--text-muted)", letterSpacing: "0.08em", fontWeight: 700 }}>
-                      {SEASON_TYPE_LABEL[s.season_type] ?? s.season_type}
-                    </span>
-                    <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "3px", border: `1px solid ${SEASON_STATUS_COLOR[s.status] ?? "var(--border)"}`, color: SEASON_STATUS_COLOR[s.status] ?? "var(--text-muted)", letterSpacing: "0.08em", fontWeight: 700 }}>
-                      {s.status.toUpperCase()}
-                    </span>
+            <div key={s.id} style={{ display: "flex", alignItems: "stretch", border: "1px solid var(--border)", borderRadius: "8px", background: "var(--surface)", overflow: "hidden" }}>
+              <Link href={`/coach/provisional/${id}/season/${s.id}`} style={{ flex: 1, display: "block", padding: "16px 18px", textDecoration: "none" }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "5px", flexWrap: "wrap" }}>
+                      <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "3px", background: "var(--border)", color: "var(--text-muted)", letterSpacing: "0.08em", fontWeight: 700 }}>
+                        {SEASON_TYPE_LABEL[s.season_type] ?? s.season_type}
+                      </span>
+                      <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "3px", border: `1px solid ${SEASON_STATUS_COLOR[s.status] ?? "var(--border)"}`, color: SEASON_STATUS_COLOR[s.status] ?? "var(--text-muted)", letterSpacing: "0.08em", fontWeight: 700 }}>
+                        {s.status.toUpperCase()}
+                      </span>
+                    </div>
+                    <p style={{ margin: "0 0 3px", fontSize: "15px", fontWeight: 600, color: "var(--text)" }}>{s.name}</p>
+                    {(s.start_date || s.end_date) && (
+                      <p style={{ margin: "0 0 3px", fontSize: "12px", color: "var(--text-muted)" }}>
+                        {fmtDate(s.start_date)}{s.end_date ? ` – ${fmtDate(s.end_date)}` : ""}
+                      </p>
+                    )}
+                    {(s.target_event || s.target_performance) && (
+                      <p style={{ margin: "0 0 3px", fontSize: "12px", color: "var(--text-muted)" }}>
+                        {[s.target_event, s.target_performance].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                    {s.goal && (
+                      <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic" }}>{s.goal}</p>
+                    )}
                   </div>
-                  <p style={{ margin: "0 0 3px", fontSize: "15px", fontWeight: 600, color: "var(--text)" }}>{s.name}</p>
-                  {(s.start_date || s.end_date) && (
-                    <p style={{ margin: "0 0 3px", fontSize: "12px", color: "var(--text-muted)" }}>
-                      {fmtDate(s.start_date)}{s.end_date ? ` – ${fmtDate(s.end_date)}` : ""}
-                    </p>
-                  )}
-                  {(s.target_event || s.target_performance) && (
-                    <p style={{ margin: "0 0 3px", fontSize: "12px", color: "var(--text-muted)" }}>
-                      {[s.target_event, s.target_performance].filter(Boolean).join(" · ")}
-                    </p>
-                  )}
-                  {s.goal && (
-                    <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", fontStyle: "italic" }}>{s.goal}</p>
-                  )}
+                  <span style={{ color: "var(--text-muted)", fontSize: "16px", flexShrink: 0, marginTop: "2px" }}>→</span>
                 </div>
-                <span style={{ color: "var(--text-muted)", fontSize: "16px", flexShrink: 0, marginTop: "2px" }}>→</span>
-              </div>
-            </Link>
+              </Link>
+              <button
+                onClick={() => deleteSeason(s.id)}
+                style={{ padding: "0 16px", background: "transparent", border: "none", borderLeft: "1px solid var(--border)", color: "var(--text-muted)", cursor: "pointer", fontSize: "12px", flexShrink: 0 }}
+              >
+                Delete
+              </button>
+            </div>
           ))}
           {seasons.length === 0 && !showAddSeason && (
             <p style={{ fontSize: "13px", color: "var(--text-muted)", padding: "8px 0", opacity: 0.6 }}>
