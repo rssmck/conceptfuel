@@ -178,8 +178,9 @@ export default function ProvisionalAthletePage() {
   const [pf, setPf] = useState<Partial<PA>>({});
   const [qf, setQf] = useState<Partial<PA>>({});
 
-  const [showAddSeason, setShowAddSeason] = useState(false);
-  const [newSeason,     setNewSeason]     = useState({ ...blankSeason });
+  const [showAddSeason,    setShowAddSeason]    = useState(false);
+  const [newSeason,        setNewSeason]        = useState({ ...blankSeason });
+  const [deletingSeasonId, setDeletingSeasonId] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!user || !id) return;
@@ -280,7 +281,7 @@ export default function ProvisionalAthletePage() {
   }
 
   async function deleteSeason(seasonId: string) {
-    if (!confirm("Delete this season and all its phases, competitions, and sessions? This cannot be undone.")) return;
+    setDeletingSeasonId(null);
     await createClient().from("seasons").delete().eq("id", seasonId);
     fetchData();
   }
@@ -314,7 +315,11 @@ export default function ProvisionalAthletePage() {
       {/* Header */}
       <div style={{ margin: "16px 0 32px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
-          <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "3px", background: "var(--border)", color: "var(--text-muted)", letterSpacing: "0.08em", fontWeight: 700 }}>PENDING</span>
+          {athlete.merged_into ? (
+            <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "3px", background: "#22c55e22", color: "#22c55e", letterSpacing: "0.08em", fontWeight: 700 }}>CLAIMED</span>
+          ) : (
+            <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "3px", background: "var(--border)", color: "var(--text-muted)", letterSpacing: "0.08em", fontWeight: 700 }}>PENDING</span>
+          )}
           {athlete.talent_hub && (
             <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "3px", background: "var(--accent)", color: "var(--bg)", letterSpacing: "0.08em", fontWeight: 700 }}>TALENT HUB</span>
           )}
@@ -454,8 +459,8 @@ export default function ProvisionalAthletePage() {
         )}
 
         {pbs.length > 0 ? (
-          <div style={{ border: "1px solid var(--border)", borderRadius: "8px", overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <div style={{ border: "1px solid var(--border)", borderRadius: "8px", overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "420px" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)" }}>
                   {["Event", "Performance", "Date", "Venue"].map(h => (
@@ -574,12 +579,23 @@ export default function ProvisionalAthletePage() {
                   <span style={{ color: "var(--text-muted)", fontSize: "16px", flexShrink: 0, marginTop: "2px" }}>→</span>
                 </div>
               </Link>
-              <button
-                onClick={() => deleteSeason(s.id)}
-                style={{ padding: "0 16px", background: "transparent", border: "none", borderLeft: "1px solid var(--border)", color: "var(--text-muted)", cursor: "pointer", fontSize: "12px", flexShrink: 0 }}
-              >
-                Delete
-              </button>
+              {deletingSeasonId === s.id ? (
+                <div style={{ display: "flex", alignItems: "center", borderLeft: "1px solid var(--border)", background: "var(--surface)", flexShrink: 0 }}>
+                  <button onClick={() => deleteSeason(s.id)} style={{ padding: "0 12px", minHeight: "44px", minWidth: "56px", background: "transparent", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "12px", fontWeight: 700 }}>
+                    Delete
+                  </button>
+                  <button onClick={() => setDeletingSeasonId(null)} style={{ padding: "0 12px", minHeight: "44px", background: "transparent", border: "none", borderLeft: "1px solid var(--border)", color: "var(--text-muted)", cursor: "pointer", fontSize: "12px" }}>
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setDeletingSeasonId(s.id)}
+                  style={{ padding: "0 16px", minHeight: "44px", minWidth: "64px", background: "transparent", border: "none", borderLeft: "1px solid var(--border)", color: "var(--text-muted)", cursor: "pointer", fontSize: "12px", flexShrink: 0 }}
+                >
+                  Delete
+                </button>
+              )}
             </div>
           ))}
           {seasons.length === 0 && !showAddSeason && (
