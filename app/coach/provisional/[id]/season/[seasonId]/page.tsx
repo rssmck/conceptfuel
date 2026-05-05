@@ -36,6 +36,10 @@ type TrainingSession = {
   duration_minutes: number | null; session_rpe: number | null;
 };
 
+type DayNote = {
+  id: string; date: string; author_id: string; content: string; created_at: string;
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const SEASON_TYPES = [
@@ -70,6 +74,7 @@ const SESSION_TYPES = [
   { value: "recovery",       label: "Recovery"        },
   { value: "competition",    label: "Competition"     },
   { value: "psych",          label: "Psych / Mental"  },
+  { value: "note",           label: "Note"            },
 ];
 
 const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -189,7 +194,10 @@ function CompForm({ v, onChange, onSave, onCancel, onDelete, saving }: {
 
 const DAY_NAMES_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-function SeasonCalendar({ phases, comps, onDayClick }: { phases: Phase[]; comps: Comp[]; onDayClick?: (dateStr: string) => void }) {
+function SeasonCalendar({ phases, comps, onDayClick }: {
+  phases: Phase[]; comps: Comp[];
+  onDayClick?: (dateStr: string) => void;
+}) {
   const allDates = [
     ...phases.flatMap(p => [p.start_date, p.end_date]),
     ...comps.flatMap(c => [c.date, c.end_date].filter((d): d is string => !!d)),
@@ -327,16 +335,14 @@ function getWeeks(startStr: string, endStr: string): string[][] {
 }
 
 function WeeklyLog({
-  season, phases, comps, sessions,
-  onAddSession, onEditSession, sessionSlot,
+  season, phases, comps, sessions, dayNotes, onDayClick,
 }: {
   season: Season;
   phases: Phase[];
   comps: Comp[];
   sessions: TrainingSession[];
-  onAddSession: (date: string) => void;
-  onEditSession: (s: TrainingSession) => void;
-  sessionSlot?: { forDate: string; node: React.ReactNode };
+  dayNotes: DayNote[];
+  onDayClick: (date: string) => void;
 }) {
   if (!season.start_date || !season.end_date) {
     return (
@@ -361,6 +367,9 @@ function WeeklyLog({
   function sessionsOn(dateStr: string): TrainingSession[] {
     return sessions.filter(s => s.date === dateStr);
   }
+  function notesOn(dateStr: string): DayNote[] {
+    return dayNotes.filter(n => n.date === dateStr);
+  }
   function isIntensityDay(dateStr: string): boolean {
     const ph = phaseFor(dateStr);
     if (!ph?.intensity_days?.length) return false;
@@ -373,7 +382,7 @@ function WeeklyLog({
 
   const SESSION_TYPE_ICON: Record<string, string> = {
     track: "T", gym: "G", mobility: "M", cross_training: "X",
-    recovery: "R", competition: "C", psych: "P",
+    recovery: "R", competition: "C", psych: "P", note: "N",
   };
 
   return (
@@ -389,143 +398,150 @@ function WeeklyLog({
           <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", background: "var(--surface)", padding: "0 4px", borderRadius: "2px" }}>T</span>
           <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>Session logged</span>
         </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <span style={{ fontSize: "11px", color: "var(--text-muted)", opacity: 0.6 }}>Tap any day to view or log</span>
+        </div>
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "0px" }}>
-        {weeks.map((week, wi) => {
-          const weekSessions = week.flatMap(d => sessionsOn(d));
-          const weekHasData = week.some(d => isInSeason(d));
-          if (!weekHasData) return null;
+      {/* Horizontally scrollable on small screens */}
+      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ minWidth: "480px", display: "flex", flexDirection: "column", gap: "0px" }}>
+          {weeks.map((week, wi) => {
+            const weekSessions = week.flatMap(d => sessionsOn(d));
+            const weekNotes = week.flatMap(d => notesOn(d));
+            const weekHasData = week.some(d => isInSeason(d));
+            if (!weekHasData) return null;
 
-          const firstInSeason = week.find(d => isInSeason(d));
-          const ph = firstInSeason ? phaseFor(firstInSeason) : undefined;
-          const phIdx = firstInSeason ? phaseIdxFor(firstInSeason) : -1;
-          const phColor = phIdx >= 0 ? PHASE_COLORS[phIdx % PHASE_COLORS.length] : null;
+            const firstInSeason = week.find(d => isInSeason(d));
+            const ph = firstInSeason ? phaseFor(firstInSeason) : undefined;
+            const phIdx = firstInSeason ? phaseIdxFor(firstInSeason) : -1;
+            const phColor = phIdx >= 0 ? PHASE_COLORS[phIdx % PHASE_COLORS.length] : null;
 
-          const weekLabel = `${new Date(week[0] + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${new Date(week[6] + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+            const weekLabel = `${new Date(week[0] + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })} – ${new Date(week[6] + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
 
-          return (
-            <div key={wi} style={{ borderBottom: "1px solid var(--border)" }}>
-              {/* Week header */}
-              <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: "0", alignItems: "stretch" }}>
-                <div style={{ padding: "10px 12px", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                  <p style={{ margin: 0, fontSize: "10px", color: "var(--text-muted)", fontWeight: 600, letterSpacing: "0.04em" }}>{weekLabel}</p>
-                  {ph && (
-                    <p style={{ margin: "2px 0 0", fontSize: "10px", color: phColor ?? "var(--text-muted)", fontWeight: 600 }}>{ph.name}</p>
-                  )}
+            return (
+              <div key={wi} style={{ borderBottom: "1px solid var(--border)" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: "0", alignItems: "stretch" }}>
+                  <div style={{ padding: "8px 10px", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                    <p style={{ margin: 0, fontSize: "10px", color: "var(--text-muted)", fontWeight: 600, letterSpacing: "0.04em" }}>{weekLabel}</p>
+                    {ph && (
+                      <p style={{ margin: "2px 0 0", fontSize: "10px", color: phColor ?? "var(--text-muted)", fontWeight: 600 }}>{ph.name}</p>
+                    )}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
+                    {week.map((dateStr, di) => {
+                      const inSeason = isInSeason(dateStr);
+                      const dayPhIdx = phaseIdxFor(dateStr);
+                      const dayPhColor = dayPhIdx >= 0 ? PHASE_COLORS[dayPhIdx % PHASE_COLORS.length] : null;
+                      const comp = compFor(dateStr);
+                      const compColor = comp ? (COMP_DOT[comp.priority] ?? "#888") : null;
+                      const daySessions = sessionsOn(dateStr);
+                      const dayNoteCount = notesOn(dateStr).length;
+                      const intensity = inSeason && isIntensityDay(dateStr);
+                      const d = new Date(dateStr + "T12:00:00");
+                      const dayNum = d.getDate();
+
+                      return (
+                        <div
+                          key={di}
+                          onClick={() => inSeason ? onDayClick(dateStr) : undefined}
+                          style={{
+                            minHeight: "60px",
+                            background: inSeason && dayPhColor ? dayPhColor + "18" : "transparent",
+                            borderRight: di < 6 ? "1px solid var(--border)" : "none",
+                            padding: "5px 4px",
+                            cursor: inSeason ? "pointer" : "default",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "2px",
+                            opacity: inSeason ? 1 : 0.3,
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+                            <span style={{ fontSize: "11px", fontWeight: 600, color: dayPhColor ?? "var(--text-muted)", lineHeight: 1 }}>{dayNum}</span>
+                            {intensity && (
+                              <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "var(--accent)", display: "inline-block", flexShrink: 0 }} />
+                            )}
+                            {comp && (
+                              <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: compColor ?? "#888", display: "inline-block", flexShrink: 0 }} />
+                            )}
+                          </div>
+
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "2px" }}>
+                            {daySessions.map(s => (
+                              <span
+                                key={s.id}
+                                title={s.title}
+                                style={{
+                                  fontSize: "9px", fontWeight: 700,
+                                  padding: "1px 3px",
+                                  borderRadius: "2px",
+                                  background: dayPhColor ? dayPhColor + "44" : "var(--surface)",
+                                  border: `1px solid ${dayPhColor ?? "var(--border)"}`,
+                                  color: dayPhColor ?? "var(--text-muted)",
+                                  lineHeight: 1.4,
+                                }}
+                              >
+                                {SESSION_TYPE_ICON[s.session_type] ?? "S"}
+                              </span>
+                            ))}
+                            {dayNoteCount > 0 && (
+                              <span style={{ fontSize: "9px", color: "var(--text-muted)", opacity: 0.6, lineHeight: 1.4 }}>
+                                {dayNoteCount === 1 ? "1n" : `${dayNoteCount}n`}
+                              </span>
+                            )}
+                          </div>
+
+                          {comp && comp.date === dateStr && (
+                            <p style={{ margin: 0, fontSize: "8px", color: compColor ?? "#888", fontWeight: 700, lineHeight: 1.2 }}>
+                              {comp.meeting ? comp.meeting.slice(0, 8) : "Comp"}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                {/* Day cells */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
-                  {week.map((dateStr, di) => {
-                    const inSeason = isInSeason(dateStr);
-                    const dayPhIdx = phaseIdxFor(dateStr);
-                    const dayPhColor = dayPhIdx >= 0 ? PHASE_COLORS[dayPhIdx % PHASE_COLORS.length] : null;
-                    const comp = compFor(dateStr);
-                    const compColor = comp ? (COMP_DOT[comp.priority] ?? "#888") : null;
-                    const daySessions = sessionsOn(dateStr);
-                    const intensity = inSeason && isIntensityDay(dateStr);
-                    const d = new Date(dateStr + "T12:00:00");
-                    const dayNum = d.getDate();
 
-                    return (
-                      <div
-                        key={di}
-                        onClick={() => inSeason ? onAddSession(dateStr) : undefined}
-                        style={{
-                          minHeight: "64px",
-                          background: inSeason && dayPhColor ? dayPhColor + "18" : "transparent",
-                          borderRight: di < 6 ? "1px solid var(--border)" : "none",
-                          padding: "6px 5px",
-                          cursor: inSeason ? "pointer" : "default",
-                          position: "relative",
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "3px",
-                          opacity: inSeason ? 1 : 0.3,
-                        }}
-                      >
-                        {/* Day number + intensity dot */}
-                        <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-                          <span style={{ fontSize: "11px", fontWeight: 600, color: dayPhColor ?? "var(--text-muted)", lineHeight: 1 }}>{dayNum}</span>
-                          {intensity && (
-                            <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "var(--accent)", display: "inline-block", flexShrink: 0 }} />
-                          )}
-                          {comp && (
-                            <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: compColor ?? "#888", display: "inline-block", flexShrink: 0 }} />
-                          )}
-                        </div>
-
-                        {/* Session badges */}
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: "2px" }}>
-                          {daySessions.map(s => (
-                            <button
-                              key={s.id}
-                              onClick={e => { e.stopPropagation(); onEditSession(s); }}
-                              title={s.title}
-                              style={{
-                                fontSize: "9px", fontWeight: 700,
-                                padding: "1px 4px",
-                                borderRadius: "2px",
-                                background: dayPhColor ? dayPhColor + "44" : "var(--surface)",
-                                border: `1px solid ${dayPhColor ?? "var(--border)"}`,
-                                color: dayPhColor ?? "var(--text-muted)",
-                                cursor: "pointer",
-                                lineHeight: 1.4,
-                              }}
-                            >
-                              {SESSION_TYPE_ICON[s.session_type] ?? "S"}
-                            </button>
-                          ))}
-                        </div>
-
-                        {/* Comp label */}
-                        {comp && comp.date === dateStr && (
-                          <p style={{ margin: 0, fontSize: "8px", color: compColor ?? "#888", fontWeight: 700, lineHeight: 1.2 }}>
-                            {comp.meeting ? comp.meeting.slice(0, 10) : "Comp"}
-                          </p>
+                {(weekSessions.length > 0 || weekNotes.length > 0) && (
+                  <div style={{ padding: "6px 10px 8px", display: "flex", flexDirection: "column", gap: "3px", background: "var(--surface)" }}>
+                    {weekSessions.map(s => (
+                      <div key={s.id} style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+                        <span style={{ fontSize: "10px", color: "var(--text-muted)", width: "36px", flexShrink: 0 }}>
+                          {new Date(s.date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric" })}
+                        </span>
+                        <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text)" }}>{s.title}</span>
+                        {s.duration_minutes && (
+                          <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>{s.duration_minutes}min</span>
+                        )}
+                        {s.session_rpe && (
+                          <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>RPE {s.session_rpe}</span>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
+                    ))}
+                    {weekNotes.map(n => (
+                      <div key={n.id} style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+                        <span style={{ fontSize: "10px", color: "var(--text-muted)", width: "36px", flexShrink: 0 }}>
+                          {new Date(n.date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric" })}
+                        </span>
+                        <span style={{ fontSize: "10px", color: "var(--border)", marginRight: "2px" }}>|</span>
+                        <span style={{ fontSize: "11px", color: "var(--text-muted)", fontStyle: "italic" }}>
+                          {n.content.length > 70 ? n.content.slice(0, 70) + "..." : n.content}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-
-              {/* Sessions listed below the week row */}
-              {weekSessions.length > 0 && (
-                <div style={{ padding: "6px 12px 8px", display: "flex", flexDirection: "column", gap: "4px", background: "var(--surface)" }}>
-                  {weekSessions.map(s => (
-                    <div key={s.id} style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-                      <span style={{ fontSize: "10px", color: "var(--text-muted)", width: "40px", flexShrink: 0 }}>
-                        {new Date(s.date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short", day: "numeric" })}
-                      </span>
-                      <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text)" }}>{s.title}</span>
-                      {s.duration_minutes && (
-                        <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>{s.duration_minutes}min</span>
-                      )}
-                      {s.session_rpe && (
-                        <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>RPE {s.session_rpe}</span>
-                      )}
-                      {s.description && (
-                        <span style={{ fontSize: "10px", color: "var(--text-muted)", opacity: 0.75 }}>{s.description.slice(0, 60)}{s.description.length > 60 ? "..." : ""}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {sessionSlot && week.includes(sessionSlot.forDate) && (
-                <div style={{ padding: "8px 12px 12px" }}>
-                  {sessionSlot.node}
-                </div>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Session form ─────────────────────────────────────────────────────────────
+// ─── Session form panel ───────────────────────────────────────────────────────
 
 type SessionDraft = {
   date: string; session_type: string; title: string;
@@ -542,43 +558,226 @@ function SessionPanel({
 }) {
   const set = (k: keyof SessionDraft, v: string) => onChange({ ...draft, [k]: v });
   return (
-    <div style={{ padding: "16px 18px", border: "1px solid var(--accent)", borderRadius: "8px", background: "var(--surface)", marginBottom: "8px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-        <p style={{ fontSize: "11px", color: "var(--accent)", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", margin: 0 }}>
-          {editId ? "Edit session" : "Log session"}
-        </p>
-        <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "16px", padding: "0 4px" }}>×</button>
-      </div>
-      <div style={{ display: "grid", gap: "10px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-          <FI label="Date *" value={draft.date} onChange={v => set("date", v)} type="date" />
-          <div>
-            <label style={L}>Session type *</label>
-            <select value={draft.session_type} onChange={e => set("session_type", e.target.value)} style={I}>
-              {SESSION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-          </div>
-        </div>
-        <FI label="Title *" value={draft.title} onChange={v => set("title", v)} placeholder="e.g. 3x600m tempo, Hill circuits, Activation" />
-        <FTA label="Description / session content" value={draft.description} onChange={v => set("description", v)} placeholder="What was planned and what happened" />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-          <FI label="Duration (minutes)" value={draft.duration_minutes} onChange={v => set("duration_minutes", v)} type="number" placeholder="e.g. 75" />
-          <div>
-            <label style={L}>Session RPE (1–10)</label>
-            <select value={draft.session_rpe} onChange={e => set("session_rpe", e.target.value)} style={I}>
-              <option value="">—</option>
-              {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
+    <div style={{ display: "grid", gap: "10px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+        <FI label="Date *" value={draft.date} onChange={v => set("date", v)} type="date" />
+        <div>
+          <label style={L}>Session type *</label>
+          <select value={draft.session_type} onChange={e => set("session_type", e.target.value)} style={I}>
+            {SESSION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
         </div>
       </div>
-      <div style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
+      <FI label="Title *" value={draft.title} onChange={v => set("title", v)} placeholder="e.g. 3x600m tempo, Hill circuits, Activation" />
+      <FTA label="Description / session content" value={draft.description} onChange={v => set("description", v)} placeholder="What was planned and what happened" />
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+        <FI label="Duration (minutes)" value={draft.duration_minutes} onChange={v => set("duration_minutes", v)} type="number" placeholder="e.g. 75" />
+        <div>
+          <label style={L}>Session RPE (1–10)</label>
+          <select value={draft.session_rpe} onChange={e => set("session_rpe", e.target.value)} style={I}>
+            <option value="">—</option>
+            {[1,2,3,4,5,6,7,8,9,10].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
         <button onClick={onSave} disabled={saving} style={{ padding: "7px 18px", background: "var(--accent)", color: "var(--bg)", fontWeight: 600, fontSize: "13px", borderRadius: "4px", border: "none", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
           {saving ? "Saving..." : "Save"}
         </button>
         <button onClick={onClose} style={{ padding: "7px 16px", background: "transparent", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--text-muted)", fontSize: "13px", cursor: "pointer" }}>Cancel</button>
         {onDelete && (
           <button onClick={onDelete} style={{ marginLeft: "auto", padding: "7px 16px", background: "transparent", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--text-muted)", fontSize: "13px", cursor: "pointer" }}>Delete</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Day modal ────────────────────────────────────────────────────────────────
+
+const blankSession: SessionDraft = { date: "", session_type: "track", title: "", description: "", duration_minutes: "", session_rpe: "" };
+
+function DayModal({
+  dateStr, phases, comps, sessions, dayNotes,
+  userId, saving, savingNote,
+  onClose, onSaveSession, onDeleteSession, onSaveNote, onDeleteNote,
+}: {
+  dateStr: string;
+  phases: Phase[]; comps: Comp[]; sessions: TrainingSession[]; dayNotes: DayNote[];
+  userId: string;
+  saving: boolean; savingNote: boolean;
+  onClose: () => void;
+  onSaveSession: (draft: SessionDraft, editId: string | null) => Promise<boolean>;
+  onDeleteSession: (id: string) => Promise<void>;
+  onSaveNote: (date: string, content: string) => Promise<void>;
+  onDeleteNote: (id: string) => void;
+}) {
+  const [view, setView] = useState<"detail" | "session">("detail");
+  const [editSessionId, setEditSessionId] = useState<string | null>(null);
+  const [sessionDraft, setSessionDraft] = useState<SessionDraft>({ ...blankSession, date: dateStr });
+  const [noteDraft, setNoteDraft] = useState("");
+
+  const dayPhIdx = phases.findIndex(p => dateStr >= p.start_date && dateStr <= p.end_date);
+  const dayPh = dayPhIdx >= 0 ? phases[dayPhIdx] : null;
+  const dayComp = comps.find(c => c.date <= dateStr && (c.end_date ? c.end_date >= dateStr : c.date === dateStr));
+  const daySess = sessions.filter(s => s.date === dateStr);
+  const dayNoteList = dayNotes.filter(n => n.date === dateStr);
+
+  const dayLabel = new Date(dateStr + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+
+  function openEdit(s: TrainingSession) {
+    setEditSessionId(s.id);
+    setSessionDraft({
+      date: s.date, session_type: s.session_type, title: s.title,
+      description: s.description ?? "", duration_minutes: String(s.duration_minutes ?? ""),
+      session_rpe: String(s.session_rpe ?? ""),
+    });
+    setView("session");
+  }
+
+  async function handleSaveSession() {
+    const ok = await onSaveSession(sessionDraft, editSessionId);
+    if (ok) { setView("detail"); setEditSessionId(null); }
+  }
+
+  async function handleDeleteSession() {
+    if (!editSessionId) return;
+    await onDeleteSession(editSessionId);
+    setView("detail");
+    setEditSessionId(null);
+  }
+
+  async function handleAddNote() {
+    if (!noteDraft.trim()) return;
+    await onSaveNote(dateStr, noteDraft);
+    setNoteDraft("");
+  }
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{ width: "100%", maxWidth: "560px", background: "var(--bg)", borderRadius: "16px 16px 0 0", maxHeight: "90vh", overflowY: "auto", padding: "0 20px 40px" }}>
+        {/* Drag handle */}
+        <div style={{ position: "sticky", top: 0, background: "var(--bg)", paddingTop: "12px", paddingBottom: "8px", zIndex: 1 }}>
+          <div style={{ width: "36px", height: "4px", borderRadius: "2px", background: "var(--border)", margin: "0 auto 12px" }} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            {view === "session" ? (
+              <button onClick={() => { setView("detail"); setEditSessionId(null); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "13px", padding: "0" }}>
+                ← Back
+              </button>
+            ) : (
+              <div>
+                <p style={{ margin: "0 0 2px", fontSize: "16px", fontWeight: 700, color: "var(--text)" }}>{dayLabel}</p>
+                {dayPh && (
+                  <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>
+                    <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "2px", background: PHASE_COLORS[dayPhIdx % PHASE_COLORS.length], marginRight: "6px", verticalAlign: "middle" }} />
+                    Phase {dayPh.order}: {dayPh.name}
+                  </p>
+                )}
+              </div>
+            )}
+            <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "22px", lineHeight: 1, padding: "0 2px" }}>×</button>
+          </div>
+        </div>
+
+        {view === "detail" ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* Competition */}
+            {dayComp && (
+              <div style={{ padding: "12px 14px", background: "var(--surface)", borderRadius: "8px", border: `1px solid ${COMP_DOT[dayComp.priority] ?? "#888"}` }}>
+                <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: 700, color: COMP_DOT[dayComp.priority] ?? "#888" }}>
+                  {dayComp.meeting || "Competition"} ({dayComp.priority})
+                </p>
+                {dayComp.venue && <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>{dayComp.venue}</p>}
+                {dayComp.events?.length > 0 && <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--text-muted)" }}>{dayComp.events.join(", ")}</p>}
+              </div>
+            )}
+
+            {/* Sessions */}
+            <div>
+              <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 8px" }}>Sessions</p>
+              {daySess.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {daySess.map(s => (
+                    <div key={s.id} style={{ padding: "10px 12px", background: "var(--surface)", borderRadius: "6px", border: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "12px" }}>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: 600, color: "var(--text)" }}>{s.title}</p>
+                        <p style={{ margin: 0, fontSize: "11px", color: "var(--text-muted)" }}>
+                          {s.session_type.replace(/_/g, " ")}
+                          {s.duration_minutes ? ` · ${s.duration_minutes}min` : ""}
+                          {s.session_rpe ? ` · RPE ${s.session_rpe}` : ""}
+                        </p>
+                        {s.description && <p style={{ margin: "3px 0 0", fontSize: "11px", color: "var(--text-muted)", opacity: 0.75 }}>{s.description}</p>}
+                      </div>
+                      <button onClick={() => openEdit(s)} style={{ fontSize: "11px", padding: "4px 10px", background: "transparent", border: "1px solid var(--border)", borderRadius: "3px", color: "var(--text-muted)", cursor: "pointer", flexShrink: 0 }}>Edit</button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ fontSize: "13px", color: "var(--text-muted)", opacity: 0.5 }}>No sessions logged.</p>
+              )}
+              <button
+                onClick={() => { setEditSessionId(null); setSessionDraft({ ...blankSession, date: dateStr }); setView("session"); }}
+                style={{ marginTop: "10px", width: "100%", padding: "9px", background: "var(--accent)", color: "var(--bg)", fontWeight: 700, fontSize: "14px", borderRadius: "6px", border: "none", cursor: "pointer" }}
+              >
+                + Log session
+              </button>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--text-muted)", letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 8px" }}>Notes</p>
+              {dayNoteList.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "10px" }}>
+                  {dayNoteList.map(n => (
+                    <div key={n.id} style={{ padding: "10px 12px", background: "var(--surface)", borderRadius: "6px", border: "1px solid var(--border)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                        <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>
+                          {n.author_id === userId ? "You" : "Athlete"} · {new Date(n.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                        {n.author_id === userId && (
+                          <button onClick={() => onDeleteNote(n.id)} style={{ background: "none", border: "none", fontSize: "16px", color: "var(--text-muted)", cursor: "pointer", lineHeight: 1, padding: "0 2px" }}>×</button>
+                        )}
+                      </div>
+                      <p style={{ margin: 0, fontSize: "13px", color: "var(--text)", lineHeight: 1.55 }}>{n.content}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: "8px", alignItems: "flex-start" }}>
+                <textarea
+                  value={noteDraft}
+                  onChange={e => setNoteDraft(e.target.value)}
+                  placeholder="Add a note..."
+                  style={{ flex: 1, padding: "8px 10px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "4px", color: "var(--text)", fontSize: "13px", resize: "vertical", minHeight: "56px", boxSizing: "border-box" }}
+                />
+                <button
+                  onClick={handleAddNote}
+                  disabled={savingNote || !noteDraft.trim()}
+                  style={{ padding: "8px 14px", background: "var(--accent)", color: "var(--bg)", fontWeight: 600, fontSize: "13px", borderRadius: "4px", border: "none", cursor: "pointer", opacity: (savingNote || !noteDraft.trim()) ? 0.5 : 1, flexShrink: 0 }}
+                >
+                  {savingNote ? "..." : "Add"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ marginTop: "4px" }}>
+            <p style={{ margin: "0 0 14px", fontSize: "13px", fontWeight: 700, color: "var(--text)" }}>
+              {editSessionId ? "Edit session" : "Log session"}
+            </p>
+            <SessionPanel
+              draft={sessionDraft}
+              editId={editSessionId}
+              saving={saving}
+              onChange={setSessionDraft}
+              onSave={handleSaveSession}
+              onDelete={editSessionId ? handleDeleteSession : undefined}
+              onClose={() => { setView("detail"); setEditSessionId(null); }}
+            />
+          </div>
         )}
       </div>
     </div>
@@ -655,7 +854,6 @@ function phaseLen(s: string, e: string) {
 }
 
 const blankComp: Partial<Comp> & { events_str: string } = { events_str: "", priority: "prep", status: "upcoming" };
-const blankSession: SessionDraft = { date: "", session_type: "track", title: "", description: "", duration_minutes: "", session_rpe: "" };
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
@@ -663,37 +861,35 @@ export default function SeasonPage() {
   const { id: athleteId, seasonId } = useParams<{ id: string; seasonId: string }>();
   const { user, loading } = useAuth();
 
-  const [season,        setSeason]        = useState<Season | null>(null);
-  const [athleteName,   setAthleteName]   = useState("");
-  const [phases,        setPhases]        = useState<Phase[]>([]);
-  const [comps,         setComps]         = useState<Comp[]>([]);
-  const [sessions,      setSessions]      = useState<TrainingSession[]>([]);
-  const [fetching,      setFetching]      = useState(true);
-  const [saving,        setSaving]        = useState(false);
+  const [season,      setSeason]      = useState<Season | null>(null);
+  const [athleteName, setAthleteName] = useState("");
+  const [phases,      setPhases]      = useState<Phase[]>([]);
+  const [comps,       setComps]       = useState<Comp[]>([]);
+  const [sessions,    setSessions]    = useState<TrainingSession[]>([]);
+  const [dayNotes,    setDayNotes]    = useState<DayNote[]>([]);
+  const [fetching,    setFetching]    = useState(true);
+  const [saving,      setSaving]      = useState(false);
+  const [savingNote,  setSavingNote]  = useState(false);
 
-  const [editSeason,    setEditSeason]    = useState(false);
-  const [sf,            setSf]            = useState<Partial<Season>>({});
+  const [editSeason,  setEditSeason]  = useState(false);
+  const [sf,          setSf]          = useState<Partial<Season>>({});
 
-  const [editPhaseId,   setEditPhaseId]   = useState<string | null>(null);
-  const [phaseF,        setPhaseF]        = useState<Partial<Phase>>({});
-  const [showAddPhase,  setShowAddPhase]  = useState(false);
-  const [newPhase,      setNewPhase]      = useState<Partial<Phase>>({});
+  const [editPhaseId,  setEditPhaseId]  = useState<string | null>(null);
+  const [phaseF,       setPhaseF]       = useState<Partial<Phase>>({});
+  const [showAddPhase, setShowAddPhase] = useState(false);
+  const [newPhase,     setNewPhase]     = useState<Partial<Phase>>({});
 
-  const [editCompId,    setEditCompId]    = useState<string | null>(null);
-  const [compF,         setCompF]         = useState<Partial<Comp> & { events_str: string }>({ ...blankComp });
-  const [showAddComp,   setShowAddComp]   = useState(false);
-  const [newComp,       setNewComp]       = useState<Partial<Comp> & { events_str: string }>({ ...blankComp });
+  const [editCompId,  setEditCompId]  = useState<string | null>(null);
+  const [compF,       setCompF]       = useState<Partial<Comp> & { events_str: string }>({ ...blankComp });
+  const [showAddComp, setShowAddComp] = useState(false);
+  const [newComp,     setNewComp]     = useState<Partial<Comp> & { events_str: string }>({ ...blankComp });
 
-  const [sessionPanel,    setSessionPanel]    = useState(false);
-  const [sessionDraft,    setSessionDraft]    = useState<SessionDraft>({ ...blankSession });
-  const [editSessionId,   setEditSessionId]   = useState<string | null>(null);
-  const [selectedCalDay,  setSelectedCalDay]  = useState<string | null>(null);
-  const [sessionSlotDate, setSessionSlotDate] = useState<string>("");
+  const [modalDay, setModalDay] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!user || !athleteId || !seasonId) return;
     const sb = createClient();
-    const [{ data: s }, { data: pa }, { data: ph }, { data: co }, { data: sess }] = await Promise.all([
+    const [{ data: s }, { data: pa }, { data: ph }, { data: co }, { data: sess }, { data: notes }] = await Promise.all([
       sb.from("seasons").select("*").eq("id", seasonId).single(),
       sb.from("provisional_athletes").select("name").eq("id", athleteId).single(),
       sb.from("season_phases")
@@ -707,12 +903,17 @@ export default function SeasonPage() {
         .eq("provisional_athlete_id", athleteId)
         .gte("date", "2020-01-01")
         .order("date"),
+      sb.from("day_notes")
+        .select("id, date, author_id, content, created_at")
+        .eq("provisional_athlete_id", athleteId)
+        .order("created_at"),
     ]);
     setSeason(s);
     setAthleteName(pa?.name ?? "");
     setPhases(ph ?? []);
     setComps(co ?? []);
     setSessions(sess ?? []);
+    setDayNotes(notes ?? []);
     setFetching(false);
   }, [user, athleteId, seasonId]);
 
@@ -819,29 +1020,11 @@ export default function SeasonPage() {
     fetchData();
   }
 
-  // ── Session CRUD ─────────────────────────────────────────────────────────────
+  // ── Session CRUD (called from DayModal) ──────────────────────────────────────
 
-  function openAddSession(date: string) {
-    setEditSessionId(null);
-    setSessionDraft({ ...blankSession, date });
-    setSessionSlotDate(date);
-    setSessionPanel(true);
-  }
-
-  function openEditSession(s: TrainingSession) {
-    setEditSessionId(s.id);
-    setSessionDraft({
-      date: s.date, session_type: s.session_type, title: s.title,
-      description: s.description ?? "", duration_minutes: String(s.duration_minutes ?? ""),
-      session_rpe: String(s.session_rpe ?? ""),
-    });
-    setSessionSlotDate(s.date);
-    setSessionPanel(true);
-  }
-
-  async function saveSession() {
-    const { date, session_type, title, description, duration_minutes, session_rpe } = sessionDraft;
-    if (!date || !title) return;
+  async function saveSession(draft: SessionDraft, editId: string | null): Promise<boolean> {
+    const { date, session_type, title, description, duration_minutes, session_rpe } = draft;
+    if (!date || !title) return false;
     setSaving(true);
     const payload = {
       date, session_type, title,
@@ -850,23 +1033,41 @@ export default function SeasonPage() {
       session_rpe: session_rpe ? Number(session_rpe) : null,
     };
     const sb = createClient();
-    if (editSessionId) {
-      await sb.from("training_sessions").update(payload).eq("id", editSessionId);
+    if (editId) {
+      await sb.from("training_sessions").update(payload).eq("id", editId);
     } else {
       await sb.from("training_sessions").insert({
-        ...payload,
-        provisional_athlete_id: athleteId,
-        season_id: seasonId,
+        ...payload, provisional_athlete_id: athleteId, season_id: seasonId,
       });
     }
-    setSessionPanel(false); setEditSessionId(null);
-    await fetchData(); setSaving(false);
+    await fetchData();
+    setSaving(false);
+    return true;
   }
 
-  async function deleteSession() {
-    if (!editSessionId || !confirm("Delete this session?")) return;
-    await createClient().from("training_sessions").delete().eq("id", editSessionId);
-    setSessionPanel(false); setEditSessionId(null);
+  async function deleteSession(editId: string): Promise<void> {
+    if (!confirm("Delete this session?")) return;
+    await createClient().from("training_sessions").delete().eq("id", editId);
+    await fetchData();
+  }
+
+  // ── Notes CRUD ───────────────────────────────────────────────────────────────
+
+  async function saveNote(date: string, content: string): Promise<void> {
+    if (!content.trim() || !user) return;
+    setSavingNote(true);
+    await createClient().from("day_notes").insert({
+      provisional_athlete_id: athleteId,
+      date,
+      author_id: user.id,
+      content: content.trim(),
+    });
+    await fetchData();
+    setSavingNote(false);
+  }
+
+  async function deleteNote(noteId: string) {
+    await createClient().from("day_notes").delete().eq("id", noteId);
     fetchData();
   }
 
@@ -899,7 +1100,6 @@ export default function SeasonPage() {
   return (
     <div className="cf-page-narrow">
 
-      {/* Breadcrumb */}
       <Link href={`/coach/provisional/${athleteId}`} style={{ fontSize: "13px", color: "var(--text-muted)", textDecoration: "none" }}>
         ← {athleteName || "Back to athlete"}
       </Link>
@@ -977,55 +1177,7 @@ export default function SeasonPage() {
       </div>
 
       {/* Macro calendar */}
-      <SeasonCalendar phases={phases} comps={comps} onDayClick={dateStr => setSelectedCalDay(dateStr)} />
-
-      {selectedCalDay && (() => {
-        const dayPhIdx = phases.findIndex(p => selectedCalDay >= p.start_date && selectedCalDay <= p.end_date);
-        const dayPh = dayPhIdx >= 0 ? phases[dayPhIdx] : null;
-        const dayComp = comps.find(c => c.date <= selectedCalDay && (c.end_date ? c.end_date >= selectedCalDay : c.date === selectedCalDay));
-        const daySess = sessions.filter(s => s.date === selectedCalDay);
-        return (
-          <div style={{ marginBottom: "28px", padding: "14px 16px", border: "1px solid var(--border)", borderRadius: "8px", background: "var(--surface)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-              <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "var(--text)" }}>
-                {new Date(selectedCalDay + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
-              </p>
-              <button onClick={() => setSelectedCalDay(null)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "18px", lineHeight: 1, padding: "0 2px" }}>×</button>
-            </div>
-            {dayPh && (
-              <p style={{ margin: "0 0 6px", fontSize: "12px", color: "var(--text-muted)" }}>
-                <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "2px", background: PHASE_COLORS[dayPhIdx % PHASE_COLORS.length], marginRight: "6px", verticalAlign: "middle" }} />
-                Phase {dayPh.order}: {dayPh.name}
-              </p>
-            )}
-            {dayComp && (
-              <p style={{ margin: "0 0 6px", fontSize: "12px", color: COMP_DOT[dayComp.priority] ?? "#888", fontWeight: 600 }}>
-                {dayComp.meeting || "Competition"} ({dayComp.priority})
-              </p>
-            )}
-            {daySess.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: "10px" }}>
-                {daySess.map(s => (
-                  <div key={s.id} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text)" }}>{s.title}</span>
-                    {s.duration_minutes && <span style={{ fontSize: "10px", color: "var(--text-muted)" }}>{s.duration_minutes}min</span>}
-                    <button onClick={() => { setSelectedCalDay(null); openEditSession(s); }} style={{ fontSize: "10px", padding: "1px 6px", border: "1px solid var(--border)", borderRadius: "3px", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>Edit</button>
-                  </div>
-                ))}
-              </div>
-            )}
-            {!dayPh && !dayComp && daySess.length === 0 && (
-              <p style={{ margin: "0 0 8px", fontSize: "12px", color: "var(--text-muted)", opacity: 0.6 }}>No sessions or events on this day.</p>
-            )}
-            <button
-              onClick={() => { setSelectedCalDay(null); openAddSession(selectedCalDay); }}
-              style={{ fontSize: "12px", padding: "5px 12px", background: "var(--accent)", color: "var(--bg)", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: 600 }}
-            >
-              + Log session
-            </button>
-          </div>
-        );
-      })()}
+      <SeasonCalendar phases={phases} comps={comps} onDayClick={setModalDay} />
 
       {/* Phases */}
       <div style={{ marginBottom: "32px" }}>
@@ -1214,29 +1366,34 @@ export default function SeasonPage() {
       {/* Performance trend */}
       <PerformanceTrend comps={comps} />
 
-      {/* Weekly training log (micro-periodisation) */}
+      {/* Weekly training log */}
       <WeeklyLog
         season={season}
         phases={phases}
         comps={comps}
         sessions={sessions}
-        onAddSession={openAddSession}
-        onEditSession={openEditSession}
-        sessionSlot={sessionPanel ? {
-          forDate: sessionSlotDate,
-          node: (
-            <SessionPanel
-              draft={sessionDraft}
-              editId={editSessionId}
-              saving={saving}
-              onChange={setSessionDraft}
-              onSave={saveSession}
-              onDelete={editSessionId ? deleteSession : undefined}
-              onClose={() => { setSessionPanel(false); setEditSessionId(null); }}
-            />
-          ),
-        } : undefined}
+        dayNotes={dayNotes}
+        onDayClick={setModalDay}
       />
+
+      {/* Day modal */}
+      {modalDay && user && (
+        <DayModal
+          dateStr={modalDay}
+          phases={phases}
+          comps={comps}
+          sessions={sessions}
+          dayNotes={dayNotes}
+          userId={user.id}
+          saving={saving}
+          savingNote={savingNote}
+          onClose={() => setModalDay(null)}
+          onSaveSession={saveSession}
+          onDeleteSession={deleteSession}
+          onSaveNote={saveNote}
+          onDeleteNote={deleteNote}
+        />
+      )}
 
     </div>
   );
