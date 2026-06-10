@@ -10,6 +10,7 @@ export default function Nav() {
 
   const primaryLinks = [
     { href: "/",               label: "club" },
+    { href: "/race",           label: "race" },
     { href: "/plan",           label: "fuel" },
     { href: "/form",           label: "form" },
     { href: "/run",            label: "run" },
