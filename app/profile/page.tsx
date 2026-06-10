@@ -143,6 +143,9 @@ export default function ProfilePage() {
   const [expandedWeek,   setExpandedWeek]   = useState<number>(0);
   const [activeRunPlan,  setActiveRunPlan]  = useState<RunPlan | null>(null);
   const [runCompletions, setRunCompletions] = useState<RunCompletion[]>([]);
+  const [stravaConn,     setStravaConn]     = useState<{ strava_username: string | null } | null | "loading">("loading");
+  const [stravaMsg,      setStravaMsg]      = useState<string | null>(null);
+  const [syncing,        setSyncing]        = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -212,7 +215,47 @@ export default function ProfilePage() {
       .order("created_at", { ascending: false })
       .limit(20)
       .then(({ data }) => { if (data) setAllPlans(data as AllPlan[]); });
+
+    // Load Strava connection
+    supabase.from("strava_connections")
+      .select("strava_username")
+      .eq("athlete_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => setStravaConn(data ?? null));
+
+    // Handle redirect back from Strava OAuth
+    const qp = new URLSearchParams(window.location.search);
+    const stravaStatus = qp.get("strava");
+    if (stravaStatus === "connected") {
+      setStravaMsg("Strava connected.");
+      window.history.replaceState({}, "", "/profile");
+    } else if (stravaStatus === "error") {
+      setStravaMsg("Strava connection failed. Try again.");
+      window.history.replaceState({}, "", "/profile");
+    }
   }, [user]);
+
+  // ── Strava handlers ──────────────────────────────────────────────────────────
+
+  const handleStravaSync = async () => {
+    setSyncing(true);
+    const res  = await fetch("/api/strava/sync", { method: "POST" });
+    const data = await res.json();
+    if (res.ok) {
+      const n = data.imported as number;
+      setStravaMsg(`${n} activit${n === 1 ? "y" : "ies"} imported.`);
+    } else {
+      setStravaMsg(data.error ?? "Sync failed.");
+    }
+    setSyncing(false);
+    setTimeout(() => setStravaMsg(null), 4000);
+  };
+
+  const handleStravaDisconnect = async () => {
+    await fetch("/api/strava/disconnect", { method: "POST" });
+    setStravaConn(null);
+    setStravaMsg(null);
+  };
 
   // ── Avatar upload ────────────────────────────────────────────────────────────
 
@@ -1172,6 +1215,59 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      {/* ── Integrations ────────────────────────────────────────────────────── */}
+      {stravaConn !== "loading" && (
+        <div style={{ marginBottom: "40px" }}>
+          <p style={sectionLabel}>Integrations</p>
+          <div style={{ border: "1px solid var(--border)", borderRadius: "6px", overflow: "hidden" }}>
+            <div style={{ padding: "16px", background: "var(--surface)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "3px" }}>
+                  {stravaConn && (
+                    <span style={{ width: "7px", height: "7px", borderRadius: "50%", background: "#22c55e", flexShrink: 0, display: "inline-block" }} />
+                  )}
+                  <p style={{ margin: 0, fontSize: "13px", fontWeight: 600 }}>Strava</p>
+                </div>
+                <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>
+                  {stravaConn
+                    ? stravaConn.strava_username
+                      ? `Connected as ${stravaConn.strava_username}`
+                      : "Connected"
+                    : "Import runs and sessions automatically"}
+                </p>
+                {stravaMsg && (
+                  <p style={{ margin: "5px 0 0", fontSize: "11px", color: "var(--success, #44cc88)" }}>{stravaMsg}</p>
+                )}
+              </div>
+              {stravaConn ? (
+                <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+                  <button
+                    onClick={handleStravaSync}
+                    disabled={syncing}
+                    style={{ padding: "6px 12px", background: "transparent", border: "1px solid var(--border)", borderRadius: "4px", fontSize: "12px", cursor: syncing ? "default" : "pointer", fontFamily: "inherit", color: "var(--text)", opacity: syncing ? 0.6 : 1 }}
+                  >
+                    {syncing ? "Syncing..." : "Sync now"}
+                  </button>
+                  <button
+                    onClick={handleStravaDisconnect}
+                    style={{ padding: "6px 12px", background: "transparent", border: "1px solid var(--border)", borderRadius: "4px", fontSize: "12px", cursor: "pointer", fontFamily: "inherit", color: "var(--text-muted)" }}
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <a
+                  href="/api/strava/connect"
+                  style={{ padding: "7px 14px", background: "#fc4c02", color: "#fff", border: "none", borderRadius: "4px", fontSize: "12px", fontWeight: 600, cursor: "pointer", textDecoration: "none", fontFamily: "inherit", flexShrink: 0 }}
+                >
+                  Connect
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
