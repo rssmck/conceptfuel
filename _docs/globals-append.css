@@ -1,0 +1,15 @@
+/* ─── concept//race plan document ────────────────────────────────────────── */
+.cr-page { max-width: 820px; }
+
+/* Print: clean A4 PDF via the browser. Strip nav, footer, banners, actions. */
+@media print {
+  nav, footer, .cr-actions, .cf-nav-secondary { display: none !important; }
+  html, body { background: #ffffff !important; color: #111111 !important; }
+  .cr-doc { max-width: 100% !important; }
+  .cr-doc h1, .cr-doc h2, .cr-doc p, .cr-doc li, .cr-doc td, .cr-doc th, .cr-doc span { color: #111111 !important; }
+  .cr-doc [style*="var(--text-muted)"] { color: #555555 !important; }
+  .cr-section { break-inside: avoid; page-break-inside: avoid; }
+  .cr-doc table { break-inside: auto; }
+  main { padding-bottom: 0 !important; }
+  @page { margin: 18mm 16mm; }
+}
