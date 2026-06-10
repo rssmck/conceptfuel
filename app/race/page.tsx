@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import RaceWizard from "@/components/RaceWizard";
 
 export const metadata: Metadata = {
-  title: "concept//race — Your personalised race plan",
+  title: "concept//race — Personalised race plan",
   description:
-    "A race plan built from your numbers, not a template. Split tables for two goals, race week, race morning timeline, fuelling and tactical protocols. From 5K to marathon. Not written by AI.",
+    "Split tables for two goals, race week, a morning timeline, fuelling, and protocols for what tends to go wrong. 5K to marathon. £10.",
   alternates: { canonical: "https://conceptathletic.co.uk/race" },
   openGraph: {
-    title: "concept//race — Your personalised race plan",
+    title: "concept//race — Personalised race plan",
     description:
-      "A race plan built from your numbers, not a template. From 5K to marathon. Instant. Not written by AI.",
+      "Split tables for two goals, race week, a morning timeline, fuelling, and protocols for what tends to go wrong. 5K to marathon. £10.",
     url: "https://conceptathletic.co.uk/race",
   },
 };
@@ -27,16 +27,12 @@ export default function RacePage() {
           <br />
           <span style={{ color: "var(--text-muted)" }}>built for you.</span>
         </h1>
-        <p style={{ fontSize: "clamp(15px, 2.5vw, 18px)", color: "var(--text-muted)", maxWidth: "540px", lineHeight: 1.6, marginBottom: "20px" }}>
-          Not a template with your name swapped in. Answer a few honest questions and get split tables for two goals, your race week, a race morning timeline, fuelling, and protocols for whatever tends to go wrong. From 5K to marathon.
+        <p style={{ fontSize: "clamp(15px, 2.5vw, 18px)", color: "var(--text-muted)", maxWidth: "480px", lineHeight: 1.6, marginBottom: "20px" }}>
+          Split tables for two goals. Race week, day by day. A morning timeline from wake-up to the gun. Fuelling for your distance and pace. Protocols for what tends to go wrong.
         </p>
-        <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", fontSize: "12px", color: "var(--text-muted)" }}>
-          <span>Instant download</span>
-          <span>·</span>
-          <span>Built on a coach&apos;s methodology</span>
-          <span>·</span>
-          <span>Not written by AI</span>
-        </div>
+        <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)" }}>
+          5K to marathon &nbsp;·&nbsp; £10
+        </p>
       </section>
 
       {/* Wizard */}

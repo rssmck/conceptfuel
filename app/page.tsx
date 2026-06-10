@@ -18,6 +18,17 @@ export const metadata: Metadata = {
 
 const MODULES = [
   {
+    slug: "race",
+    href: "/race",
+    status: "live",
+    label: "concept//race",
+    tagline: "Personalised race plan",
+    desc:
+      "Split tables for two goals. Race week, day by day. A morning timeline from wake-up to the gun. Fuelling for your distance and pace. Protocols for what tends to go wrong. 5K to marathon.",
+    badge: "£10",
+    cta: "Get your race plan",
+  },
+  {
     slug: "run",
     href: "/run",
     status: "live",

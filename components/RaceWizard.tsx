@@ -22,10 +22,10 @@ const DIST_KM: Record<RaceDistance, number> = {
 };
 
 const DISTANCES: { value: RaceDistance; label: string; desc: string }[] = [
-  { value: "5k", label: "5K", desc: "Speed, precision, and ten to thirty minutes of full concentration." },
-  { value: "10k", label: "10K", desc: "The balance point. Fast enough to hurt, long enough to need a plan." },
-  { value: "half", label: "Half marathon", desc: "21.1km. Patience early, bravery late." },
-  { value: "marathon", label: "Marathon", desc: "42.2km. Won or lost on discipline and fuelling." },
+  { value: "5k",       label: "5K",            desc: "Per-km or mile splits for both goals, pacing shape for your exact time, and a race morning protocol." },
+  { value: "10k",      label: "10K",           desc: "Two full split tables with a marked decision point, pacing strategy, and fuelling notes." },
+  { value: "half",     label: "Half marathon", desc: "Two split tables, a timed fuelling schedule, race week structure, and morning timeline." },
+  { value: "marathon", label: "Marathon",      desc: "Full splits for both goals, km-by-km fuelling, race week day-by-day, and a morning timeline from wake-up to gun." },
 ];
 
 const EXPERIENCE: { value: ExperienceLevel; label: string; desc: string }[] = [
@@ -592,7 +592,7 @@ export default function RaceWizard() {
             background: "var(--surface)", marginBottom: "8px",
           }}>
             <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "0 0 10px 0", lineHeight: 1.65 }}>
-              What you get, instantly after payment:
+              What you get after payment:
             </p>
             <ul style={{ margin: 0, paddingLeft: "18px", fontSize: "13px", color: "var(--text)", lineHeight: 1.9 }}>
               <li>An honest read on your goal against your current fitness</li>
@@ -603,11 +603,7 @@ export default function RaceWizard() {
               {struggles.length > 0 && (
                 <li>{struggles.length === 1 ? "A protocol" : `${struggles.length} protocols`} for what you told us goes wrong</li>
               )}
-              <li>A coach note. Written by a coach, not a template.</li>
             </ul>
-            <p style={{ fontSize: "11px", color: "var(--text-muted)", marginTop: "12px", marginBottom: 0 }}>
-              Built from your numbers by the Concept Athletic methodology. Deterministic, transparent, and not written by AI.
-            </p>
           </div>
         </div>
       )}
